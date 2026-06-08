@@ -1,0 +1,47 @@
+# Version control should track source, config, docs, and small examples.
+# Runtime data, caches, environments, logs, and generated outputs stay local.
+
+# Local environments and external tool/data bundles
+envs/
+vep_cache/
+vep_data/
+
+# Runtime/generated outputs
+api_jobs/
+tmux_runs/
+output/
+ranked_outputs/
+logs/
+input/
+*.log
+api_uvicorn.log
+
+# Python/runtime cache
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Historical manual backups now replaced by Git history
+*.bak-*
+*.bad.*
+
+# Large/binary biomedical data artifacts
+*.vcf.gz
+*.vcf.gz.tbi
+*.fa
+*.fa.fai
+*.fa.gz
+*.gtf.gz
+*.gct.gz
+*.tsv.gz
+*.parquet
+*.tar.gz
+*.md5
+
+# OS/editor local files
+.DS_Store
+*.swp
+*.swo

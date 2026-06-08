@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+set -euo pipefail
+BASE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ENV_DIR="$BASE/envs/vep"
+export PATH="$ENV_DIR/bin:$PATH"
+exec "$ENV_DIR/bin/vep" --dir_cache "$BASE/vep_cache" "$@"
