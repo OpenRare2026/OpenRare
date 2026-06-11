@@ -1,0 +1,13 @@
+services:
+  rag-hpo:
+    build: .
+    image: rag-hpo:latest
+    env_file:
+      - .env
+    volumes:
+      - ./Test_Cases.csv:/data/input.csv:ro
+      - ./output:/data/output
+    command: >
+      --csv /data/input.csv
+      --output /data/output/results.csv
+      --output-mode save

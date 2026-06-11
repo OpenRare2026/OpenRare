@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+
+# Git
+.git/
+.gitignore
+
+# Virtual environments
+venv/
+.venv/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Temp and output
+dev/tmp/
+*.pkl
+*.csv
+!hpo_terms_full.csv
+!HPO_addons.csv
+!Test_Cases.csv
+
+# OS
+.DS_Store
+
+# Env (contains secrets — pass via -e or docker-compose)
+.env
+.env.example
+
+# Original notebook (not needed at runtime)
+*.ipynb
+RAG-HPO_Tests_and_Data_Analysis.xlsx
+
+# Not needed at runtime
+setup_environment.py
+requirements.txt

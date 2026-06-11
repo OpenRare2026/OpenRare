@@ -1,0 +1,27 @@
+# Core
+numpy
+pandas
+tqdm
+requests
+
+# LLM API
+tiktoken
+
+# Embeddings & vector search
+sentence-transformers
+fastembed
+faiss-cpu
+rapidfuzz
+
+# HPO ontology
+pronto
+
+# Config
+pydantic-settings
+
+# CLI
+tabulate
+
+# HTTP server
+fastapi
+uvicorn[standard]
