@@ -1,0 +1,13 @@
+gene_symbol,chrom,pos,ref,alt,hgvsc,hgvsp,consequence,impact,pathogenic_rank,revel_score,cadd_phred,gnomAD_popmax_AF,gnomAD_eas_AF,spliceAI_ds_max,spliceAI_type,loftee_lof_flag,clinvar_significance,clinvar_star_rating,evidence_summary
+CFTR,7,117149148,G,A,NM_000492.4:c.1521_1523del,p.Phe508del,frameshift_variant,HIGH,1,,32,0.00037,0.0,,,,Pathogenic,3,CF causing mutation; well-established
+CFTR,7,117170952,C,T,NM_000492.4:c.350G>A,p.Arg117His,missense_variant,MODERATE,2,0.739,23.2,0.00254,0.0001,,,,Likely pathogenic,2,Associated with CBAVD
+CFTR,7,117176602,G,A,NM_000492.4:c.1652G>A,p.Gly551Asp,missense_variant,MODERATE,3,0.863,25.1,0.00009,0.0,,,,Pathogenic,3,Class III mutation; gating defect
+DMD,X,32632661,C,T,NM_004006.3:c.94-2A>G,,splice_acceptor_variant,HIGH,4,,,,,,,,,,
+DMD,X,32717294,A,G,NM_004006.3:c.10141C>T,p.Arg3381*,stop_gained,HIGH,5,,36,,,,,,,,
+USH2A,1,216420430,G,A,NM_206933.4:c.2299delG,p.Glu767fs,frameshift_variant,HIGH,6,,,0.00002,0.0,,,,Pathogenic,2,Usher syndrome type II
+USH2A,1,216420545,C,T,NM_206933.4:c.2276G>T,p.Cys759Phe,missense_variant,MODERATE,7,0.931,24.8,0.00508,0.0021,,,,Pathogenic,2,
+USH2A,1,216595433,T,C,NM_206933.4:c.11864G>A,p.Trp3955*,stop_gained,HIGH,8,,,0.00006,0.0,,,,Pathogenic,2,
+PAH,12,103237498,C,T,NM_000277.3:c.1222C>T,p.Arg408Trp,missense_variant,MODERATE,9,0.65,27.1,0.00187,0.0,,,,Pathogenic,3,Classic PKU mutation
+PAH,12,103246552,G,A,NM_000277.3:c.782G>A,p.Arg261Gln,missense_variant,MODERATE,10,0.58,26.3,0.00093,0.0,,,,Pathogenic,3,
+CDKL5,X,18575237,C,T,NM_003159.3:c.455G>A,p.Gly152Asp,missense_variant,MODERATE,11,0.521,22.7,0.0,0.0,,,,Likely pathogenic,1,
+GBA1,1,155238943,G,A,NM_000157.4:c.1226A>G,p.Asn409Ser,missense_variant,MODERATE,12,0.544,18.2,0.00109,0.0029,,,,Pathogenic,2,Gaucher disease; common in Ashkenazi

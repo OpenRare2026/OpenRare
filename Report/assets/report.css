@@ -1,0 +1,47 @@
+/* xhtml2pdf-compatible stylesheet.
+   xhtml2pdf supports a useful subset of CSS: @page + @frame for running
+   footers, @font-face for embedded TTF, basic block/table styling.
+   It does NOT support flexbox/grid or :nth-child — keep it simple. */
+
+@font-face {
+  font-family: "CJK";
+  src: url("fonts/WenQuanYiZenHei-Regular.ttf");
+}
+
+@page {
+  size: a4 portrait;
+  margin: 1.7cm 1.5cm 2cm 1.5cm;
+  @frame footer_frame {
+    -pdf-frame-content: footerContent;
+    -pdf-frame-border: 0;
+    left: 1.5cm; right: 1.5cm; bottom: 1.0cm; height: 0.8cm;
+  }
+}
+
+body { font-family: "CJK"; font-size: 10pt; color: #1f2430; line-height: 1.45; }
+
+h1 { font-size: 19pt; color: #15324f; margin: 0 0 4pt 0; }
+h2 { font-size: 13pt; color: #15324f; margin: 14pt 0 5pt 0;
+     border-bottom: 1.2pt solid #1f6feb; padding-bottom: 2pt; }
+h3 { font-size: 11pt; color: #2c3e57; margin: 9pt 0 3pt 0; }
+
+p  { margin: 4pt 0; }
+ul { margin: 3pt 0 3pt 0; }
+li { margin: 1pt 0; }
+
+blockquote {
+  margin: 5pt 0; padding: 5pt 9pt; background-color: #f4f7fb;
+  border-left: 3pt solid #1f6feb; color: #44506a; font-size: 9.5pt;
+}
+
+table { width: 100%; border: 0.5pt solid #cfd6e0; margin: 5pt 0; font-size: 8.2pt;
+        -pdf-keep-in-frame-mode: overflow; }
+th { background-color: #15324f; color: #ffffff; text-align: left;
+     padding: 4pt 5pt; font-weight: bold; line-height: 1.25; }
+td { padding: 3pt 5pt; border-top: 0.5pt solid #dfe4ec; line-height: 1.30;
+     white-space: normal; vertical-align: top; }
+
+code { font-family: "CJK"; font-size: 8.4pt; background-color: #eef1f6; }
+em   { color: #8a93a3; font-size: 9pt; }
+
+.footer { font-size: 8pt; color: #9098a3; text-align: center; }

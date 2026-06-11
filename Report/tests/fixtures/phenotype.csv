@@ -1,0 +1,6 @@
+gene_symbol,gene_score,conclusion_code,best_disease_name,best_omim_id,best_orpha_id,best_mondo_id,matched_hpo_count,unmatched_hpo_count,disease_profile_count,best_term_evidence_summary
+CFTR,0.873,strong,Cystic fibrosis,219700,586,MONDO:0009061,5,2,12,HP:0002201→HP:0002201:0.95; HP:0001733→HP:0001733:0.03; HP:0002099→HP:0002099:0.02; HP:0006530→HP:0006530:0.01; HP:0004401→HP:0004401:0.01
+DMD,0.921,excellent,Duchenne muscular dystrophy,310200,98896,MONDO:0010679,8,0,15,HP:0003324→HP:0003324:0.98; HP:0001324→HP:0001324:0.97; HP:0003700→HP:0003700:0.08
+USH2A,0.765,good,Usher syndrome type 2A,276901,231169,MONDO:0010169,3,1,8,HP:0000407→HP:0000407:0.92; HP:0004322→HP:0004322:0.01; HP:0001250→HP:0001250:0.01
+PAH,0.654,moderate,Phenylketonuria,261600,716,MONDO:0009861,2,2,5,
+CDKL5,0.712,good,Developmental and epileptic encephalopathy 2,300672,3095,MONDO:0010397,4,1,9,HP:0001250→HP:0001250:0.88; HP:0002353→HP:0002353:0.01

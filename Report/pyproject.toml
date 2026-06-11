@@ -1,0 +1,9 @@
+[project]
+name = "rare-disease-report-v2"
+version = "0.1.0"
+description = "Rare disease candidate gene report generator (anti-hallucination pipeline)"
+requires-python = ">=3.10"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
