@@ -1,0 +1,18 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+# test
+test_data/
+# Local PharmGKB download (large zips; copy or download into data/pharmGKB)
+data/pharmGKB/
+# Environment
+.env
+
+.docs/
