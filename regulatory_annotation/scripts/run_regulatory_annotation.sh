@@ -7,23 +7,26 @@ if [[ $# -lt 2 ]]; then
   exit 2
 fi
 
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+module_dir="$(dirname "$script_dir")"
+
 input_vcf="$1"
 out_prefix="$2"
-ccre_bed="${3:-resources/regulatory/hg38/encode_screen_v4_grch38_ccre.slim.bed.gz}"
-ncrna_bed="${4:-resources/ncrna/hg38/gencode.v49.ncrna_gene.slim.bed.gz}"
+ccre_bed="${3:-$module_dir/resources/regulatory/hg38/encode_screen_v4_grch38_ccre.slim.bed.gz}"
+ncrna_bed="${4:-$module_dir/resources/ncrna/hg38/gencode.v49.ncrna_gene.slim.bed.gz}"
 
 mkdir -p "$(dirname "$out_prefix")"
 tmp_dir="$(mktemp -d)"
 trap 'rm -rf "$tmp_dir"' EXIT
 
-python3 scripts/annotate_vcf_regulatory.py \
+python3 "$script_dir/annotate_vcf_regulatory.py" \
   --vcf "$input_vcf" \
   --bed "$ccre_bed" \
   --source ENCODE_SCREEN_v4_GRCh38 \
   --stats "${out_prefix}.regulatory.summary.tsv" \
   | bgzip -c > "${tmp_dir}/regulatory.vcf.gz"
 
-python3 scripts/annotate_vcf_ncrna.py \
+python3 "$script_dir/annotate_vcf_ncrna.py" \
   --vcf "${tmp_dir}/regulatory.vcf.gz" \
   --bed "$ncrna_bed" \
   --source GENCODE_v49_GRCh38_ncRNA_gene \
