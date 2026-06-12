@@ -1,28 +1,21 @@
-# CRE and ncRNA VCF Annotation API
+# CRE 调控区 + ncRNA 注释模块
 
-FastAPI service for hg38/GRCh38 VCF annotation with:
+本模块用于对 hg38/GRCh38 VCF 做两类区域注释，并把结果写入 VCF `INFO` 字段：
 
-- ENCODE SCREEN cCRE regulatory-region overlaps (`REG_*` INFO fields)
-- GENCODE v49 non-coding RNA gene overlaps (`NCRNA_*` INFO fields)
+- ENCODE SCREEN cCRE 调控区注释：`REG_*`
+- GENCODE v49 非编码 RNA gene 注释：`NCRNA_*`
 
-The API accepts server-side VCF paths and writes bgzipped/indexed VCF output plus summary TSV files.
+本模块可以单独运行，也可以由根目录的 `前置VCF处理.sh` 在 VAF 前置处理之后自动调用。
 
-## Layout
+## 输入
 
-```text
-regulatory_annotation/
-├── regulatory_annotation_api.py
-├── start_regulatory_api.sh
-├── scripts/
-├── resources/
-└── results/
-```
+- `input.vcf` 或 `input.vcf.gz`
+- 参考基因组应为 hg38/GRCh38。
+- 染色体命名需要和资源一致，默认资源使用 `chr1`、`chr2` 这种格式。
 
-Large annotation resources and generated result files are intentionally ignored by git.
+## 资源文件
 
-## Prepare Resources
-
-Expected resource files:
+默认需要以下资源文件：
 
 ```text
 resources/regulatory/hg38/encode_screen_v4_grch38_ccre.slim.bed.gz
@@ -31,19 +24,17 @@ resources/ncrna/hg38/gencode.v49.ncrna_gene.slim.bed.gz
 resources/ncrna/hg38/gencode.v49.ncrna_gene.slim.bed.gz.tbi
 ```
 
-cCRE resource source:
+资源文件不提交到 GitHub，需要部署时单独准备。
+
+### cCRE 资源来源
+
+ENCODE SCREEN cCRE：
 
 ```text
 https://www.encodeproject.org/files/ENCFF420VPZ/@@download/ENCFF420VPZ.bed.gz
 ```
 
-GENCODE v49 GRCh38 GTF source:
-
-```text
-https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_49/gencode.v49.annotation.gtf.gz
-```
-
-Prepare cCRE BED:
+生成精简 BED：
 
 ```bash
 python3 scripts/prepare_encode_ccre_bed.py ENCFF420VPZ.bed.gz resources/regulatory/hg38/encode_screen_v4_grch38_ccre.slim.bed
@@ -53,7 +44,15 @@ bgzip -f resources/regulatory/hg38/encode_screen_v4_grch38_ccre.slim.bed
 tabix -f -p bed resources/regulatory/hg38/encode_screen_v4_grch38_ccre.slim.bed.gz
 ```
 
-Prepare ncRNA BED:
+### ncRNA 资源来源
+
+GENCODE v49 GRCh38 GTF：
+
+```text
+https://ftp.ebi.ac.uk/pub/databases/gencode/Gencode_human/release_49/gencode.v49.annotation.gtf.gz
+```
+
+生成精简 BED：
 
 ```bash
 python3 scripts/prepare_gencode_ncrna_bed.py gencode.v49.annotation.gtf.gz resources/ncrna/hg38/gencode.v49.ncrna_gene.slim.bed
@@ -63,60 +62,68 @@ bgzip -f resources/ncrna/hg38/gencode.v49.ncrna_gene.slim.bed
 tabix -f -p bed resources/ncrna/hg38/gencode.v49.ncrna_gene.slim.bed.gz
 ```
 
-## Start API
+## 单独运行
 
 ```bash
-pip install -r requirements.txt
-./start_regulatory_api.sh
+./scripts/run_regulatory_annotation.sh input.vcf.gz output_prefix
 ```
 
-Default service port is `10086`.
-
-## Submit a Job
-
-`input_vcf`, `output_prefix`, `ccre_bed`, and `ncrna_bed` support absolute paths or paths relative to `REG_API_BASE_WORKDIR`.
+也可以显式指定资源：
 
 ```bash
-curl -X POST http://127.0.0.1:10086/annotate \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "input_vcf": "/mnt/workspace/wangzilu1/test1.vcf",
-    "output_prefix": "/mnt/workspace/wangzilu1/regulatory_annotation/results/regulatory/api/test1"
-  }'
+./scripts/run_regulatory_annotation.sh input.vcf.gz output_prefix ccre.bed.gz ncrna.bed.gz
 ```
 
-Check status:
+## 输出
 
-```bash
-curl http://127.0.0.1:10086/jobs/<job_id>
-```
-
-## Output
-
-Output VCF:
+最终 VCF：
 
 ```text
 <output_prefix>.regulatory.vcf.gz
 <output_prefix>.regulatory.vcf.gz.tbi
 ```
 
-Summary files:
+统计文件：
 
 ```text
 <output_prefix>.regulatory.summary.tsv
 <output_prefix>.ncrna.summary.tsv
 ```
 
-Added INFO fields:
+## 写入的 INFO 字段
+
+cCRE 字段：
 
 ```text
 REG_CCRE_ID
 REG_CCRE_CLASS
 REG_CCRE_COUNT
 REG_CCRE_SOURCE
+```
+
+ncRNA 字段：
+
+```text
 NCRNA_GENE_ID
 NCRNA_GENE_NAME
 NCRNA_GENE_TYPE
 NCRNA_GENE_COUNT
 NCRNA_SOURCE
+```
+
+## 单模块 FastAPI
+
+如只想调用 CRE + ncRNA 注释，不做 VAF 前置处理，可以启动：
+
+```bash
+pip install -r requirements.txt
+./start_regulatory_api.sh
+```
+
+默认端口为 `10086`，接口为：
+
+```text
+POST /annotate
+GET  /jobs/{job_id}
+GET  /health
 ```
