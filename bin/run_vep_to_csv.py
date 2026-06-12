@@ -6,6 +6,7 @@ import json
 import math
 import os
 import re
+import sqlite3
 import subprocess
 import sys
 import tempfile
@@ -252,6 +253,13 @@ GTEX_TRANSCRIPT_TPM_DEFAULT = (
     "__VEP_RUNNER__/vep_data/GTEx/v11/expression/gtex_v11_transcript_tpm.parquet"
 )
 HPO_TPM_DATA_DIR_DEFAULT = "__VEP_RUNNER__/vep_data/hpo_tpm"
+PSEUDOGENE_LOG_SUFFIX = ".pseudogene_annotation.log.json"
+REGULATORY_LOG_SUFFIX = ".regulatory_annotation.log.json"
+REGULATORY_CCRE_BED_DEFAULT = "__VEP_RUNNER__/vep_data/regulatory/hg38/encode_screen_v4_grch38_ccre.slim.bed.gz"
+VEP_TMP_DIR_ENV = "VEP_RUNNER_TMPDIR"
+VEP_TMP_DIR_DEFAULT = "__VEP_RUNNER__/tmp"
+SQLITE_INSERT_BATCH_SIZE = 20000
+SQLITE_FETCH_BATCH_SIZE = 10000
 
 
 def load_config(path: Path) -> dict:
@@ -269,6 +277,20 @@ def resolve_runner_tokens(value, runner_dir: str):
     if isinstance(value, dict):
         return {key: resolve_runner_tokens(item, runner_dir) for key, item in value.items()}
     return value
+
+
+def configured_tmp_dir(config: dict | None = None) -> Path:
+    runner_dir = str(Path(__file__).resolve().parents[1])
+    raw = os.environ.get(VEP_TMP_DIR_ENV)
+    if not raw and config:
+        raw = config.get("tmp_dir")
+    if not raw:
+        raw = os.environ.get("TMPDIR")
+    if not raw:
+        raw = VEP_TMP_DIR_DEFAULT
+    path = Path(resolve_runner_tokens(raw, runner_dir)).expanduser().resolve()
+    path.mkdir(parents=True, exist_ok=True)
+    return path
 
 
 def readable_file(path: str) -> bool:
@@ -792,6 +814,95 @@ def build_output_columns(vcf_info_ids: list[str] | None = None) -> list[str]:
     return fieldnames
 
 
+def annotate_pseudogene_csv(csv_path: Path, log_json_path: Path | None = None) -> dict[str, object]:
+    from annotate_pseudogene import (  # type: ignore
+        DEFAULT_GENCODE_GTF,
+        DEFAULT_HGNC,
+        DEFAULT_PSEUDOGENE_ORG,
+        IntervalIndex,
+        annotate_csv,
+        load_gencode_intervals,
+        load_hgnc_pseudogene_map,
+        load_pseudogene_org_intervals,
+    )
+
+    require_file(str(DEFAULT_GENCODE_GTF), "Pseudogene GENCODE GTF")
+    require_file(str(DEFAULT_PSEUDOGENE_ORG), "Pseudogene.org Human90 file")
+    require_file(str(DEFAULT_HGNC), "HGNC pseudogene mapping file")
+
+    pgohum_to_symbols, hgnc_stats = load_hgnc_pseudogene_map(DEFAULT_HGNC)
+    gencode_intervals, gencode_stats = load_gencode_intervals(
+        DEFAULT_GENCODE_GTF,
+        pgohum_to_symbols,
+    )
+    pseudogene_org_intervals, pseudogene_org_stats = load_pseudogene_org_intervals(
+        DEFAULT_PSEUDOGENE_ORG,
+        pgohum_to_symbols,
+    )
+    index = IntervalIndex(gencode_intervals + pseudogene_org_intervals)
+
+    tmp_handle = tempfile.NamedTemporaryFile(
+        prefix=f"{csv_path.name}.",
+        suffix=".pseudogene.tmp",
+        dir=str(csv_path.parent),
+        delete=False,
+    )
+    tmp_path = Path(tmp_handle.name)
+    tmp_handle.close()
+    try:
+        annotate_stats = annotate_csv(csv_path, tmp_path, index)
+        tmp_path.replace(csv_path)
+    except Exception:
+        tmp_path.unlink(missing_ok=True)
+        raise
+
+    log = {
+        "input": str(csv_path),
+        "output": str(csv_path),
+        "databases": {
+            "gencode_gtf": str(DEFAULT_GENCODE_GTF),
+            "pseudogene_org": str(DEFAULT_PSEUDOGENE_ORG),
+            "hgnc": str(DEFAULT_HGNC),
+        },
+        "hgnc": hgnc_stats,
+        "database_interval_filtering": {
+            **gencode_stats,
+            **pseudogene_org_stats,
+        },
+        "annotation": annotate_stats,
+    }
+    if log_json_path:
+        log_json_path.parent.mkdir(parents=True, exist_ok=True)
+        log_json_path.write_text(json.dumps(log, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
+    return log
+
+
+def annotate_regulatory_vcf(
+    input_vcf: Path,
+    output_vcf: Path,
+    log_json_path: Path | None = None,
+    summary_tsv_path: Path | None = None,
+    ccre_bed: Path | None = None,
+) -> dict[str, object]:
+    from annotate_regulatory import (  # type: ignore
+        DEFAULT_CCRE_BED,
+        DEFAULT_SOURCE,
+        annotate_vcf,
+        write_summary_tsv,
+    )
+
+    bed_path = ccre_bed or DEFAULT_CCRE_BED
+    require_file(str(bed_path), "Regulatory ENCODE SCREEN cCRE BED")
+
+    stats = annotate_vcf(input_vcf, output_vcf, bed_path, DEFAULT_SOURCE)
+    if summary_tsv_path:
+        write_summary_tsv(summary_tsv_path, stats)
+    if log_json_path:
+        log_json_path.parent.mkdir(parents=True, exist_ok=True)
+        log_json_path.write_text(json.dumps(stats, ensure_ascii=False, indent=2, sort_keys=True) + "\n")
+    return stats
+
+
 def parse_vcf_info_header(line: str) -> tuple[str, str] | None:
     match = VCF_INFO_HEADER_RE.match(line)
     if not match:
@@ -863,6 +974,88 @@ def load_original_vcf_coordinates(path: Path) -> tuple[dict[str, dict[str, str]]
                 for key in vep_uploaded_variation_keys(chrom, pos, ref, alt):
                     coordinates.setdefault(key, original)
     return coordinates, info_field_ids
+
+
+class SQLiteOriginalVariantLookup:
+    def __init__(self, con: sqlite3.Connection):
+        self.con = con
+        self.cache_key: str | None = None
+        self.cache_value: dict[str, str] | None = None
+
+    def get(self, key: str, default=None):
+        if key == self.cache_key:
+            return self.cache_value if self.cache_value is not None else default
+        self.cache_key = key
+        row = self.con.execute(
+            "select payload from original_variants where key = ?",
+            (key,),
+        ).fetchone()
+        self.cache_value = json.loads(row[0]) if row else None
+        return self.cache_value if self.cache_value is not None else default
+
+
+def flush_original_variant_batch(con: sqlite3.Connection, batch: list[tuple[str, str]]) -> None:
+    if not batch:
+        return
+    con.executemany(
+        "insert or ignore into original_variants(key, payload) values (?, ?)",
+        batch,
+    )
+    con.commit()
+    batch.clear()
+
+
+def load_original_vcf_coordinates_sqlite(
+    path: Path,
+    con: sqlite3.Connection,
+) -> tuple[SQLiteOriginalVariantLookup, list[str]]:
+    con.execute(
+        "create table if not exists original_variants "
+        "(key text primary key, payload text not null) without rowid"
+    )
+    con.execute("delete from original_variants")
+    con.commit()
+
+    info_numbers: dict[str, str] = {}
+    info_field_ids: list[str] = []
+    seen_info_ids: set[str] = set()
+    batch: list[tuple[str, str]] = []
+
+    def remember_info_id(info_id: str) -> None:
+        if info_id and info_id not in seen_info_ids:
+            seen_info_ids.add(info_id)
+            info_field_ids.append(info_id)
+
+    with open_text(path) as handle:
+        for line in handle:
+            if line.startswith("##INFO="):
+                parsed = parse_vcf_info_header(line)
+                if parsed:
+                    info_id, number = parsed
+                    info_numbers[info_id] = number
+                    remember_info_id(info_id)
+                continue
+            if not line or line.startswith("#"):
+                continue
+            parts = line.rstrip("\n").split("\t")
+            if len(parts) < 5:
+                continue
+            chrom, pos, _variant_id, ref, alts = parts[:5]
+            info = parts[7] if len(parts) > 7 else ""
+            for alt_index, alt in enumerate(alts.split(",")):
+                original = {"chrom": chrom, "pos": pos, "ref": ref, "alt": alt}
+                info_values = parse_vcf_info_values(info, alt_index, info_numbers)
+                for column in info_values:
+                    remember_info_id(column.removeprefix(VCF_INFO_COLUMN_PREFIX))
+                original.update(info_values)
+                payload = json.dumps(original, ensure_ascii=False, separators=(",", ":"))
+                for key in vep_uploaded_variation_keys(chrom, pos, ref, alt):
+                    batch.append((key, payload))
+                if len(batch) >= SQLITE_INSERT_BATCH_SIZE:
+                    flush_original_variant_batch(con, batch)
+
+    flush_original_variant_batch(con, batch)
+    return SQLiteOriginalVariantLookup(con), info_field_ids
 
 
 def strip_hgvs_prefix(value: str) -> str:
@@ -1180,6 +1373,87 @@ class GTExTranscriptLookup:
                 self.records.setdefault(strip_transcript_version(transcript_id), clean_record)
         finally:
             con.close()
+
+    def expression_for(self, transcript_id: str) -> tuple[dict[str, float] | None, str]:
+        if not self.available:
+            return None, self.status
+        record = self.records.get(transcript_id) or self.records.get(strip_transcript_version(transcript_id))
+        if record is None:
+            return None, "not_found"
+        return record, "ok"
+
+
+class FullGTExTranscriptLookup:
+    def __init__(self, parquet_path: str | None, clinical_tissues: list[str]):
+        self.available = False
+        self.status = "disabled"
+        self.records: dict[str, dict[str, float]] = {}
+        self.tissue_columns: list[str] = []
+        self.clinical_columns: list[str] = []
+        self.parquet_path = parquet_path
+        self.clinical_tissues = clinical_tissues
+        self.duckdb = None
+        if not parquet_path:
+            return
+        if not Path(parquet_path).is_file():
+            self.status = "gtex_file_missing"
+            return
+        try:
+            import duckdb  # type: ignore
+        except Exception:
+            self.status = "duckdb_unavailable"
+            return
+        self.duckdb = duckdb
+        self.available = True
+        self.status = "ready"
+        self._load_all_records()
+
+    def _load_all_records(self) -> None:
+        con = self.duckdb.connect(database=":memory:")
+        try:
+            described = con.execute(
+                "describe select * from read_parquet(?)",
+                [self.parquet_path],
+            ).fetchall()
+            all_columns = [row[0] for row in described]
+            self.tissue_columns = [col for col in all_columns if col != "transcript_id"]
+            by_normalized = {normalize_tissue_name(col): col for col in self.tissue_columns}
+            seen: set[str] = set()
+            for tissue in self.clinical_tissues:
+                column = by_normalized.get(normalize_tissue_name(tissue))
+                if column and column not in seen:
+                    seen.add(column)
+                    self.clinical_columns.append(column)
+
+            select_columns = ["transcript_id"] + [
+                sql_quote_identifier(col) for col in self.tissue_columns
+            ]
+            cursor = con.execute(
+                f"select {', '.join(select_columns)} from read_parquet(?)",
+                [self.parquet_path],
+            )
+            while True:
+                batch = cursor.fetchmany(10000)
+                if not batch:
+                    break
+                for values in batch:
+                    transcript_id = score_text(values[0])
+                    if not transcript_id:
+                        continue
+                    record: dict[str, float] = {}
+                    for tissue, value in zip(self.tissue_columns, values[1:]):
+                        try:
+                            number = float(value or 0)
+                        except (TypeError, ValueError):
+                            number = 0.0
+                        record[tissue] = number if math.isfinite(number) else 0.0
+                    self.records[transcript_id] = record
+                    self.records.setdefault(strip_transcript_version(transcript_id), record)
+        finally:
+            con.close()
+
+    def load(self, transcript_ids: list[str]) -> None:
+        return None
 
     def expression_for(self, transcript_id: str) -> tuple[dict[str, float] | None, str]:
         if not self.available:
@@ -1627,6 +1901,248 @@ def convert_vep_table_to_csv(
     return len(rows)
 
 
+def sqlite_temp_path(csv_path: Path, explicit_path: str | None = None) -> Path:
+    if explicit_path:
+        path = Path(explicit_path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        return path
+    csv_path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_handle = tempfile.NamedTemporaryFile(
+        prefix=f"{csv_path.name}.",
+        suffix=".sqlite",
+        dir=str(csv_path.parent),
+        delete=False,
+    )
+    path = Path(tmp_handle.name)
+    tmp_handle.close()
+    return path
+
+
+def open_selected_rows_db(path: Path, force: bool = True) -> sqlite3.Connection:
+    if force:
+        cleanup_sqlite_db(path)
+    con = sqlite3.connect(str(path))
+    con.execute("pragma journal_mode=wal")
+    con.execute("pragma synchronous=normal")
+    con.execute("pragma temp_store=file")
+    con.execute("pragma cache_size=-200000")
+    con.execute(
+        "create table if not exists selected_rows "
+        "(score integer not null, seq integer not null, payload text not null)"
+    )
+    if force:
+        con.execute("delete from selected_rows")
+        con.commit()
+    return con
+
+
+def cleanup_sqlite_db(path: Path) -> None:
+    path.unlink(missing_ok=True)
+    for suffix in ("-wal", "-shm"):
+        Path(str(path) + suffix).unlink(missing_ok=True)
+
+
+def parse_vep_table_groups(
+    vep_path: Path,
+    original_variants: dict[str, dict[str, str]],
+):
+    header: list[str] | None = None
+    current_key: str | None = None
+    current_rows: list[dict[str, str]] = []
+
+    with open_text(vep_path) as handle:
+        for raw_line in handle:
+            line = raw_line.rstrip("\n")
+            if not line:
+                continue
+            if line.startswith("##"):
+                continue
+            if line.startswith("#"):
+                header = line.lstrip("#").split("\t")
+                continue
+            if header is None:
+                raise ValueError("VEP output header was not found")
+            parts = line.split("\t")
+            if len(parts) < len(header):
+                parts += [""] * (len(header) - len(parts))
+            row = dict(zip(header, parts))
+            extra = parse_extra(row.pop("Extra", ""))
+            row.update(extra)
+            variant_id = row.get("Uploaded_variation", "")
+            original_variant = original_variants.get(variant_id)
+            add_requested_columns(row, extra, original_variant)
+            if current_key is not None and variant_id != current_key:
+                yield current_key, current_rows
+                current_rows = []
+            current_key = variant_id
+            current_rows.append(row)
+
+    if current_rows:
+        yield current_key or "", current_rows
+
+
+def add_pathogenic_fields(row: dict[str, str]) -> int:
+    row["_clinvar_score"] = str(score_clinvar(row))
+    row["_consequence_score"] = str(score_consequence(row))
+    row["_splice_lof_score"] = str(score_splice_lof(row))
+    row["_prediction_score"] = str(score_prediction(row))
+    row["_frequency_score"] = str(score_frequency(row))
+    row["_domain_score"] = str(score_domain(row))
+    score = raw_pathogenic_score(row)
+    row["_raw_pathogenic_score"] = str(score)
+    row["evidence_summary"] = build_evidence_summary(row)
+    row["pathogenic_rank"] = "-"
+    return score
+
+
+def flush_selected_row_batch(con: sqlite3.Connection, batch: list[tuple[int, int, str]]) -> None:
+    if not batch:
+        return
+    con.executemany(
+        "insert into selected_rows(score, seq, payload) values (?, ?, ?)",
+        batch,
+    )
+    con.commit()
+    batch.clear()
+
+
+def stage_selected_rows_to_sqlite(
+    vep_path: Path,
+    original_variants: dict[str, dict[str, str]],
+    fieldnames: list[str],
+    clinical_tissues: list[str],
+    gtex_transcript_tpm: str | None,
+    disable_gtex_expression: bool,
+    disable_transcript_selection: bool,
+    top_k_transcripts: int,
+    con: sqlite3.Connection,
+) -> int:
+    lookup = FullGTExTranscriptLookup(
+        None if disable_gtex_expression else gtex_transcript_tpm,
+        clinical_tissues,
+    )
+    rows_written = 0
+    seq = 0
+    batch: list[tuple[int, int, str]] = []
+
+    for _variant_id, group_rows in parse_vep_table_groups(vep_path, original_variants):
+        genes = sorted(
+            {
+                row.get("gene_symbol", "")
+                for row in group_rows
+                if row.get("gene_symbol") and row.get("gene_symbol") != "-"
+            }
+        )
+        all_genes = ",".join(genes) if genes else "-"
+        for row in group_rows:
+            row["all_genes"] = all_genes if all_genes != "-" else row.get("gene_symbol", "-")
+
+        annotate_gtex_for_rows(group_rows, lookup)
+        score_transcript_rows(group_rows)
+        selected_rows = (
+            group_rows
+            if disable_transcript_selection
+            else select_transcripts(group_rows, top_k_transcripts)
+        )
+
+        for row in selected_rows:
+            score = add_pathogenic_fields(row)
+            payload = {
+                field: clean_output_value(row.get(field, "-"))
+                for field in fieldnames
+            }
+            batch.append(
+                (
+                    score,
+                    seq,
+                    json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
+                )
+            )
+            seq += 1
+            rows_written += 1
+
+        if len(batch) >= SQLITE_INSERT_BATCH_SIZE:
+            flush_selected_row_batch(con, batch)
+
+    flush_selected_row_batch(con, batch)
+    return rows_written
+
+
+def write_ranked_sqlite_csv(
+    con: sqlite3.Connection,
+    csv_path: Path,
+    fieldnames: list[str],
+) -> int:
+    partial_path = csv_path.with_suffix(csv_path.suffix + ".partial")
+    partial_path.unlink(missing_ok=True)
+    con.execute("create index if not exists selected_rows_score_seq on selected_rows(score desc, seq asc)")
+    con.commit()
+
+    rows = 0
+    csv_path.parent.mkdir(parents=True, exist_ok=True)
+    with partial_path.open("w", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fieldnames, extrasaction="ignore")
+        writer.writeheader()
+        cursor = con.execute("select payload from selected_rows order by score desc, seq asc")
+        while True:
+            batch = cursor.fetchmany(SQLITE_FETCH_BATCH_SIZE)
+            if not batch:
+                break
+            for (payload,) in batch:
+                rows += 1
+                row = json.loads(payload)
+                row["pathogenic_rank"] = str(rows)
+                writer.writerow(row)
+    partial_path.replace(csv_path)
+    return rows
+
+
+def convert_vep_table_to_csv_sqlite(
+    vep_path: Path,
+    csv_path: Path,
+    original_variants: dict[str, dict[str, str]] | None = None,
+    original_vcf_path: Path | None = None,
+    vcf_info_ids: list[str] | None = None,
+    top_k_transcripts: int = 5,
+    clinical_tissues: list[str] | None = None,
+    gtex_transcript_tpm: str | None = None,
+    disable_gtex_expression: bool = False,
+    disable_transcript_selection: bool = False,
+    sqlite_db: str | None = None,
+    keep_sqlite_db: bool = False,
+) -> int:
+    db_path = sqlite_temp_path(csv_path, sqlite_db)
+    explicit_db = sqlite_db is not None
+    clinical_tissues = clinical_tissues or []
+
+    con = open_selected_rows_db(db_path, force=True)
+    try:
+        if original_vcf_path is not None:
+            original_variants, vcf_info_ids = load_original_vcf_coordinates_sqlite(
+                original_vcf_path,
+                con,
+            )
+        else:
+            original_variants = original_variants or {}
+        fieldnames = build_output_columns(vcf_info_ids)
+        stage_selected_rows_to_sqlite(
+            vep_path,
+            original_variants,
+            fieldnames,
+            clinical_tissues,
+            gtex_transcript_tpm,
+            disable_gtex_expression,
+            disable_transcript_selection,
+            top_k_transcripts,
+            con,
+        )
+        return write_ranked_sqlite_csv(con, csv_path, fieldnames)
+    finally:
+        con.close()
+        if not keep_sqlite_db and not explicit_db:
+            cleanup_sqlite_db(db_path)
+
+
 def run_command(cmd: list[str], env: dict[str, str], log_path: Path | None) -> None:
     if log_path:
         log_path.parent.mkdir(parents=True, exist_ok=True)
@@ -1679,6 +2195,57 @@ def main() -> int:
     parser.add_argument("--gtex-transcript-tpm", help="Override GTEx transcript TPM parquet path")
     parser.add_argument("--disable-gtex-expression", action="store_true", help="Disable GTEx transcript expression lookup")
     parser.add_argument(
+        "--conversion-mode",
+        choices=["sqlite", "memory"],
+        default="sqlite",
+        help="Raw VEP conversion backend. sqlite is disk-backed and memory-light; memory is the legacy in-memory converter.",
+    )
+    parser.add_argument(
+        "--sqlite-db",
+        help="SQLite staging database path for --conversion-mode sqlite. Defaults to a temporary file next to the output CSV.",
+    )
+    parser.add_argument(
+        "--keep-sqlite-db",
+        action="store_true",
+        help="Keep the SQLite staging database when using the default temporary --sqlite-db path.",
+    )
+    parser.add_argument(
+        "--pseudogene-annotation",
+        action="store_true",
+        help="Enable bundled pseudogene overlap annotation columns after CSV conversion.",
+    )
+    parser.add_argument(
+        "--no-pseudogene-annotation",
+        action="store_true",
+        help="Legacy compatibility flag; pseudogene annotation is disabled unless --pseudogene-annotation is set",
+    )
+    parser.add_argument(
+        "--pseudogene-log-json",
+        help="Write pseudogene annotation JSON statistics to this path",
+    )
+    parser.add_argument(
+        "--regulatory-annotation",
+        action="store_true",
+        help="Enable bundled ENCODE SCREEN cCRE regulatory INFO annotation before VEP",
+    )
+    parser.add_argument(
+        "--no-regulatory-annotation",
+        action="store_true",
+        help="Legacy compatibility flag; regulatory annotation is disabled unless --regulatory-annotation is set",
+    )
+    parser.add_argument(
+        "--regulatory-log-json",
+        help="Write regulatory annotation JSON statistics to this path",
+    )
+    parser.add_argument(
+        "--regulatory-summary-tsv",
+        help="Write regulatory annotation TSV statistics to this path",
+    )
+    parser.add_argument(
+        "--regulatory-ccre-bed",
+        help="Override bundled ENCODE SCREEN cCRE BED path",
+    )
+    parser.add_argument(
         "--disable-plugin",
         action="append",
         default=[],
@@ -1694,6 +2261,7 @@ def main() -> int:
     output_path = Path(args.output)
     require_file(str(input_path), "Input file")
     require_file(config["vep"], "VEP executable")
+    runner_dir = str(Path(__file__).resolve().parents[1])
 
     default_options = list(config.get("default_options", []))
     if not args.no_transcript_selection or args.no_pick:
@@ -1714,6 +2282,14 @@ def main() -> int:
         if required_option not in default_options:
             default_options.append(required_option)
 
+    vep_input_path = input_path
+    regulatory_temp_path: Path | None = None
+    should_annotate_regulatory = (
+        args.format.lower() == "vcf"
+        and args.regulatory_annotation
+        and not args.no_regulatory_annotation
+    )
+
     cmd = [
         config["vep"],
         "--species",
@@ -1727,7 +2303,7 @@ def main() -> int:
         "--format",
         args.format,
         "--input_file",
-        str(input_path),
+        str(vep_input_path),
         "--output_file",
     ]
 
@@ -1736,7 +2312,12 @@ def main() -> int:
         vep_output = Path(args.keep_vep)
         vep_output.parent.mkdir(parents=True, exist_ok=True)
     else:
-        temp_handle = tempfile.NamedTemporaryFile(prefix="vep_", suffix=".txt", delete=False)
+        temp_handle = tempfile.NamedTemporaryFile(
+            prefix="vep_",
+            suffix=".txt",
+            dir=str(configured_tmp_dir(config)),
+            delete=False,
+        )
         vep_output = Path(temp_handle.name)
         temp_handle.close()
 
@@ -1760,16 +2341,53 @@ def main() -> int:
         env["PATH"] = env_bin + os.pathsep + env.get("PATH", "")
 
     if args.dry_run:
+        if should_annotate_regulatory:
+            print("# Regulatory cCRE annotation will run before VEP and provide REG_CCRE_* INFO fields.")
         print(" ".join(cmd))
+        if temp_handle is not None:
+            vep_output.unlink(missing_ok=True)
         return 0
 
     try:
+        if should_annotate_regulatory:
+            regulatory_temp_handle = tempfile.NamedTemporaryFile(
+                prefix=f"{input_path.name}.",
+                suffix=".regulatory.vcf",
+                dir=str(configured_tmp_dir(config)),
+                delete=False,
+            )
+            regulatory_temp_path = Path(regulatory_temp_handle.name)
+            regulatory_temp_handle.close()
+            regulatory_log_json = (
+                Path(args.regulatory_log_json)
+                if args.regulatory_log_json
+                else output_path.with_suffix(output_path.suffix + REGULATORY_LOG_SUFFIX)
+            )
+            regulatory_summary_tsv = Path(args.regulatory_summary_tsv) if args.regulatory_summary_tsv else None
+            regulatory_ccre_bed = (
+                Path(resolve_runner_tokens(args.regulatory_ccre_bed, runner_dir))
+                if args.regulatory_ccre_bed
+                else Path(resolve_runner_tokens(config.get("regulatory_ccre_bed", REGULATORY_CCRE_BED_DEFAULT), runner_dir))
+            )
+            annotate_regulatory_vcf(
+                input_path,
+                regulatory_temp_path,
+                log_json_path=regulatory_log_json,
+                summary_tsv_path=regulatory_summary_tsv,
+                ccre_bed=regulatory_ccre_bed,
+            )
+            vep_input_path = regulatory_temp_path
+            cmd[cmd.index("--input_file") + 1] = str(vep_input_path)
+
         original_variants = {}
         vcf_info_ids = []
-        if args.format.lower() == "vcf":
-            original_variants, vcf_info_ids = load_original_vcf_coordinates(input_path)
+        should_load_original_vcf_in_memory = (
+            args.format.lower() == "vcf"
+            and args.conversion_mode == "memory"
+        )
+        if should_load_original_vcf_in_memory:
+            original_variants, vcf_info_ids = load_original_vcf_coordinates(vep_input_path)
         run_command(cmd, env, Path(args.log) if args.log else None)
-        runner_dir = str(Path(__file__).resolve().parents[1])
         gtex_transcript_tpm = args.gtex_transcript_tpm or config.get("gtex_transcript_tpm")
         if not gtex_transcript_tpm:
             gtex_transcript_tpm = resolve_runner_tokens(GTEX_TRANSCRIPT_TPM_DEFAULT, runner_dir)
@@ -1789,25 +2407,53 @@ def main() -> int:
             None if args.disable_gtex_expression else gtex_transcript_tpm,
             "clinical",
         )
-        count = convert_vep_table_to_csv(
-            vep_output,
-            output_path,
-            original_variants,
-            vcf_info_ids=vcf_info_ids,
-            top_k_transcripts=args.top_k_transcripts,
-            clinical_tissues=clinical_tissues,
-            gtex_transcript_tpm=gtex_transcript_tpm,
-            disable_gtex_expression=args.disable_gtex_expression,
-            disable_transcript_selection=args.no_transcript_selection,
-        )
+        if args.conversion_mode == "memory":
+            count = convert_vep_table_to_csv(
+                vep_output,
+                output_path,
+                original_variants,
+                original_vcf_path=vep_input_path if args.format.lower() == "vcf" else None,
+                vcf_info_ids=vcf_info_ids,
+                top_k_transcripts=args.top_k_transcripts,
+                clinical_tissues=clinical_tissues,
+                gtex_transcript_tpm=gtex_transcript_tpm,
+                disable_gtex_expression=args.disable_gtex_expression,
+                disable_transcript_selection=args.no_transcript_selection,
+            )
+        else:
+            count = convert_vep_table_to_csv_sqlite(
+                vep_output,
+                output_path,
+                original_variants,
+                vcf_info_ids=vcf_info_ids,
+                top_k_transcripts=args.top_k_transcripts,
+                clinical_tissues=clinical_tissues,
+                gtex_transcript_tpm=gtex_transcript_tpm,
+                disable_gtex_expression=args.disable_gtex_expression,
+                disable_transcript_selection=args.no_transcript_selection,
+                sqlite_db=args.sqlite_db,
+                keep_sqlite_db=args.keep_sqlite_db,
+            )
+        should_annotate_pseudogene = args.pseudogene_annotation and not args.no_pseudogene_annotation
+        if should_annotate_pseudogene:
+            log_json_path = (
+                Path(args.pseudogene_log_json)
+                if args.pseudogene_log_json
+                else output_path.with_suffix(output_path.suffix + PSEUDOGENE_LOG_SUFFIX)
+            )
+            annotate_pseudogene_csv(output_path, log_json_path)
     finally:
         if temp_handle is not None:
             try:
                 vep_output.unlink()
             except FileNotFoundError:
                 pass
+        if regulatory_temp_path is not None:
+            regulatory_temp_path.unlink(missing_ok=True)
 
-    print(f"Wrote {count} VEP consequence row(s) to {output_path}")
+    regulatory_note = "" if not should_annotate_regulatory else " with regulatory cCRE annotation"
+    pseudogene_note = " with pseudogene annotation" if should_annotate_pseudogene else ""
+    print(f"Wrote {count} VEP consequence row(s){regulatory_note}{pseudogene_note} to {output_path}")
     return 0
 
 

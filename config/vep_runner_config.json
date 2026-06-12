@@ -2,6 +2,7 @@
   "base_dir": "__VEP_RUNNER__",
   "vep": "__VEP_RUNNER__/bin/vep",
   "env_bin": "__VEP_RUNNER__/envs/vep/bin",
+  "tmp_dir": "__VEP_RUNNER__/tmp",
   "cache_dir": "__VEP_RUNNER__/vep_cache",
   "plugin_dir": "__VEP_RUNNER__/vep_cache/Plugins",
   "assembly": "GRCh38",
@@ -9,6 +10,7 @@
   "fasta": "__VEP_RUNNER__/vep_data/reference/GRCh38.p14.genome.fa",
   "gtex_transcript_tpm": "__VEP_RUNNER__/vep_data/GTEx/v11/expression/gtex_v11_transcript_tpm.parquet",
   "hpo_data_dir": "__VEP_RUNNER__/vep_data/hpo_tpm",
+  "regulatory_ccre_bed": "__VEP_RUNNER__/vep_data/regulatory/hg38/encode_screen_v4_grch38_ccre.slim.bed.gz",
   "plugins": {
     "cadd": {
       "enabled": true,

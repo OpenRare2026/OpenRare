@@ -1,64 +1,62 @@
-# Self-contained VEP runner
+# 自包含 VEP runner
 
-[中文版本](README.zh-CN.md)
+[English version](README.md)
 
-This repository tracks the source code, configuration, documentation, and small
-examples for the VEP runner. A runnable offline deployment also needs the local
-runtime and biomedical data directories described below; those large artifacts
-are intentionally not committed to Git.
+这个仓库只跟踪 VEP runner 的源码、配置、说明文档和小示例。要真正离线跑通
+完整注释流程，还需要在仓库根目录下恢复或提供下面列出的运行环境和生物医学
+数据目录；这些大文件不会提交到 Git。
 
-Current bundle version: `1.0.0`.
+当前 bundle 版本：`1.0.0`。
 
-## Runtime Resources Not In Git
+## Git 中不包含的运行资源
 
-To run the full offline annotation workflow, restore or provide these local
-resources under the repository root:
+要跑通完整离线注释流程，需要在仓库根目录下准备这些本地资源：
 
-- `envs/vep`: VEP/Perl runtime used by `bin/vep`
-- `envs/gtex_query`: Python runtime with pandas, numpy, duckdb, and API/helper dependencies
-- `vep_cache/`: Ensembl VEP GRCh38 cache and plugin code, including LOFTEE
-- `vep_data/reference/`: GRCh38 FASTA plus `.fai` for `--hgvs`
-- `vep_data/ClinVar/`: ClinVar VCF and tabix index
-- `vep_data/dbNSFP/`, `vep_data/CADD/`, `vep_data/SpliceAI/`, `vep_data/AlphaMissense/`: plugin/custom annotation data
-- `vep_data/GTEx/` and `vep_data/hpo_tpm/`: transcript TPM and HPO-to-tissue mapping data
-- `vep_data/regulatory/`: ENCODE SCREEN cCRE BED used by `--regulatory-annotation`
-- `vep_data/pseudogene/`: GENCODE, Pseudogene.org, and HGNC files used by `--pseudogene-annotation`
+- `envs/vep`：`bin/vep` 使用的 VEP/Perl 运行环境
+- `envs/gtex_query`：包含 pandas、numpy、duckdb 以及 API/helper 依赖的 Python 环境
+- `vep_cache/`：Ensembl VEP GRCh38 cache 和插件代码，包括 LOFTEE
+- `vep_data/reference/`：`--hgvs` 使用的 GRCh38 FASTA 和 `.fai`
+- `vep_data/ClinVar/`：ClinVar VCF 和 tabix index
+- `vep_data/dbNSFP/`、`vep_data/CADD/`、`vep_data/SpliceAI/`、`vep_data/AlphaMissense/`：插件/custom annotation 数据
+- `vep_data/GTEx/` 和 `vep_data/hpo_tpm/`：transcript TPM 与 HPO-to-tissue mapping 数据
+- `vep_data/regulatory/`：`--regulatory-annotation` 使用的 ENCODE SCREEN cCRE BED
+- `vep_data/pseudogene/`：`--pseudogene-annotation` 使用的 GENCODE、Pseudogene.org 和 HGNC 文件
 
-Generated job state, caches, logs, temporary files, uploaded inputs, and result
-CSVs are also excluded from Git by `.gitignore`.
+运行产生的 job 状态、缓存、日志、临时文件、上传输入和结果 CSV 也会被
+`.gitignore` 排除。
 
-## Layout
+## 目录结构
 
-- `bin/vep`: VEP launcher rooted inside this directory
-- `bin/run_vep_to_csv.py`: Python wrapper, VCF in and CSV out
-- `bin/annotate_regulatory.py`: bundled ENCODE SCREEN cCRE VCF INFO annotator
-- `bin/annotate_pseudogene.py`: bundled HGNC-backed pseudogene overlap annotator
-- `bin/export_hpo_tissue_tpm.py`: standalone HPO-to-GTEx/HPA expression exporter
-- `api/main.py`: FastAPI job queue around the wrapper
-- `config/vep_runner_config.json`: wrapper config with `__VEP_RUNNER__` placeholders
-- `envs/vep`: conda VEP environment
-- `envs/gtex_query`: Python environment with pandas/numpy/duckdb for HPO and GTEx lookup
-- `vep_cache`: VEP offline cache and plugin `.pm` files
-- `vep_data`: CADD, SpliceAI, AlphaMissense, dbNSFP, ClinVar, GTEx transcript TPM, HPO mapping, regulatory cCRE, pseudogene, and reference FASTA data
-- `examples/example.vcf`: BRAF example input
-- `output/`: example outputs
-- `logs/`: example logs
+- `bin/vep`：固定从本目录启动的 VEP launcher
+- `bin/run_vep_to_csv.py`：主 wrapper，输入 VCF 或其他 VEP 支持格式，输出 CSV
+- `bin/annotate_regulatory.py`：内置 ENCODE SCREEN cCRE VCF INFO 注释器
+- `bin/annotate_pseudogene.py`：内置 HGNC-backed pseudogene overlap 注释器
+- `bin/export_hpo_tissue_tpm.py`：独立 HPO 到 GTEx/HPA 表达证据导出工具
+- `api/main.py`：围绕 wrapper 的 FastAPI 任务队列服务
+- `config/vep_runner_config.json`：wrapper 配置，使用 `__VEP_RUNNER__` 占位符
+- `envs/vep`：VEP conda 环境
+- `envs/gtex_query`：包含 pandas/numpy/duckdb 的 Python 环境，用于 HPO 和 GTEx 查询
+- `vep_cache`：VEP offline cache 和插件 `.pm` 文件
+- `vep_data`：CADD、SpliceAI、AlphaMissense、dbNSFP、ClinVar、GTEx transcript TPM、HPO mapping、regulatory cCRE、pseudogene 和 reference FASTA 数据
+- `examples/example.vcf`：BRAF 示例输入
+- `output/`：示例输出目录
+- `logs/`：示例日志目录
 
-The wrapper resolves paths from its own location, so it can be called from any
-working directory after the whole `vep_runner` directory is copied.
+wrapper 会从自身路径解析所有 bundle 内部路径，所以复制整个 `vep_runner`
+目录后，可以在任意工作目录调用。
 
-## Workflow
+## 工作流
 
 ![VEP runner workflow](docs/vep_runner_workflow_image2_genos_v3.png)
 
-High-level flow:
+整体流程：
 
-1. Optional VCF pre-processing adds bundled regulatory cCRE INFO fields.
-2. Offline VEP runs from the local cache with bundled plugins/custom data.
-3. The wrapper restores original VCF alleles/INFO columns, normalizes VEP/plugin fields, annotates GTEx transcript expression, selects transcripts, and ranks variants.
-4. Optional post-processing appends pseudogene overlap columns.
+1. 可选 VCF 前处理：添加内置 regulatory cCRE INFO 字段。
+2. 使用本地 cache、插件和 custom data 离线运行 VEP。
+3. wrapper 恢复原始 VCF allele/INFO 列，规范化 VEP/plugin 字段，补充 GTEx transcript expression，执行 transcript 选择，并做候选变异排序。
+4. 可选 CSV 后处理：追加 pseudogene overlap 列。
 
-## Basic Usage
+## 基本用法
 
 ```bash
 python3 /path/to/vep_runner/bin/run_vep_to_csv.py \
@@ -68,18 +66,19 @@ python3 /path/to/vep_runner/bin/run_vep_to_csv.py \
   --log /path/to/vep_runner/logs/run.log
 ```
 
-The default input format is VCF. Use `--format` for other VEP-supported formats.
-By default, bundled ENCODE SCREEN cCRE regulatory INFO annotation before VEP is
-disabled. Use `--regulatory-annotation` to enable it. By default the wrapper
-does not append bundled pseudogene overlap annotation columns. Use
-`--pseudogene-annotation` to enable that optional post-processing step.
+默认输入格式是 VCF。其他 VEP 支持格式可用 `--format` 指定。
 
-By default the wrapper now keeps all VEP transcript consequences, annotates
-transcript quality fields, selects top transcripts per variant-gene, then ranks
-only the selected rows. The default selection keeps up to
-`--top-k-transcripts 5` primary transcripts per variant-gene and can force-keep
-MANE, VEP PICK, and highest-impact rows. To bypass transcript selection and output all
-transcript-level consequences:
+默认不会启用内置 ENCODE SCREEN cCRE regulatory 前置注释；需要时使用
+`--regulatory-annotation`。默认也不会追加 pseudogene overlap 注释列；需要时
+使用 `--pseudogene-annotation`。
+
+默认输出不是 VEP 原始全量 consequence。wrapper 会先保留所有 VEP
+transcript consequence，补充 transcript 质量字段，再按每个 variant-gene
+选择 transcript，最后只对选中的行做全局排序。默认每个 variant-gene 保留
+最多 `--top-k-transcripts 5` 条 primary transcript，并可强制保留 MANE、
+VEP PICK 和最高影响 transcript。
+
+如需输出全部 transcript-level consequence：
 
 ```bash
 python3 /path/to/vep_runner/bin/run_vep_to_csv.py \
@@ -88,8 +87,10 @@ python3 /path/to/vep_runner/bin/run_vep_to_csv.py \
   --no-transcript-selection
 ```
 
-Phenotype-aware transcript selection can take HPO IDs directly. The wrapper maps
-HPO terms to a GTEx tissue whitelist before scoring transcript expression:
+## HPO 和表型相关 transcript 选择
+
+wrapper 可以直接接收 HPO ID，并把 HPO 映射成 GTEx tissue 白名单，再参与
+transcript expression scoring：
 
 ```bash
 envs/gtex_query/bin/python bin/run_vep_to_csv.py \
@@ -100,9 +101,8 @@ envs/gtex_query/bin/python bin/run_vep_to_csv.py \
   --hpo-id HP:0004322
 ```
 
-Multiple HPO IDs can also be comma-separated. `--top-n-hpo-tissues` controls how
-many coarse HPO-derived tissue groups are kept before expanding them to GTEx
-tissue names:
+多个 HPO ID 也可以用逗号写在一起。`--top-n-hpo-tissues` 控制保留多少个
+coarse HPO-derived tissue group，然后再展开成 GTEx tissue 名称：
 
 ```bash
 envs/gtex_query/bin/python bin/run_vep_to_csv.py \
@@ -113,10 +113,11 @@ envs/gtex_query/bin/python bin/run_vep_to_csv.py \
   --top-n-hpo-tissues 3
 ```
 
-For large VCF files, the wrapper uses disk-backed SQLite conversion by default
-so raw VEP rows and global pathogenic ranking do not all sit in Python memory.
-The old in-memory converter is still available for comparison with
-`--conversion-mode memory`. Use VEP forks conservatively:
+## 大文件模式
+
+大 VCF 默认使用 disk-backed SQLite conversion，避免 raw VEP rows 和全局
+pathogenic ranking 全部堆在 Python 内存里。旧版 in-memory converter 仍可用
+`--conversion-mode memory` 做对照。VEP fork 数建议保守设置：
 
 ```bash
 envs/gtex_query/bin/python bin/run_vep_to_csv.py \
@@ -126,60 +127,63 @@ envs/gtex_query/bin/python bin/run_vep_to_csv.py \
   --fork 8
 ```
 
-The SQLite backend writes a temporary staging database next to the output CSV.
-Use `--sqlite-db /path/to/staging.sqlite --keep-sqlite-db` only when you need to
-inspect or reuse that staging file.
+SQLite backend 会在输出 CSV 旁边创建临时 staging database。只有需要检查或复用
+staging 文件时，才需要显式指定：
 
-## CLI Option Reference
+```bash
+--sqlite-db /path/to/staging.sqlite --keep-sqlite-db
+```
 
-Common wrapper options:
+## CLI 参数速查
 
-- `--hgvs`: add HGVS cDNA/protein annotations using the bundled GRCh38 FASTA
-- `--fork N`: pass a VEP fork count; default `1`
-- `--format FORMAT`: VEP input format; default `vcf`
-- `--keep-vep PATH`: keep raw VEP tab output
-- `--log PATH`: write the VEP command and stderr/stdout log
-- `--disable-plugin NAME`: disable one of `cadd`, `spliceai`, `alphamissense`, `dbnsfp`, `loftee`, or `clinvar`; can be repeated
-- `--dry-run`: print the VEP command without running it
+常用 wrapper 参数：
 
-Transcript and expression options:
+- `--hgvs`：使用内置 GRCh38 FASTA 添加 HGVS cDNA/protein 注释
+- `--fork N`：传给 VEP 的 fork 数，默认 `1`
+- `--format FORMAT`：VEP 输入格式，默认 `vcf`
+- `--keep-vep PATH`：保留 raw VEP tab 输出
+- `--log PATH`：写入 VEP 命令和 stdout/stderr 日志
+- `--disable-plugin NAME`：禁用一个插件或 custom annotation，可选 `cadd`、`spliceai`、`alphamissense`、`dbnsfp`、`loftee`、`clinvar`；可重复使用
+- `--dry-run`：只打印 VEP 命令，不实际运行
 
-- `--top-k-transcripts N`: selected primary transcripts per variant-gene; default `5`
-- `--no-transcript-selection`: output all transcript-level consequences
-- `--clinical-tissue NAME`: GTEx tissue whitelist for phenotype-aware expression scoring; can be repeated or comma-separated
-- `--clinical-tissues-file PATH`: read GTEx tissue names from a file
-- `--hpo-id HP:...`: map HPO IDs to GTEx tissues; can be repeated or comma-separated
-- `--hpo-file PATH`: read HPO IDs from a file
-- `--top-n-hpo-tissues N`: number of coarse HPO-derived tissue groups to keep before GTEx expansion; default `3`
-- `--disable-gtex-expression`: skip GTEx transcript expression lookup
+Transcript 和表达相关参数：
 
-Optional bundled pre/post annotation:
+- `--top-k-transcripts N`：每个 variant-gene 选择的 primary transcript 数，默认 `5`
+- `--no-transcript-selection`：输出全部 transcript-level consequence
+- `--clinical-tissue NAME`：表型相关 GTEx tissue 白名单，可重复或逗号分隔
+- `--clinical-tissues-file PATH`：从文件读取 GTEx tissue 名称
+- `--hpo-id HP:...`：把 HPO ID 映射到 GTEx tissue，可重复或逗号分隔
+- `--hpo-file PATH`：从文件读取 HPO ID
+- `--top-n-hpo-tissues N`：HPO 映射时保留的 coarse tissue group 数，默认 `3`
+- `--disable-gtex-expression`：跳过 GTEx transcript expression 查询
 
-- `--regulatory-annotation`: add ENCODE SCREEN cCRE INFO fields to VCF input before VEP
-- `--regulatory-log-json PATH`: write regulatory annotation statistics
-- `--regulatory-summary-tsv PATH`: write regulatory annotation statistics as TSV
-- `--pseudogene-annotation`: append pseudogene overlap columns after CSV conversion
-- `--pseudogene-log-json PATH`: write pseudogene annotation statistics
+可选内置前处理/后处理：
 
-## CSV Columns
+- `--regulatory-annotation`：VEP 前给 VCF 添加 ENCODE SCREEN cCRE INFO 字段
+- `--regulatory-log-json PATH`：写 regulatory annotation JSON 统计
+- `--regulatory-summary-tsv PATH`：写 regulatory annotation TSV 统计
+- `--pseudogene-annotation`：CSV 转换后追加 pseudogene overlap 列
+- `--pseudogene-log-json PATH`：写 pseudogene annotation JSON 统计
+
+## CSV 输出列
 
 CSV 输出下面这些核心列。缺失值统一写成 `-`，不会写空字符串。
 如果输入格式是 VCF，wrapper 还会从原始 VCF header 读取 `##INFO`
 定义，并把每个 INFO 字段作为动态列插入到 `alt` 后面，列名格式为
 `vcf_info_<INFO_ID>`，例如 `vcf_info_AC`、`vcf_info_AF`、`vcf_info_DP`。
-如果启用 `--regulatory-annotation`，regulatory 前置注释会因此生成
+如果启用 `--regulatory-annotation`，regulatory 前置注释会生成
 `vcf_info_REG_CCRE_ID`、`vcf_info_REG_CCRE_CLASS`、
 `vcf_info_REG_CCRE_COUNT` 和 `vcf_info_REG_CCRE_SOURCE`。
 默认配置使用 Ensembl transcript ID，并通过 `--xref_refseq` 保留对应
-RefSeq `NM_`/`NR_`。默认不使用 VEP `--pick`；VEP `PICK=1` 只作为
-`vep_pick` 字段参与轻量 tie-break。
+RefSeq `NM_`/`NR_`。默认不使用 VEP `--pick` 截断输出；VEP `PICK=1`
+只作为 `vep_pick` 字段参与轻量 tie-break 和强制保留。
 
 ```text
 chrom,pos,ref,alt,[vcf_info_*],gene_symbol,all_genes,transcript_id,refseq_id,biotype,canonical,mane,mane_select,mane_plus_clinical,appris,tsl,ccds,vep_pick,transcript_flags,consequence,impact,hgvsc,hgvsp,cdna_position,cds_position,protein_position,amino_acids,codons,exon,intron,strand,protein_domains,revel_score,cadd_phred,gnomAD_popmax_AF,gnomAD_eas_AF,gnomAD_nhomalt,spliceAI_ds_max,spliceAI_type,loftee_lof_flag,loftee_lof_filter,clinvar_significance,clinvar_review_status,clinvar_star_rating,clinical_gtex_tissue_whitelist,clinical_best_tissue,clinical_transcript_tpm,gtex_transcript_max_tissue,gtex_transcript_max_tpm,gtex_transcript_top5_tissues,gtex_max_tissue_in_clinical_whitelist,clinical_vs_global_tpm_ratio,gtex_lookup_status,tx_consequence_score,tx_confidence_score,clinical_expression_score,tx_tie_breaker_score,tx_selection_score,tx_rank_within_variant,tx_eligibility,tx_exclusion_reason,tx_rescue_reason,tx_selected_reason,pathogenic_rank,evidence_summary
 ```
 
-When `--pseudogene-annotation` is enabled, the final CSV also includes
-`is_pseudogene`, `pseudogene_name`, and `pseudogene_source`.
+启用 `--pseudogene-annotation` 后，最终 CSV 还会包含
+`is_pseudogene`、`pseudogene_name` 和 `pseudogene_source`。
 
 ### 字段来源和含义
 
@@ -258,7 +262,7 @@ When `--pseudogene-annotation` is enabled, the final CSV also includes
 | `pseudogene_name` | 命中的 HGNC 假基因 symbol。 | 使用 bundled `vep_data/pseudogene/` 中的 GENCODE v49、Pseudogene.org Human90 和 HGNC 映射；多个 symbol 用 `;` 分隔。 |
 | `pseudogene_source` | 假基因区间来源。 | 取值为 `GENCODE.v49`、`Pseudogene.org` 或 `Pseudogene.org&GENCODE.v49`；未命中为空。 |
 
-### 转录本选择和强制保留
+## Transcript 选择和强制保留
 
 默认输出不是 VEP 原始全量 transcript consequence。wrapper 会先保留 VEP
 输出的 transcript-level consequence，补充 MANE、APPRIS、TSL、CCDS、RefSeq、
@@ -275,11 +279,11 @@ top-k 截掉：
 
 这些保留原因写在 `tx_selected_reason` 中，例如 `top_k`、
 `force:mane_select`、`force:mane_plus_clinical`、`force:vep_pick` 或
-`force:max_consequence`。如果 transcript 已经在 top-k 中，原因通常显示
-为 `top_k`。使用 `--no-transcript-selection` 可跳过选择并输出全量
-transcript consequence。
+`force:max_consequence`。如果 transcript 已经在 top-k 中，原因通常显示为
+`top_k`。使用 `--no-transcript-selection` 可跳过选择并输出全量 transcript
+consequence。
 
-### 排名分数规则
+## 排名分数规则
 
 `pathogenic_rank` 使用下面的规则分数。该规则用于候选变异优先级排序，
 不是临床诊断结论。
@@ -310,8 +314,7 @@ transcript consequence。
    `splice_region_variant=6`，`synonymous_variant=2`，
    `intron_variant=0`，`upstream_gene_variant=-3`，
    `downstream_gene_variant=-3`，`intergenic_variant=-5`。
-   impact 分：
-   `HIGH=5`，`MODERATE=3`，`LOW=0`，`MODIFIER=-3`。
+   impact 分：`HIGH=5`，`MODERATE=3`，`LOW=0`，`MODIFIER=-3`。
 
 3. `splice_lof_score`
    SpliceAI 最大分数 `spliceAI_ds_max`：
@@ -358,7 +361,7 @@ raw_pathogenic_score =
 CSV 不输出这些中间 score 列，只输出排序后的 `pathogenic_rank` 和用于解释
 总分的 `evidence_summary`。
 
-## Plugins Enabled By Default
+## 默认启用的插件
 
 - CADD
 - SpliceAI
@@ -367,26 +370,26 @@ CSV 不输出这些中间 score 列，只输出排序后的 `pathogenic_rank` �
 - LOFTEE
 - ClinVar custom VCF annotation
 
-dbNSFP uses a practical default field set:
-`SIFT_score`, `SIFT_pred`, `Polyphen2_HDIV_score`, `Polyphen2_HDIV_pred`,
-`REVEL_score`, `CADD_phred`, and gnomAD 4.1 joint fields for
-`gnomAD_popmax_AF`, `gnomAD_eas_AF`, and `gnomAD_nhomalt`.
-For broader AF coverage, the wrapper also enables VEP cache gnomAD v4.1 with
-`--af_gnomade` and `--af_gnomadg`; if dbNSFP has no AF for a variant,
-`gnomAD_popmax_AF` and `gnomAD_eas_AF` fall back to those VEP cache values.
-`gnomAD_nhomalt` is still dbNSFP-only because the VEP cache AF fields do not
-include homozygote counts.
+dbNSFP 默认字段包括：
+`SIFT_score`、`SIFT_pred`、`Polyphen2_HDIV_score`、`Polyphen2_HDIV_pred`、
+`REVEL_score`、`CADD_phred`，以及 gnomAD 4.1 joint 字段
+`gnomAD_popmax_AF`、`gnomAD_eas_AF` 和 `gnomAD_nhomalt`。
 
-## gnomAD Field Strategy
+为扩大 AF 覆盖度，wrapper 也启用了 VEP cache gnomAD v4.1：
+`--af_gnomade` 和 `--af_gnomadg`。如果 dbNSFP 没有 AF，`gnomAD_popmax_AF`
+和 `gnomAD_eas_AF` 会回退到 VEP cache 值。`gnomAD_nhomalt` 仍只来自 dbNSFP，
+因为 VEP cache AF 字段不包含 homozygote alternate count。
 
-The output gnomAD columns are built from two sources:
+## gnomAD 字段策略
+
+输出 gnomAD 列来自两个来源：
 
 ```text
 1. dbNSFP gnomAD 4.1 joint fields
 2. VEP offline cache gnomAD v4.1 fields
 ```
 
-The wrapper uses dbNSFP first when available:
+优先使用 dbNSFP：
 
 ```text
 gnomAD4.1_joint_POPMAX_AF  -> gnomAD_popmax_AF
@@ -394,7 +397,7 @@ gnomAD4.1_joint_EAS_AF     -> gnomAD_eas_AF
 gnomAD4.1_joint_nhomalt    -> gnomAD_nhomalt
 ```
 
-If dbNSFP has no AF for a variant, the wrapper falls back to VEP cache values:
+如果 dbNSFP 没有 AF，则回退到 VEP cache：
 
 ```text
 gnomAD_popmax_AF = max(
@@ -409,20 +412,20 @@ gnomAD_popmax_AF = max(
 gnomAD_eas_AF = max(gnomADe_EAS_AF, gnomADg_EAS_AF)
 ```
 
-If all population AF values are missing, `gnomAD_popmax_AF` falls back to
-`max(gnomADe_AF, gnomADg_AF)`.
+如果所有 population AF 都缺失，`gnomAD_popmax_AF` 回退到
+`max(gnomADe_AF, gnomADg_AF)`。
 
-Current limitation:
+当前限制：
 
 ```text
 gnomAD_nhomalt is only populated from dbNSFP.
 ```
 
-The VEP cache exposes gnomAD allele frequencies but not homozygote alternate
-counts, so `gnomAD_nhomalt` may be empty even when `gnomAD_popmax_AF` and
-`gnomAD_eas_AF` are populated from the VEP cache.
+VEP cache 暴露 gnomAD allele frequency，但不暴露 homozygote alternate count，
+所以即使 `gnomAD_popmax_AF` 和 `gnomAD_eas_AF` 从 VEP cache 得到值，
+`gnomAD_nhomalt` 也可能为空。
 
-Empirical check on `P001.genotyper1000.vcf`:
+在 `P001.genotyper1000.vcf` 上的经验检查：
 
 ```text
 dbNSFP-only gnomAD AF coverage:       1 / 1000 variants
@@ -430,17 +433,16 @@ dbNSFP + VEP cache fallback coverage: 959 / 1000 variants
 gnomAD_nhomalt coverage:              1 / 1000 variants
 ```
 
-LOFTEE is configured from the bundled `vep_cache/Plugins/loftee` directory with
-GERP/PhyloCSF conservation inputs disabled. The CSV exposes `LoF` as
-`loftee_lof_flag` and `LoF_filter` as `loftee_lof_filter`.
+LOFTEE 使用内置 `vep_cache/Plugins/loftee`，并关闭 GERP/PhyloCSF
+conservation inputs。CSV 中 `LoF` 输出为 `loftee_lof_flag`，`LoF_filter`
+输出为 `loftee_lof_filter`。
 
-ClinVar is configured from the bundled
-`vep_data/ClinVar/clinvar_20260523.vcf.gz` file and its `.tbi` index. The CSV
-exposes `CLNSIG` as `clinvar_significance`, `CLNREVSTAT` as
-`clinvar_review_status`, and a calculated 0-4 `clinvar_star_rating`.
-Missing ClinVar significance and review status values are written as `-`.
+ClinVar 使用内置 `vep_data/ClinVar/clinvar_20260523.vcf.gz` 和 `.tbi` index。
+CSV 中 `CLNSIG` 输出为 `clinvar_significance`，`CLNREVSTAT` 输出为
+`clinvar_review_status`，并计算 0-4 的 `clinvar_star_rating`。
+缺失 ClinVar significance/review status 时统一写 `-`。
 
-You can disable one plugin if needed:
+禁用插件示例：
 
 ```bash
 --disable-plugin dbnsfp
@@ -449,12 +451,12 @@ You can disable one plugin if needed:
 
 ## HGVS
 
-`--hgvs` is ready to use. The bundle includes:
+`--hgvs` 可以直接使用。bundle 内包含：
 
 - `vep_data/reference/GRCh38.p14.genome.fa`
 - `vep_data/reference/GRCh38.p14.genome.fa.fai`
 
-## Test Command
+## 测试命令
 
 ```bash
 python3 /path/to/vep_runner/bin/run_vep_to_csv.py \
@@ -463,28 +465,26 @@ python3 /path/to/vep_runner/bin/run_vep_to_csv.py \
   --hgvs
 ```
 
-Expected result includes `consequence=missense_variant`, `gene_symbol=BRAF`,
-an Ensembl `transcript_id`, `refseq_id` containing `NM_004333.6`,
-`hgvsc=c.1799T>A`, and `hgvsp=p.Val600Glu` on the MANE Select BRAF row.
-With the current bundle, the example writes 5 selected consequence rows.
+预期结果包含 `consequence=missense_variant`、`gene_symbol=BRAF`、一个
+Ensembl `transcript_id`、`refseq_id` 中包含 `NM_004333.6`，并且 MANE
+Select BRAF 行上有 `hgvsc=c.1799T>A` 和 `hgvsp=p.Val600Glu`。
+当前 bundle 下该示例输出 5 条 selected consequence rows。
 
-## Regulatory Annotation
+## Regulatory 注释
 
-The regulatory module is bundled inside this directory and does not depend on
-external paths. Its default data files are:
+regulatory 模块内置在本目录，不依赖外部路径。默认数据文件：
 
 - `vep_data/regulatory/hg38/encode_screen_v4_grch38_ccre.slim.bed.gz`
 - `vep_data/regulatory/hg38/regulatory_annotation.resources.tsv`
 
-For VCF input, `run_vep_to_csv.py` can run this annotation before VEP when
-`--regulatory-annotation` is set. It writes `REG_CCRE_ID`, `REG_CCRE_CLASS`,
-`REG_CCRE_COUNT`, and `REG_CCRE_SOURCE` to the VCF INFO field, then the existing
-CSV conversion exposes those values as `vcf_info_REG_CCRE_ID`,
-`vcf_info_REG_CCRE_CLASS`, `vcf_info_REG_CCRE_COUNT`, and
-`vcf_info_REG_CCRE_SOURCE`. The default JSON statistics file is named like
-`output.csv.regulatory_annotation.log.json`.
+VCF 输入时，`run_vep_to_csv.py` 可在 VEP 之前运行该注释，条件是设置
+`--regulatory-annotation`。它会把 `REG_CCRE_ID`、`REG_CCRE_CLASS`、
+`REG_CCRE_COUNT` 和 `REG_CCRE_SOURCE` 写入 VCF INFO 字段，随后 CSV 转换会
+暴露为 `vcf_info_REG_CCRE_ID`、`vcf_info_REG_CCRE_CLASS`、
+`vcf_info_REG_CCRE_COUNT` 和 `vcf_info_REG_CCRE_SOURCE`。默认 JSON 统计文件
+命名类似 `output.csv.regulatory_annotation.log.json`。
 
-To run only the regulatory VCF annotator:
+单独运行 regulatory VCF annotator：
 
 ```bash
 python3 /path/to/vep_runner/bin/annotate_regulatory.py \
@@ -493,21 +493,21 @@ python3 /path/to/vep_runner/bin/annotate_regulatory.py \
   --log-json /path/to/input.regulatory.log.json
 ```
 
-Use `--regulatory-annotation` to enable this VEP pre-processing step.
+在主流程中使用 `--regulatory-annotation` 启用该 VEP 前处理步骤。
 
-## Pseudogene Annotation
+## Pseudogene 注释
 
-The pseudogene module is bundled inside this directory and does not depend on
-external paths. Its default data files are:
+pseudogene 模块内置在本目录，不依赖外部路径。默认数据文件：
 
 - `vep_data/pseudogene/GENCODE/release_49/gencode.v49.2wayconspseudos.gtf.gz`
 - `vep_data/pseudogene/Pseudogene.org/Human90/Human90.txt`
 - `vep_data/pseudogene/HGNC/hgnc_complete_set.txt`
 
-`run_vep_to_csv.py` runs this annotation only when `--pseudogene-annotation` is
-set after creating the VEP CSV. It writes a JSON statistics file next to the output, named like
-`output.csv.pseudogene_annotation.log.json`. To run the annotator on an existing
-CSV:
+`run_vep_to_csv.py` 只有在设置 `--pseudogene-annotation` 时才会在 VEP CSV
+生成后运行该注释。它会在输出旁边写 JSON 统计文件，命名类似
+`output.csv.pseudogene_annotation.log.json`。
+
+对已有 CSV 单独运行 annotator：
 
 ```bash
 python3 /path/to/vep_runner/bin/annotate_pseudogene.py \
@@ -516,28 +516,25 @@ python3 /path/to/vep_runner/bin/annotate_pseudogene.py \
   --log-json /path/to/input.vep.pseudogene.log.json
 ```
 
-The input CSV only needs `chrom` and `pos` columns.
+输入 CSV 只需要 `chrom` 和 `pos` 列。
 
-## HPO Tissue TPM Export
+## HPO Tissue TPM 导出
 
-This bundle also includes a standalone HPO-to-expression helper:
+bundle 也包含独立的 HPO-to-expression helper：
 
-- `bin/export_hpo_tissue_tpm.py`: maps HPO IDs to coarse tissues, then exports
-  GTEx/HPA expression evidence as `TPM.csv`
-- `vep_data/hpo_tpm/`: bundled HPO, UBERON, HGNC, BioMart, GTEx v10, and HPA
-  data used by the exporter
-- `requirements-hpo-tpm.txt`: Python dependencies for this helper
+- `bin/export_hpo_tissue_tpm.py`：把 HPO ID 映射到 coarse tissues，然后导出 GTEx/HPA expression evidence 为 `TPM.csv`
+- `vep_data/hpo_tpm/`：exporter 使用的 HPO、UBERON、HGNC、BioMart、GTEx v10 和 HPA 数据
+- `requirements-hpo-tpm.txt`：该 helper 的 Python 依赖
 
-Install the helper dependencies:
+安装 helper 依赖：
 
 ```bash
 python3 -m pip install --user -r /path/to/vep_runner/requirements-hpo-tpm.txt
 ```
 
-The bundled `envs/gtex_query/bin/python` environment already includes these
-dependencies in this copy.
+当前 copy 中，内置 `envs/gtex_query/bin/python` 已包含这些依赖。
 
-Run with HPO IDs from a file:
+从 HPO ID 文件运行：
 
 ```bash
 /path/to/vep_runner/envs/gtex_query/bin/python \
@@ -547,54 +544,56 @@ Run with HPO IDs from a file:
   --audit-json /path/to/tpm_audit.json
 ```
 
-The default GTEx input is
-`GTEx_Analysis_v10_RNASeQCv2.4.2_gene_median_tpm.gct.gz` from
-`vep_data/hpo_tpm/`. Override the data directory with `HPO_TPM_DATA_DIR` or
-`--data-dir`, and override individual inputs with flags such as `--gtex-file`,
-`--hpa-rna-file`, `--hpo-obo`, and `--uberon-obo`.
+默认 GTEx 输入是 `vep_data/hpo_tpm/` 下的
+`GTEx_Analysis_v10_RNASeQCv2.4.2_gene_median_tpm.gct.gz`。可用
+`HPO_TPM_DATA_DIR` 或 `--data-dir` 覆盖数据目录，也可用 `--gtex-file`、
+`--hpa-rna-file`、`--hpo-obo`、`--uberon-obo` 等参数覆盖单个输入文件。
 
-## FastAPI Service
+## FastAPI 服务
 
-Install the API-only Python dependencies:
+安装 API 依赖：
 
 ```bash
 python3 -m pip install --user -r /path/to/vep_runner/requirements-api.txt
 ```
 
-Start the service:
+启动服务：
 
 ```bash
 /path/to/vep_runner/bin/serve_api.sh
 ```
 
-By default it listens on `0.0.0.0:8000`. Override with `VEP_API_HOST` and
-`VEP_API_PORT` if needed. The OpenAPI UI is available at `/docs`.
-Submitted jobs are scheduled through the API queue and executed FIFO. The
-scheduler runs at most one VEP job at a time, even if multiple requests arrive
-together. Queued jobs are persisted under the job directory and are picked up
-again after an API restart. Running jobs are recovered after a restart: if the
-CSV and wrapper log were already written, the job is marked complete; otherwise
-it is moved back to the queue. The API also records a SHA256-based result cache
-key for each uploaded input and result-changing option. If the same VCF is
-submitted again with the same annotation options, the duplicate request reuses
-the existing queued, running, or completed job instead of running VEP again.
-Existing queued jobs created by older API versions are left untouched by default;
-set `VEP_API_ADOPT_LEGACY_QUEUED_JOBS=true` before starting the service if you
-want this scheduler to adopt them.
-The API process loads `api/main.py` at startup. If a service is already running,
-leave it running unless you explicitly want API-code changes to take effect;
-new jobs still call the current on-disk `bin/run_vep_to_csv.py` wrapper.
+默认监听 `0.0.0.0:8000`。如需修改，设置 `VEP_API_HOST` 和 `VEP_API_PORT`。
+OpenAPI UI 在 `/docs`。
 
-Useful API environment variables:
+提交的 job 会进入 API queue 并按 FIFO 执行。scheduler 同一时间最多运行一个
+VEP job，即使同时收到多个请求也是如此。queued jobs 会持久化在 job 目录下，
+API 重启后会继续拾取。running jobs 在重启后会恢复：如果 CSV 和 wrapper log
+已经写出，则标记为完成；否则移回队列。
 
-- `VEP_API_JOB_DIR`: job directory, default `api_jobs`
-- `VEP_API_MAX_UPLOAD_BYTES`: upload limit, default 1 GiB
-- `VEP_API_RUN_TIMEOUT_SECONDS`: optional subprocess timeout; `0` means no timeout
-- `VEP_API_QUEUE_SCAN_SECONDS`: queued-job rescan interval, default `10`
-- `VEP_API_PROGRESS_UPDATE_SECONDS`: running-job progress update interval, default `5`
-- `VEP_API_ADOPT_LEGACY_QUEUED_JOBS`: set to `true` to adopt old queued jobs
+API 会基于上传输入和影响结果的选项记录 SHA256 result cache key。相同 VCF
+和相同注释选项重复提交时，会复用已有 queued、running 或 completed job，
+不会重复运行 VEP。
 
-Submit a VCF:
+旧 API 版本创建的 queued jobs 默认不自动接管。若需要接管，启动服务前设置：
+
+```bash
+export VEP_API_ADOPT_LEGACY_QUEUED_JOBS=true
+```
+
+API 进程启动时加载 `api/main.py`。如果服务已经在运行，除非需要 API 代码改动
+生效，否则无需重启；新 job 仍会调用当前磁盘上的 `bin/run_vep_to_csv.py`。
+
+常用 API 环境变量：
+
+- `VEP_API_JOB_DIR`：job 目录，默认 `api_jobs`
+- `VEP_API_MAX_UPLOAD_BYTES`：上传限制，默认 1 GiB
+- `VEP_API_RUN_TIMEOUT_SECONDS`：可选 subprocess timeout；`0` 表示不超时
+- `VEP_API_QUEUE_SCAN_SECONDS`：queue rescan 间隔，默认 `10`
+- `VEP_API_PROGRESS_UPDATE_SECONDS`：running-job progress 更新间隔，默认 `5`
+- `VEP_API_ADOPT_LEGACY_QUEUED_JOBS`：设为 `true` 时接管旧 queued jobs
+
+提交 VCF：
 
 ```bash
 curl -s -X POST http://127.0.0.1:8000/runs \
@@ -603,7 +602,7 @@ curl -s -X POST http://127.0.0.1:8000/runs \
   -F fork=8
 ```
 
-Submit a VCF with multiple HPO IDs:
+提交带多个 HPO ID 的 VCF：
 
 ```bash
 curl -s -X POST http://127.0.0.1:8000/runs \
@@ -614,19 +613,21 @@ curl -s -X POST http://127.0.0.1:8000/runs \
   -F top_n_hpo_tissues=3
 ```
 
-The response includes a `job_id` and a stable `result_url`. You can poll that
-same `result_url`: while VEP is still running it returns JSON with HTTP 202;
-after VEP succeeds, it returns the CSV file directly. API JSON responses expose
-`progress_percent`, `progress_stage`, and `progress_message` so callers can draw
-a progress bar while polling. VEP itself does not emit a reliable per-variant
-percentage, so running progress is stage/time based and capped below 100 until
-the CSV is ready. API JSON responses expose these public `status` values:
+响应会包含 `job_id` 和稳定的 `result_url`。可以轮询同一个 `result_url`：
+VEP 仍在运行时返回 HTTP 202 和 JSON；成功后直接返回 CSV 文件。
+API JSON 会提供 `progress_percent`、`progress_stage` 和 `progress_message`，
+方便调用方画进度条。VEP 本身不提供可靠的 per-variant 百分比，所以 running
+progress 是基于 stage/time 的估算，并会在 CSV ready 前保持低于 100。
+
+API 对外暴露的 `status` 值：
 
 ```text
-queuing    waiting or still running
-completion finished successfully
-failure    failed
+queuing    等待或运行中
+completion 已成功完成
+failure    失败
 ```
+
+常用查询：
 
 ```bash
 curl -s http://127.0.0.1:8000/runs/JOB_ID
@@ -636,7 +637,7 @@ curl -s http://127.0.0.1:8000/runs/JOB_ID/log
 curl -s http://127.0.0.1:8000/scheduler
 ```
 
-Example polling loop:
+轮询示例：
 
 ```bash
 RESULT_URL="http://127.0.0.1:8000/runs/JOB_ID/result"
@@ -651,30 +652,29 @@ while true; do
 done
 ```
 
-Useful form fields for `POST /runs`:
+`POST /runs` 常用 form 字段：
 
-- `hgvs`: `true` or `false`, default `true`
-- `no_pick`: legacy flag; transcript selection now keeps VEP consequences before wrapper selection
-- `no_transcript_selection`: `true` outputs all transcript-level consequences after annotation
-- `regulatory_annotation`: `true` enables bundled ENCODE SCREEN cCRE annotation before VEP
-- `no_regulatory_annotation`: legacy compatibility flag; regulatory annotation is disabled unless `regulatory_annotation` is `true`
-- `pseudogene_annotation`: `true` enables bundled pseudogene overlap annotation, default `false`
-- `no_pseudogene_annotation`: legacy compatibility flag; pseudogene annotation is disabled unless `pseudogene_annotation` is `true`
-- `top_k_transcripts`: number of primary transcripts selected per variant-gene, default `5`
-- `clinical_tissue`: comma-separated GTEx tissue names for phenotype-aware expression scoring
-- `hpo_id`: comma-separated HPO IDs, for example `HP:0001250,HP:0000825`
-- `top_n_hpo_tissues`: number of coarse HPO-derived tissue groups to keep, default `3`
-- `format`: VEP input format, default `vcf`
-- `fork`: VEP fork count, default `1`
-- `disable_plugins`: comma-separated plugin names, for example `dbnsfp,loftee`
-- `keep_raw_vep`: `true` keeps the raw VEP tab output in the job directory
+- `hgvs`：`true` 或 `false`，默认 `true`
+- `no_pick`：legacy flag；transcript selection 已经会先保留 VEP consequences，再由 wrapper 选择
+- `no_transcript_selection`：`true` 时输出全部 transcript-level consequence
+- `regulatory_annotation`：`true` 时 VEP 前启用内置 ENCODE SCREEN cCRE 注释
+- `no_regulatory_annotation`：legacy compatibility flag；除非 `regulatory_annotation=true`，否则 regulatory 默认关闭
+- `pseudogene_annotation`：`true` 时启用内置 pseudogene overlap 注释，默认 `false`
+- `no_pseudogene_annotation`：legacy compatibility flag；除非 `pseudogene_annotation=true`，否则 pseudogene 默认关闭
+- `top_k_transcripts`：每个 variant-gene 选择的 primary transcript 数，默认 `5`
+- `clinical_tissue`：逗号分隔 GTEx tissue 名称，用于 phenotype-aware expression scoring
+- `hpo_id`：逗号分隔 HPO ID，例如 `HP:0001250,HP:0000825`
+- `top_n_hpo_tissues`：保留的 coarse HPO-derived tissue group 数，默认 `3`
+- `format`：VEP 输入格式，默认 `vcf`
+- `fork`：VEP fork 数，默认 `1`
+- `disable_plugins`：逗号分隔插件名，例如 `dbnsfp,loftee`
+- `keep_raw_vep`：`true` 时在 job 目录保留 raw VEP tab output
 
-VCF input through the API uses the same final CSV conversion as the CLI, so
-dynamic `vcf_info_*` columns are included in downloaded results. If regulatory
-annotation is enabled, this includes `vcf_info_REG_CCRE_*` columns. HPO-aware
-runs are reflected in `clinical_gtex_tissue_whitelist`, `clinical_best_tissue`,
-`clinical_transcript_tpm`, `clinical_expression_score`, and
-`tx_selection_score`.
+API 上传的 VCF 使用和 CLI 相同的最终 CSV 转换逻辑，所以下载结果中包含动态
+`vcf_info_*` 列。如果启用 regulatory annotation，也会包含
+`vcf_info_REG_CCRE_*` 列。HPO-aware runs 会体现在
+`clinical_gtex_tissue_whitelist`、`clinical_best_tissue`、
+`clinical_transcript_tpm`、`clinical_expression_score` 和
+`tx_selection_score` 中。
 
-Job files are written under `api_jobs/` by default. Override with
-`VEP_API_JOB_DIR`.
+job 文件默认写在 `api_jobs/` 下。可用 `VEP_API_JOB_DIR` 覆盖。

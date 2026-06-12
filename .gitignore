@@ -13,8 +13,13 @@ output/
 ranked_outputs/
 logs/
 input/
+source_snapshots/
 *.log
 api_uvicorn.log
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+*.partial
 
 # Python/runtime cache
 __pycache__/
@@ -43,5 +48,7 @@ __pycache__/
 
 # OS/editor local files
 .DS_Store
+.ms_upload_cache
 *.swp
 *.swo
+tmp/
