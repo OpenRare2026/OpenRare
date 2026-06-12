@@ -42,7 +42,7 @@ python3 step2_add_vaf_to_vcf_info.py input.vcf.gz output.vaf.vcf.gz --sample P00
 
 ## 与总流程的关系
 
-总流程脚本 `前置VCF处理.sh` 会先调用本模块生成：
+总流程脚本 `run_vcf_preprocessing.sh` 会先调用本模块生成：
 
 ```text
 <output_prefix>.vaf.vcf.gz

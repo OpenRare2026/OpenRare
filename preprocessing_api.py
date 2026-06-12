@@ -16,7 +16,7 @@ from pydantic import BaseModel, Field
 
 BASE_WORKDIR = Path(os.environ.get("PREPROCESS_API_BASE_WORKDIR", "/mnt/workspace/wangzilu1")).resolve()
 PROJECT_DIR = Path(os.environ.get("PREPROCESS_API_PROJECT_DIR", str(BASE_WORKDIR / "OpenRare"))).resolve()
-RUN_SCRIPT = PROJECT_DIR / "前置VCF处理.sh"
+RUN_SCRIPT = PROJECT_DIR / "run_vcf_preprocessing.sh"
 DEFAULT_OUT_DIR = PROJECT_DIR / "results/preprocess/api"
 DEFAULT_CCRE_BED = PROJECT_DIR / "regulatory_annotation/resources/regulatory/hg38/encode_screen_v4_grch38_ccre.slim.bed.gz"
 DEFAULT_NCRNA_BED = PROJECT_DIR / "regulatory_annotation/resources/ncrna/hg38/gencode.v49.ncrna_gene.slim.bed.gz"
