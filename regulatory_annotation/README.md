@@ -5,7 +5,7 @@
 - ENCODE SCREEN cCRE 调控区注释：`REG_*`
 - GENCODE v49 非编码 RNA gene 注释：`NCRNA_*`
 
-本模块可以单独运行，也可以由根目录的 `前置VCF处理.sh` 在 VAF 前置处理之后自动调用。
+本模块可以单独运行，也可以由根目录的 `run_vcf_preprocessing.sh` 在 VAF 前置处理之后自动调用。
 
 ## 输入
 
