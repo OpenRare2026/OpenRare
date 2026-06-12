@@ -21,6 +21,8 @@ def _resolve_pharmgkb_dir() -> Path:
 
 PHARMGKB_DATA_DIR = _resolve_pharmgkb_dir()
 
+MONDO_DATA_PATH = PROJECT_ROOT / "data" / "MONDO" / "mondo-rare.json"
+
 # paper-search-mcp tools that work without API keys
 PAPER_SEARCH_TOOLS_NO_KEY = frozenset(
     {"search_arxiv", "search_pubmed", "search_biorxiv", "search_medrxiv"}
@@ -49,6 +51,33 @@ def get_mcp_config() -> dict:
         if key.startswith("PAPER_SEARCH_MCP_")
     }
 
+    openfda_env = {}
+    if os.getenv("OPENFDA_API_KEY"):
+        openfda_env["OPENFDA_API_KEY"] = os.environ["OPENFDA_API_KEY"]
+
+    openfda_transport = os.getenv("OPENFDA_MCP_TRANSPORT", "http").lower()
+    if openfda_transport == "stdio":
+        openfda_config = {
+            "transport": "stdio",
+            "command": os.getenv("OPENFDA_MCP_COMMAND", "npx"),
+            "args": os.getenv(
+                "OPENFDA_MCP_ARGS",
+                "-y @cyanheads/openfda-mcp-server@latest",
+            ).split(),
+            "env": {
+                **openfda_env,
+                "MCP_TRANSPORT_TYPE": "stdio",
+            },
+        }
+    else:
+        openfda_config = {
+            "transport": "http",
+            "url": os.getenv(
+                "OPENFDA_MCP_URL",
+                "https://openfda.caseyjhand.com/mcp",
+            ),
+        }
+
     return {
         "open_targets": {
             "transport": "http",
@@ -56,6 +85,7 @@ def get_mcp_config() -> dict:
                 "OPEN_TARGETS_MCP_URL", "http://localhost:8010/mcp"
             ),
         },
+        "openfda": openfda_config,
         "paper_search": {
             "transport": "stdio",
             "command": sys.executable,

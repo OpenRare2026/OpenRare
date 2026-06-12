@@ -7,13 +7,19 @@ from datetime import datetime, timezone
 from langchain_core.messages import AIMessage, ToolMessage
 
 from agent.schemas import (
+    ChinaTrialHit,
     DataSource,
+    DiseaseAssociation,
     DrugAdverseEvent,
     DrugHit,
     DrugIndication,
     DrugMechanism,
     DrugPharmacogenomic,
     DrugReference,
+    DrugTeamRecommendation,
+    FilteredDrugHit,
+    GeneDiseaseResearchInput,
+    GeneDiseaseResearchReport,
     GeneInfo,
     GeneResearchReport,
     PaperHit,
@@ -24,6 +30,10 @@ from agent.schemas import (
 OPEN_TARGETS_BASE = "https://platform.opentargets.org"
 CLINPGX_BASE = "https://www.clinpgx.org"
 _LARGE_TOOL_PATH_RE = re.compile(r"/large_tool_results/\S+")
+
+
+def _otp_disease_url(disease_id: str) -> str:
+    return f"{OPEN_TARGETS_BASE}/disease/{disease_id}"
 
 
 def _otp_target_url(ensembl_id: str) -> str:
@@ -371,4 +381,176 @@ def build_report(query: str, agent_result: dict) -> GeneResearchReport:
         pgx_drugs=pgx_drugs,
         papers=papers,
         sources=list(sources.values()),
+    )
+
+
+def gene_info_from_lookup(payload: dict, tool_name: str = "lookup_gene") -> GeneInfo | None:
+    if not isinstance(payload, dict):
+        return None
+    ensembl_id = payload.get("ensembl_id", "")
+    symbol = payload.get("gene_symbol", "")
+    if not symbol and not ensembl_id:
+        return None
+    source = DataSource(
+        provider="open_targets",
+        tool=tool_name,
+        url=_otp_target_url(ensembl_id) if ensembl_id else None,
+        entity_id=ensembl_id or None,
+    )
+    return GeneInfo(symbol=symbol, ensembl_id=ensembl_id, source=source)
+
+
+def diseases_from_associations(
+    payload: dict,
+    tool_name: str = "get_gene_disease_associations",
+) -> list[DiseaseAssociation]:
+    if not isinstance(payload, dict):
+        return []
+
+    rows = (payload.get("associatedDiseases") or {}).get("rows") or []
+    diseases: list[DiseaseAssociation] = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        disease = row.get("disease") or {}
+        disease_id = disease.get("id", "")
+        disease_name = disease.get("name", "")
+        if not disease_id and not disease_name:
+            continue
+        source = DataSource(
+            provider="open_targets",
+            tool=tool_name,
+            url=_otp_disease_url(disease_id) if disease_id else None,
+            entity_id=disease_id or None,
+        )
+        diseases.append(
+            DiseaseAssociation(
+                id=disease_id,
+                name=disease_name,
+                score=float(row.get("score") or 0.0),
+                source=source,
+            )
+        )
+    return diseases
+
+
+def filtered_drug_from_payload(
+    hit: dict,
+    tool_name: str,
+    *,
+    matched_disease: bool = False,
+    matched_mondo_ids: list[str] | None = None,
+) -> FilteredDrugHit | None:
+    drug = _drug_hit_from_payload(hit, tool_name)
+    if drug is None:
+        return None
+    return FilteredDrugHit(
+        **drug.model_dump(),
+        matched_disease=matched_disease,
+        matched_mondo_ids=matched_mondo_ids or [],
+    )
+
+
+def drugs_from_gene_drug_details(payload: object) -> list[FilteredDrugHit]:
+    hits = payload if isinstance(payload, list) else [payload]
+    drugs: list[FilteredDrugHit] = []
+    for hit in hits:
+        if not isinstance(hit, dict) or hit.get("error"):
+            continue
+        drug = filtered_drug_from_payload(hit, "get_gene_drug_details")
+        if drug is not None:
+            drugs.append(drug)
+    return drugs
+
+
+def china_trial_hits_from_payload(payload: dict) -> list[ChinaTrialHit]:
+    if not isinstance(payload, dict):
+        return []
+    source = payload.get("source", "")
+    trials: list[ChinaTrialHit] = []
+    for row in payload.get("trials") or []:
+        if not isinstance(row, dict):
+            continue
+        registration_number = row.get("registration_number", "")
+        if not registration_number:
+            continue
+        title = row.get("title") or row.get("public_title") or row.get("scientific_title")
+        trials.append(
+            ChinaTrialHit(
+                source=source,
+                registration_number=registration_number,
+                drug_name=row.get("drug_name") or row.get("intervention"),
+                title=title,
+                team=row.get("team") or {},
+                match_score=row.get("match_score"),
+            )
+        )
+    return trials
+
+
+def papers_from_agent_result(agent_result: dict) -> list[PaperHit]:
+    messages = agent_result.get("messages", [])
+    files = agent_result.get("files") or {}
+    papers: list[PaperHit] = []
+    seen: set[str] = set()
+
+    for message in messages:
+        if not isinstance(message, ToolMessage):
+            continue
+        tool_name = message.name or ""
+        if not tool_name.startswith("paper_search_search_"):
+            continue
+        payload = _resolve_tool_payload(message.content, files)
+        if payload is None:
+            continue
+        provider = tool_name.removeprefix("paper_search_search_")
+        hits = payload if isinstance(payload, list) else [payload]
+        for hit in hits:
+            paper = _paper_hit_from_payload(hit, provider, tool_name)
+            if paper is None or paper.paper_id in seen:
+                continue
+            seen.add(paper.paper_id)
+            papers.append(paper)
+    return papers
+
+
+def summary_from_agent_result(agent_result: dict) -> str:
+    messages = agent_result.get("messages", [])
+    summary = ""
+    for message in messages:
+        if isinstance(message, AIMessage) and message.content and not message.tool_calls:
+            summary = message.content if isinstance(message.content, str) else str(message.content)
+    return summary
+
+
+def build_workflow_report(
+    workflow_input: GeneDiseaseResearchInput,
+    *,
+    gene: GeneInfo | None,
+    diseases: list[DiseaseAssociation],
+    drugs: list[FilteredDrugHit],
+    literature_drugs: list[FilteredDrugHit],
+    team_recommendations: list[DrugTeamRecommendation],
+    papers: list[PaperHit],
+    summary: str,
+    workflow_meta: dict,
+    sources: list[DataSource],
+) -> GeneDiseaseResearchReport:
+    mondo_label = ", ".join(workflow_input.mondo_ids) if workflow_input.mondo_ids else "none"
+    query = (
+        f"Gene {workflow_input.gene_symbol} research for MONDO diseases: {mondo_label}"
+    )
+    return GeneDiseaseResearchReport(
+        input=workflow_input,
+        query=query,
+        generated_at=datetime.now(timezone.utc).isoformat(),
+        summary=summary,
+        gene=gene,
+        diseases=diseases,
+        drugs=drugs,
+        literature_drugs=literature_drugs,
+        team_recommendations=team_recommendations,
+        papers=papers,
+        sources=sources,
+        workflow_meta=workflow_meta,
     )

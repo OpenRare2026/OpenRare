@@ -3,6 +3,7 @@ from __future__ import annotations
 from pydantic import BaseModel, Field
 
 
+
 class DataSource(BaseModel):
     provider: str
     tool: str
@@ -112,3 +113,46 @@ class GeneResearchReport(BaseModel):
     pgx_drugs: list[PgxDrugProfile] = Field(default_factory=list)
     papers: list[PaperHit] = Field(default_factory=list)
     sources: list[DataSource] = Field(default_factory=list)
+
+
+class GeneDiseaseResearchInput(BaseModel):
+    gene_symbol: str
+    mondo_ids: list[str] = Field(default_factory=list)
+
+
+class FilteredDrugHit(DrugHit):
+    matched_disease: bool = False
+    matched_mondo_ids: list[str] = Field(default_factory=list)
+
+
+class ChinaTrialHit(BaseModel):
+    source: str
+    registration_number: str
+    drug_name: str | None = None
+    title: str | None = None
+    team: dict = Field(default_factory=dict)
+    match_score: int | None = None
+
+
+class DrugTeamRecommendation(BaseModel):
+    drug_name: str
+    chembl_id: str | None = None
+    matched_disease: bool
+    chinadrug_trials: list[ChinaTrialHit] = Field(default_factory=list)
+    chictr_trials: list[ChinaTrialHit] = Field(default_factory=list)
+    agent_summary: str | None = None
+
+
+class GeneDiseaseResearchReport(BaseModel):
+    input: GeneDiseaseResearchInput
+    query: str
+    generated_at: str
+    summary: str
+    gene: GeneInfo | None = None
+    diseases: list[DiseaseAssociation] = Field(default_factory=list)
+    drugs: list[FilteredDrugHit] = Field(default_factory=list)
+    literature_drugs: list[FilteredDrugHit] = Field(default_factory=list)
+    team_recommendations: list[DrugTeamRecommendation] = Field(default_factory=list)
+    papers: list[PaperHit] = Field(default_factory=list)
+    sources: list[DataSource] = Field(default_factory=list)
+    workflow_meta: dict = Field(default_factory=dict)
