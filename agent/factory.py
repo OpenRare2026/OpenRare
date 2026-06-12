@@ -194,6 +194,105 @@ Be concise and structured.
 """
 
 
+async def _append_pubmed_tools(tools: list) -> list:
+    try:
+        paper_tools = await load_paper_tools()
+        pubmed = [t for t in paper_tools if "pubmed" in t.name.lower()]
+        tools.extend(pubmed or paper_tools[:1])
+    except Exception:
+        pass
+    return tools
+
+
+async def load_report_enrich_tools() -> list:
+    """Tools for final-report Agent enrichment (gene narrative & clinical advice)."""
+    from agent.omim_tools import lookup_omim_gene
+    from agent.open_targets_tools import get_gene_disease_associations, lookup_gene
+
+    tools = [lookup_omim_gene, lookup_gene, get_gene_disease_associations]
+    return await _append_pubmed_tools(tools)
+
+
+SYSTEM_PROMPT_REPORT_GENE = """你是临床遗传学基因组解读助手，为单基因变异分析报告生成结构化叙事。
+
+## 可用工具（必须先调用，再写 JSON）
+
+- `lookup_omim_gene`: 本地 OMIM SQLite，返回 gene_function / inheritance_mode（**必须优先使用**）
+- `lookup_gene`: 基因 symbol → Ensembl ID
+- `get_gene_disease_associations`: 基因关联疾病及 score
+- `paper_search_search_pubmed`: PubMed 文献检索（报告 Agent 默认加载）
+
+## 工作流程
+
+1. 对用户给出的基因调用 `lookup_omim_gene`，将返回的 `gene_function`、`inheritance_mode` **原样**写入 JSON 对应字段
+2. 若用户消息已含 `omim_gene_function` / `omim_inheritance_mode`，与工具结果一致时直接采用，不要改写
+3. 用 Ensembl ID 调用 `get_gene_disease_associations`（limit=5）补充 phenotype_association
+4. 调用 `paper_search_search_pubmed` 检索与该基因及临床表型相关的文献（max_results=3）；若工具不可用或无结果则 literature 为空数组
+5. 结合用户提供的**宽表变异数据**（坐标/VAF/CADD/ClinVar 等）和工具返回结果，输出 JSON
+
+## 输出规则
+
+- **不得编造**宽表中的变异数值、VAF、CADD、ClinVar 等
+- **不得编造** PMID；文献必须来自 PubMed 工具返回，若无结果则 literature 为空数组
+- `gene_function`、`inheritance_mode` **必须来自 OMIM**（用户预取字段或 `lookup_omim_gene` 工具），不得由 LLM 自由发挥
+- `pathway_summary` 优先使用用户提供的 `reactome_main_pathway`；若为空再结合工具/已知知识简述
+- `phenotype_association` 优先使用用户提供的 `open_targets_main_phenotype`；可结合 HPO 与工具结果补充，勿与脚本字段矛盾
+- `strict_drug_candidates` 为脚本预筛结果：**禁止新增药名**；`therapeutic_implication` 仅解释候选药物或说明暂无严格匹配用药
+- PubMed 优先检索 `"gene" AND (disease OR therapy OR drug)`，文献摘要可支撑候选用药
+- 最终回复**仅输出合法 JSON**，不要 markdown 代码块，字段：
+  gene_function, inheritance_mode, phenotype_association, pathway_summary,
+  clinical_note, therapeutic_implication,
+  literature (数组: pmid, title, authors_journal_year, summary, evidence_level)
+"""
+
+SYSTEM_PROMPT_REPORT_CLINICAL = """你是遗传咨询顾问，为基因组变异分析报告生成样本级临床建议。
+
+## 可用工具
+
+- `lookup_gene`: 基因 symbol → Ensembl ID
+- `get_gene_disease_associations`: 基因-疾病关联
+- `paper_search_search_pubmed`: 可选，用于支持关键建议的文献依据
+
+## 工作流程
+
+1. 阅读用户提供的临床信息、HPO、Top 基因及变异注释
+2. 对关键基因（至少 Top 3）调用 `lookup_gene` 和 `get_gene_disease_associations` 了解疾病背景
+3. 可选：对临床表型相关主题做 1 次 PubMed 检索
+4. 输出 JSON 临床建议
+
+## 输出规则
+
+- **不得编造**宽表变异数值
+- 建议应结合 HPO 表型、ClinVar 分类、Reactome 通路（若提供）
+- **用药建议严格限制**：只能引用 user message 中 `strict_drug_candidates.candidates` 已列药物；无候选时写验证/遗传咨询，不得编造药名
+- `key_findings` 中若提及用药，必须标注证据等级（strong/moderate/exploratory）并强调需专家复核
+- 最终回复**仅输出合法 JSON**，不要 markdown 代码块，字段：
+  immediate_recommendations, monitoring, communication_points, key_findings（均为字符串数组）
+"""
+
+
+async def build_report_gene_agent():
+    """Agent for per-gene report narrative: OMIM + Open Targets + PubMed."""
+    tools = await load_report_enrich_tools()
+    return create_deep_agent(
+        model=get_llm(),
+        tools=tools,
+        skills=[],
+        system_prompt=SYSTEM_PROMPT_REPORT_GENE,
+    )
+
+
+async def build_report_clinical_agent():
+    """Agent for sample-level clinical advice: Open Targets + PubMed."""
+    tools = await load_report_enrich_tools()
+    return create_deep_agent(
+        model=get_llm(),
+        tools=tools,
+        skills=[],
+        system_prompt=SYSTEM_PROMPT_REPORT_CLINICAL,
+    )
+
+
 async def build_literature_agent():
     tools = await load_paper_tools()
     return create_deep_agent(

@@ -1,0 +1,126 @@
+### 3.{{ card.rank }} 基因卡片 {{ card.rank }}：{{ card.gene_symbol }}
+
+{% set narrative = gene_narrative_or_default(card) %}
+
+#### 3.{{ card.rank }}.1 基因概述
+
+| 属性 | 内容 |
+|------|------|
+| 基因名 | {{ card.gene_symbol }} |
+| 染色体位置 | {{ card.variants[0].chrom }}:{{ card.variants[0].pos }}（GRCh38） |
+| 主要转录本 | {% if card.variants[0].mane_select != "-" %}{{ card.variants[0].mane_select }}{% else %}{{ card.variants[0].transcript_id }}{% endif %} |
+| 基因功能 | {{ narrative.gene_function }} |
+| 遗传模式 | {{ narrative.inheritance_mode }} |
+| 主要关联表型 | {{ card.main_associated_phenotype or "-" }} |
+| 主要关联通路 | {{ card.main_pathway or "-" }} |
+| 致病性排名 | #{{ card.best_pathogenic_rank }} |
+
+#### 3.{{ card.rank }}.2 变异列表
+
+| 变异 | 坐标（GRCh38） | 转录本 | 后果 | CADD | SpliceAI DS max | gnomAD AF | ClinVar | VAF |
+|------|----------------|--------|------|------|-----------------|-----------|---------|-----|
+{% for variant in card.variants %}
+| {{ variant.variant_label }} | {{ variant.chrom }}:{{ variant.pos }} {{ variant.ref }}>{{ variant.alt }} | {{ variant.transcript_id }} | {{ variant.consequence }} | {{ variant.cadd_phred }} | {{ variant.spliceai_ds_max }} | {{ variant.gnomad_eas_af | format_af }} | {{ variant.clinvar_significance }} | **{{ variant.vcf_info_af | format_vaf }}** |
+{% endfor %}
+
+#### 3.{{ card.rank }}.3 变异详细分析
+
+{% for variant in card.variants %}
+##### 3.{{ card.rank }}.3.{{ loop.index }} {{ variant.variant_label }}
+
+###### 3.{{ card.rank }}.3.{{ loop.index }}.1 基因组与测序质量
+
+| 属性 | 内容 |
+|------|------|
+| 基因组坐标 | {{ variant.chrom }}:{{ variant.pos }} {{ variant.ref }}>{{ variant.alt }}（GRCh38） |
+| VAF | **{{ variant.vcf_info_af | format_vaf }}** |
+| DP | {{ variant.vcf_info_dp }} |
+| 外显子 | {{ variant.exon }} |
+
+###### 3.{{ card.rank }}.3.{{ loop.index }}.2 转录本与功能影响
+
+| 属性 | 内容 |
+|------|------|
+| 转录本 | {{ variant.transcript_id }} |
+| RefSeq | {{ variant.refseq_id }} |
+| HGVSc | {{ variant.hgvsc }} |
+| HGVSp | {{ variant.hgvsp }} |
+| VEP 后果 | {{ variant.consequence }} |
+| VEP 影响等级 | {{ variant.impact }} |
+
+###### 3.{{ card.rank }}.3.{{ loop.index }}.3 预测工具评分
+
+| 工具 | 值 | 解读 |
+|------|-----|------|
+| CADD | {{ variant.cadd_phred }} | {% if variant.cadd_phred != "-" and variant.cadd_phred | safe_float > 20 %}> 20，高度可疑有害{% elif variant.cadd_phred != "-" %}需结合其他证据{% else %}未提供{% endif %} |
+| SpliceAI DS max | {{ variant.spliceai_ds_max }} | {% if variant.spliceai_type != "-" %}{{ variant.spliceai_type }}{% else %}无显著剪接影响{% endif %} |
+| REVEL | {{ variant.revel_score }} | {% if variant.revel_score != "-" and variant.revel_score | safe_float >= 0.5 %}≥ 0.5，可疑有害{% else %}-{% endif %} |
+| LOFTEE | {{ variant.loftee_lof_flag }} | LoF 预测标记 |
+
+###### 3.{{ card.rank }}.3.{{ loop.index }}.4 人群频率与数据库证据
+
+| 数据库 | 结果 |
+|--------|------|
+| gnomAD EAS AF | {{ variant.gnomad_eas_af | format_af }} |
+| gnomAD Popmax AF | {{ variant.gnomad_popmax_af | format_af }} |
+| gnomAD 纯合数 | {{ variant.gnomad_nhomalt }} |
+| ClinVar | {{ variant.clinvar_significance }}（{{ variant.clinvar_review_status }}，{{ variant.clinvar_star_rating }} 星） |
+| 临床相关表达组织 | {{ variant.clinical_best_tissue }}（TPM {{ variant.clinical_transcript_tpm }}） |
+| GTEx Top5 | {{ variant.gtex_transcript_top5_tissues }} |
+
+###### 3.{{ card.rank }}.3.{{ loop.index }}.5 蛋白质结构域与功能影响
+
+| 属性 | 内容 |
+|------|------|
+| 蛋白结构域 | {{ variant.protein_domains }} |
+| 证据摘要 | {{ variant.evidence_summary }} |
+| 治疗意义 | {% if narrative.therapeutic_implication %}{{ narrative.therapeutic_implication }}{% elif card.drug_recommendations %}见下方严格筛选用药建议{% else %}{{ card.drug_recommendation_summary or "暂无严格匹配的靶向/已批准用药依据" }}{% endif %} |
+
+###### 3.{{ card.rank }}.3.{{ loop.index }}.6 文献证据
+
+| PMID | 标题 | 作者/期刊/年份 | 一句话摘要 | 证据等级 |
+|------|------|----------------|------------|----------|
+{% if narrative.literature %}
+{% for paper in narrative.literature %}
+| {{ paper.pmid or "待补充" }} | {{ paper.title or "待补充" }} | {{ paper.authors_journal_year or "待补充" }} | {{ paper.summary or "待补充" }} | {{ paper.evidence_level or "supporting" }} |
+{% endfor %}
+{% else %}
+| 待 Agent 补充 | - | - | - | - |
+{% endif %}
+
+{% endfor %}
+
+#### 3.{{ card.rank }}.4 基因-表型-通路关联解读
+
+| 维度 | 内容 |
+|------|------|
+| 关联表型 | {{ narrative.phenotype_association }} |
+| 关联通路 | {{ narrative.pathway_summary }} |
+| 临床建议 | {{ narrative.clinical_note or "结合临床表型与家系信息进一步评估" }} |
+
+#### 3.{{ card.rank }}.5 严格筛选用药建议
+
+{{ card.drug_recommendation_summary or "未执行药物筛选。" }}
+
+{% if card.drug_recommendations %}
+| 药物 | 适应症 | 临床阶段 | 证据等级 | 匹配依据 | 注意事项 |
+|------|--------|----------|----------|----------|----------|
+{% for drug in card.drug_recommendations %}
+| {{ drug.drug_name }} | {{ drug.indication }} | {{ drug.clinical_stage }} | {{ drug.evidence_level }} | {{ drug.match_basis }} | {{ drug.caution }} |
+{% endfor %}
+{% else %}
+| 药物 | 适应症 | 临床阶段 | 证据等级 | 匹配依据 | 注意事项 |
+|------|--------|----------|----------|----------|----------|
+| - | - | - | - | 暂无通过严格筛选的候选 | 请以遗传咨询、对症与支持治疗为主 |
+{% endif %}
+
+{% if card.trial_teams %}
+#### 3.{{ card.rank }}.6 中国临床试验推荐团队
+
+| 药物 | 来源 | 注册号 | 试验标题 | 申办方/PI | 机构 |
+|------|------|--------|----------|-----------|------|
+{% for team in card.trial_teams %}
+| {{ team.drug_name }} | {{ team.source }} | {{ team.registration_number }} | {{ team.title or "-" }} | {{ team.sponsor }}{% if team.principal_investigator %} / {{ team.principal_investigator }}{% endif %} | {{ team.institution or "-" }} |
+{% endfor %}
+{% endif %}
+

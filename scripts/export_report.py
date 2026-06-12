@@ -1,0 +1,241 @@
+#!/usr/bin/env python3
+"""Export Final Report Markdown to HTML (web) and PDF."""
+
+from __future__ import annotations
+
+import argparse
+import os
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+EXPORT_DIR = PROJECT_ROOT / "scripts" / "export"
+DEFAULT_CSS = EXPORT_DIR / "report.css"
+TOOLS_BIN = PROJECT_ROOT / "tools" / "bin"
+
+
+def _resolve_path(path: str | Path) -> Path:
+    resolved = Path(path)
+    if not resolved.is_absolute():
+        resolved = PROJECT_ROOT / resolved
+    return resolved.resolve()
+
+
+def _find_typst() -> str | None:
+    for candidate in (
+        TOOLS_BIN / "typst",
+        Path(os.environ.get("TYPST_BIN", "")),
+    ):
+        if candidate and Path(candidate).is_file():
+            return str(candidate)
+    return shutil.which("typst")
+
+
+def _pick_cjk_font() -> tuple[str, str]:
+    """Return (mainfont, monofont) with sensible fallbacks for Pandoc/Typst."""
+    candidates = [
+        ("Noto Sans CJK SC", "Noto Sans Mono CJK SC"),
+        ("Source Han Sans SC", "Source Han Sans SC"),
+        ("WenQuanYi Micro Hei", "WenQuanYi Micro Hei Mono"),
+        ("DejaVu Sans", "DejaVu Sans Mono"),
+    ]
+    try:
+        output = subprocess.check_output(["fc-list", ":lang=zh", "family"], text=True)
+        families = {line.split(",")[0].strip() for line in output.splitlines() if line.strip()}
+        for main, mono in candidates:
+            if main in families:
+                return main, mono if mono in families else main
+    except (FileNotFoundError, subprocess.CalledProcessError):
+        pass
+    return candidates[-1]
+
+
+def export_html(md_path: Path, html_path: Path, *, title: str | None = None) -> None:
+    import pypandoc
+
+    doc_title = title or md_path.stem
+    css_path = DEFAULT_CSS.resolve()
+    extra_args = [
+        "--standalone",
+        f"--css={css_path}",
+        "--metadata",
+        f"title={doc_title}",
+        "--toc",
+        "--toc-depth=3",
+        "--from=markdown+pipe_tables+table_captions+yaml_metadata_block",
+    ]
+
+    html = pypandoc.convert_file(str(md_path), "html5", format="md", extra_args=extra_args)
+    html_path.parent.mkdir(parents=True, exist_ok=True)
+    html_path.write_text(html, encoding="utf-8")
+
+
+def export_pdf_typst(md_path: Path, pdf_path: Path, *, title: str | None = None) -> None:
+    import pypandoc
+
+    typst_bin = _find_typst()
+    if not typst_bin:
+        raise RuntimeError(
+            "Typst CLI not found. Install typst or place binary at tools/bin/typst"
+        )
+
+    mainfont, monofont = _pick_cjk_font()
+    doc_title = title or md_path.stem
+    pdf_path.parent.mkdir(parents=True, exist_ok=True)
+
+    extra_args = [
+        "--pdf-engine=typst",
+        "--from=markdown+pipe_tables+table_captions+yaml_metadata_block",
+        "-V",
+        f"title={doc_title}",
+        "-V",
+        "lang=zh",
+        "-V",
+        "region=CN",
+        "-V",
+        f"mainfont={mainfont}",
+        "-V",
+        f"monofont={monofont}",
+        "-V",
+        "papersize=a4",
+        "-V",
+        "margin-top=2cm",
+        "-V",
+        "margin-bottom=2cm",
+        "-V",
+        "margin-left=2.2cm",
+        "-V",
+        "margin-right=2.2cm",
+        "-V",
+        "fontsize=11pt",
+    ]
+
+    env = os.environ.copy()
+    env["PATH"] = f"{Path(typst_bin).parent}:{env.get('PATH', '')}"
+    old_path = os.environ.get("PATH")
+    os.environ["PATH"] = env["PATH"]
+    try:
+        pypandoc.convert_file(
+            str(md_path),
+            "pdf",
+            format="md",
+            outputfile=str(pdf_path),
+            extra_args=extra_args,
+        )
+    finally:
+        if old_path is None:
+            os.environ.pop("PATH", None)
+        else:
+            os.environ["PATH"] = old_path
+
+
+def export_pdf_chrome(md_path: Path, pdf_path: Path) -> None:
+    """Fallback: md-to-pdf (Puppeteer) when Typst is unavailable."""
+    css_path = DEFAULT_CSS.resolve()
+    pdf_path.parent.mkdir(parents=True, exist_ok=True)
+    cmd = [
+        "npx",
+        "--yes",
+        "md-to-pdf",
+        str(md_path),
+        "--stylesheet",
+        str(css_path),
+        "--pdf-options",
+        '{"format":"A4","printBackground":true,"margin":{"top":"18mm","bottom":"18mm","left":"16mm","right":"16mm"}}',
+    ]
+    subprocess.run(cmd, cwd=PROJECT_ROOT, check=True)
+    generated = md_path.with_suffix(".pdf")
+    if generated != pdf_path and generated.exists():
+        generated.replace(pdf_path)
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Export report.md to HTML and/or PDF.")
+    parser.add_argument(
+        "markdown",
+        nargs="?",
+        default="test_data/output/25B06715455_v1/report.md",
+        help="Input Markdown report path.",
+    )
+    parser.add_argument(
+        "--html",
+        nargs="?",
+        const="auto",
+        default=None,
+        help="Output HTML path (default: same dir as input, report.html).",
+    )
+    parser.add_argument(
+        "--pdf",
+        nargs="?",
+        const="auto",
+        default=None,
+        help="Output PDF path (default: same dir as input, report.pdf).",
+    )
+    parser.add_argument(
+        "--title",
+        default=None,
+        help="Document title metadata.",
+    )
+    parser.add_argument(
+        "--pdf-engine",
+        choices=("typst", "chrome", "auto"),
+        default="auto",
+        help="PDF backend: typst (recommended), chrome (md-to-pdf), or auto.",
+    )
+    parser.add_argument(
+        "--all",
+        action="store_true",
+        help="Export both HTML and PDF next to the input file.",
+    )
+    return parser
+
+
+def main() -> int:
+    args = build_parser().parse_args()
+    md_path = _resolve_path(args.markdown)
+    if not md_path.exists():
+        print(f"Markdown not found: {md_path}", file=sys.stderr)
+        return 1
+
+    out_dir = md_path.parent
+    title = args.title
+
+    want_html = args.all or args.html is not None
+    want_pdf = args.all or args.pdf is not None
+
+    if not want_html and not want_pdf:
+        want_html = want_pdf = True
+
+    if want_html:
+        html_path = out_dir / "report.html" if args.html in (None, "auto") else _resolve_path(args.html)
+        print(f"Exporting HTML -> {html_path}")
+        export_html(md_path, html_path, title=title)
+        print("  OK")
+
+    if want_pdf:
+        pdf_path = out_dir / "report.pdf" if args.pdf in (None, "auto") else _resolve_path(args.pdf)
+        engine = args.pdf_engine
+        if engine == "auto":
+            engine = "typst" if _find_typst() else "chrome"
+
+        print(f"Exporting PDF ({engine}) -> {pdf_path}")
+        try:
+            if engine == "typst":
+                export_pdf_typst(md_path, pdf_path, title=title)
+            else:
+                export_pdf_chrome(md_path, pdf_path)
+        except Exception as exc:
+            if engine == "typst" and args.pdf_engine == "auto":
+                print(f"  Typst failed ({exc}); falling back to md-to-pdf...")
+                export_pdf_chrome(md_path, pdf_path)
+            else:
+                raise
+        print("  OK")
+
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
