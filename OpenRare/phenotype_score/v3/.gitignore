@@ -1,0 +1,12 @@
+api_runs/
+logs/
+envs/
+data/
+index/
+__pycache__/
+*.pyc
+*.pid
+*.log
+*.tmp
+.cli_*/
+.smoke.*/
