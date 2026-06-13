@@ -8,7 +8,8 @@ from report.manifest import load_manifest
 from report.merge import write_report_outputs
 from report.models import ReportContext
 from report.output import ReportOutputPaths, resolve_output_paths
-from report.omim_enrich import attach_omim_gene_info
+from report.gene_function_enrich import attach_gene_function_info
+from report.omim_enrich import attach_omim_inheritance_info
 from report.pathways import attach_reactome_pathways
 from report.phenotypes import attach_open_targets_phenotypes
 from report.wide_table import build_report_context
@@ -36,7 +37,8 @@ async def generate_report(
     context = build_report_context(meta, top_n=top_n)
     context = attach_reactome_pathways(context)
     context = await attach_open_targets_phenotypes(context)
-    context = attach_omim_gene_info(context)
+    context = attach_gene_function_info(context)
+    context = attach_omim_inheritance_info(context)
     context = await attach_drug_recommendations(context)
     pre_agent_context = context.model_copy(deep=True) if with_agent else None
 

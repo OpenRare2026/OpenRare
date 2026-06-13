@@ -95,7 +95,10 @@ def _gene_card_payload(meta: SampleMeta, card: GeneCard) -> dict[str, Any]:
         "pathogenic_rank": card.best_pathogenic_rank,
         "reactome_main_pathway": card.main_pathway,
         "open_targets_main_phenotype": card.main_associated_phenotype,
-        "omim_gene_function": card.omim_gene_function,
+        "script_gene_function": card.script_gene_function,
+        "script_gene_function_source": card.script_gene_function_source,
+        "ncbi_gene_id": card.ncbi_gene_id,
+        "ncbi_gene_url": card.ncbi_gene_url,
         "omim_inheritance_mode": card.omim_inheritance_mode,
         "clinvar": card.top_clinvar,
         "main_consequence": card.main_consequence,
@@ -110,7 +113,8 @@ async def enrich_gene_narrative(meta: SampleMeta, card: GeneCard) -> GeneNarrati
 
     user_message = (
         "请为以下基因生成报告叙事 JSON。"
-        "用户消息中已包含 OMIM 预取的 omim_gene_function / omim_inheritance_mode，"
+        "用户消息中已包含脚本预取的 script_gene_function（来源见 script_gene_function_source，"
+        "通常为 NCBI Gene / Entrez）与 omim_inheritance_mode，"
         "请原样写入 gene_function / inheritance_mode，不要改写或编造。"
         "用户消息中的 strict_drug_candidates 为脚本严格筛选后的用药候选；"
         "**不得新增或替换候选药物**，therapeutic_implication 只能基于候选列表解释机制/治疗意义；"
@@ -124,8 +128,8 @@ async def enrich_gene_narrative(meta: SampleMeta, card: GeneCard) -> GeneNarrati
         data = await _run_agent_json(agent, user_message)
     except Exception:
         return GeneNarrative(
-            gene_function=card.omim_gene_function
-            if card.omim_gene_function not in ("", "-")
+            gene_function=card.script_gene_function
+            if card.script_gene_function not in ("", "-")
             else "Agent 生成失败",
             inheritance_mode=card.omim_inheritance_mode
             if card.omim_inheritance_mode not in ("", "-")
@@ -143,8 +147,8 @@ async def enrich_gene_narrative(meta: SampleMeta, card: GeneCard) -> GeneNarrati
         pathway_summary = card.main_pathway
 
     return GeneNarrative(
-        gene_function=card.omim_gene_function
-        if card.omim_gene_function not in ("", "-")
+        gene_function=card.script_gene_function
+        if card.script_gene_function not in ("", "-")
         else data.get("gene_function", ""),
         inheritance_mode=card.omim_inheritance_mode
         if card.omim_inheritance_mode not in ("", "-")

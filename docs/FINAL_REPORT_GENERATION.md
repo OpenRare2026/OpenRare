@@ -17,7 +17,9 @@ flowchart LR
     Reactome --> Context
     Context --> OpenTargets[open_targets_lookup.py 疾病关联]
     OpenTargets --> Context
-    Context --> Omim[omim_lookup.py 基因功能/遗传模式]
+    Context --> NcbiGene[ncbi_gene_lookup.py NCBI Entrez 基因功能]
+    NcbiGene --> Context
+    Context --> Omim[omim_lookup.py OMIM 遗传模式]
     Omim --> Context
     Context --> Enrich[enrich.py Agent 补充]
     Enrich --> Render[render.py + Jinja2 模板]
@@ -162,7 +164,8 @@ uv run python scripts/export_report.py test_data/output/25B06715455_v1/report.md
 | 子节 | 内容 | 来源 |
 |------|------|------|
 | **3.x.1 基因概述** — 基因名、坐标、转录本、致病性排名、**主要关联表型/通路** | 宽表字段 + 外部查询 | 🟢 |
-| **3.x.1 基因概述** — 基因功能、遗传模式 | OMIM SQLite + Agent 其他叙事 | 🟢 OMIM（§6）；🔵 Agent（表型关联/文献等） |
+| **3.x.1 基因概述** — 基因功能 | NCBI Gene (Entrez) + Agent 其他叙事 | 🟢 NCBI（§6）；🟢 OMIM 回退（可选）；🔵 Agent（表型关联/文献等） |
+| **3.x.1 基因概述** — 遗传模式 | OMIM SQLite | 🟢 OMIM（§6） |
 | **3.x.2 变异列表** | 坐标、HGVS、后果、CADD、SpliceAI、gnomAD、ClinVar、VAF | 🟢 宽表（经格式化，如 VAF 转百分比） |
 | **3.x.3.1 测序质量** | VAF、DP、外显子 | 🟢 `vcf_info_AF`、`vcf_info_DP`、`exon` |
 | **3.x.3.2 转录本与功能** | 转录本、RefSeq、HGVSc/HGVSp、VEP 后果/影响 | 🟢 宽表 |
@@ -265,35 +268,65 @@ public.ecr.aws/reactome/graphdb:latest
 
 ---
 
-## 6. OMIM 基因功能 / 遗传模式查询
+## 6. NCBI Gene（Entrez）基因功能 + OMIM 遗传模式
 
-§3.x.1「基因功能」「遗传模式」由本地 **OMIM SQLite** 确定性查询，实现在 [`report/omim_lookup.py`](../report/omim_lookup.py) 与 [`report/omim_enrich.py`](../report/omim_enrich.py)。Agent 侧工具为 [`agent/omim_tools.py`](../agent/omim_tools.py) 的 `lookup_omim_gene`。
+§3.x.1「基因功能」优先由 **NCBI Entrez Gene E-utilities** 在线查询；「遗传模式」仍由本地 **OMIM SQLite** 查询。
+
+> **为何不用 GeneCards API？** GeneCards 官方批量 API 需 Weizmann 授权；公开 Entrez 接口中，NCBI Gene 的 `summary` 字段提供简洁的基因功能描述（RefSeq  curated），适合报告 §3.x.1。NCBI 不可用且开启回退时，才使用 OMIM `geneFunction`。
 
 ### 6.1 环境变量
 
 | 变量 | 默认值 | 说明 |
 |------|--------|------|
-| `OMIM_ENABLED` | `1` | 设为 `0` 可关闭 OMIM 查询 |
+| `NCBI_GENE_ENABLED` | `1` | 设为 `0` 可关闭 NCBI 查询 |
+| `NCBI_API_KEY` | — | 可选；提高 E-utilities 速率上限 |
+| `NCBI_CONTACT_EMAIL` | — | 建议填写；NCBI 要求标识请求来源 |
+| `NCBI_TOOL_NAME` | `search_agent` | E-utilities `tool` 参数 |
+| `GENE_FUNCTION_FALLBACK_OMIM` | `1` | NCBI 无结果时回退 OMIM `geneFunction` |
+| `OMIM_ENABLED` | `1` | 设为 `0` 可关闭 OMIM 遗传模式查询 |
 | `OMIM_DB_PATH` | `./data/omim/omim_20250411.sqlite3` | OMIM SQLite 文件路径 |
 
-### 6.2 查询逻辑
+### 6.2 NCBI Gene 查询逻辑
+
+实现在 [`report/ncbi_gene_lookup.py`](../report/ncbi_gene_lookup.py) 与 [`report/gene_function_enrich.py`](../report/gene_function_enrich.py)。
+
+对每个 Top 基因：
+
+1. `esearch`：`{symbol}[sym] AND 9606[taxid]` 解析 Entrez Gene ID
+2. 批量 `esummary`：读取 `description`（官方全名）、`summary`（基因功能段落）
+3. 写入 `GeneCard.script_gene_function`，来源标记为 `NCBI Gene (Entrez)`
+4. 同时写入 `ncbi_gene_id`、`ncbi_gene_name`、`ncbi_gene_url`（如 `https://www.ncbi.nlm.nih.gov/gene/{id}`）
+
+NCBI 无 summary 且 `GENE_FUNCTION_FALLBACK_OMIM=1` 时，回退 OMIM `geneFunction` → `description`。
+
+### 6.3 OMIM 遗传模式查询逻辑
+
+实现在 [`report/omim_lookup.py`](../report/omim_lookup.py) 与 [`report/omim_enrich.py`](../report/omim_enrich.py)。Agent 侧工具为 [`agent/omim_tools.py`](../agent/omim_tools.py) 的 `lookup_omim_gene`。
 
 对每个 Top 基因，按 `hgnc_gene_symbol` 精确匹配 `omim` 表中 `mim_type='gene'` 的记录：
 
 | 报告字段 | OMIM 表字段 | 规则 |
 |----------|-------------|------|
-| **基因功能** | `geneFunction` | 非空则采用；否则回退 `description`；超长截断 |
 | **遗传模式** | `geneMap` / `phenotypeMap` | 解析 JSON 数组中每条 `Inheritance`（AD/AR/…）与表型名，格式如 `CADASIL (Autosomal dominant)` |
 
-写入 `GeneCard.omim_gene_function` / `omim_inheritance_mode`，并优先填入 `GeneNarrative.gene_function` / `inheritance_mode`。
+写入 `GeneCard.omim_inheritance_mode`，并优先填入 `GeneNarrative.inheritance_mode`。
 
-### 6.3 工具字段映射（`lookup_omim_gene`）
+### 6.4 脚本字段映射
 
-| 工具入参 | 工具返回字段 | OMIM 来源 |
-|----------|--------------|-----------|
-| `gene_symbol` | `gene_function` | `geneFunction` → `description` |
-| `gene_symbol` | `inheritance_mode` | `geneMap[].Inheritance` + `Phenotype View` |
-| `gene_symbol` | `mim_number`, `title`, `linked_phenotypes` | 元数据 / 结构化表型列表 |
+| GeneCard 字段 | 来源 | 报告位置 |
+|---------------|------|----------|
+| `script_gene_function` | NCBI `summary`（或 OMIM 回退） | §3.x.1 基因功能 |
+| `script_gene_function_source` | `NCBI Gene (Entrez)` / `OMIM` | `context.json` 溯源 |
+| `ncbi_gene_id`, `ncbi_gene_url` | Entrez Gene | `context.json` 溯源 |
+| `omim_inheritance_mode` | OMIM SQLite | §3.x.1 遗传模式 |
+
+### 6.5 OMIM 工具字段（`lookup_omim_gene`）
+
+| 工具返回字段 | 用途 |
+|--------------|------|
+| `inheritance_mode` | Agent 校验 / 写入叙事 |
+| `gene_function` | 仅当 NCBI 未命中且需 Agent 侧补查时使用 |
+| `mim_number`, `title`, `linked_phenotypes` | 元数据 / 结构化表型列表 |
 
 ---
 
@@ -308,7 +341,7 @@ public.ecr.aws/reactome/graphdb:latest
 | 基因叙事 Agent | `build_report_gene_agent()` | `lookup_omim_gene`、`lookup_gene`、`get_gene_disease_associations`、默认 `paper_search_search_pubmed` |
 | 临床建议 Agent | `build_report_clinical_agent()` | 同上 |
 
-Agent **自行决定何时调工具**。宽表变异数据、`omim_gene_function`、`omim_inheritance_mode`、`reactome_main_pathway`、`open_targets_main_phenotype` 等作为 user message 传入；**基因功能/遗传模式以 OMIM 为准**，LLM 不得篡改这些数值。
+Agent **自行决定何时调工具**。宽表变异数据、`script_gene_function`（NCBI Gene）、`omim_inheritance_mode`、`reactome_main_pathway`、`open_targets_main_phenotype` 等作为 user message 传入；**基因功能以 NCBI 预取为准，遗传模式以 OMIM 为准**，LLM 不得篡改这些数值。
 
 报告 Agent **默认加载** PubMed 工具（与 `OPEN_TARGETS_ONLY` 无关）；主基因检索 Agent 仍受 `OPEN_TARGETS_ONLY` 控制（为 `1` 时不加载 ClinPGx / 文献）。
 
@@ -318,13 +351,14 @@ Agent **自行决定何时调工具**。宽表变异数据、`omim_gene_function
 
 - `clinical_info`、`hpo_terms`（来自 test1.csv）
 - `gene_symbol`、`variants`（来自宽表）
-- `omim_gene_function`、`omim_inheritance_mode`（来自 OMIM SQLite，§6）
+- `script_gene_function`、`script_gene_function_source`（来自 NCBI Entrez Gene，§6）
+- `omim_inheritance_mode`（来自 OMIM SQLite，§6）
 - `reactome_main_pathway`（来自 Reactome Neo4j，§5）
 - `open_targets_main_phenotype`（来自 Open Targets，§4）
 
 Agent 工作流（system prompt 约束）：
 
-1. 将 OMIM 预取的 `gene_function` / `inheritance_mode` 原样写入 JSON
+1. 将脚本预取的 `script_gene_function`（NCBI）与 `omim_inheritance_mode` 原样写入 JSON
 2. 调用 `get_gene_disease_associations` 补充表型关联
 3. 调用 PubMed 检索基因 + 表型相关文献
 4. 输出 JSON：`gene_function`、`inheritance_mode`、`phenotype_association`、`pathway_summary`、`clinical_note`、`literature[]`
@@ -345,7 +379,8 @@ Agent 对关键基因调用 Open Targets 了解疾病背景后，输出：
 | 依赖 | 用途 |
 |------|------|
 | `.env` 中 `LLM_*` | Agent 推理与 JSON 生成 |
-| OMIM SQLite（§6） | §3.x.1 基因功能 / 遗传模式（脚本侧 + `lookup_omim_gene` 工具） |
+| OMIM SQLite（§6） | §3.x.1 遗传模式（脚本侧 + `lookup_omim_gene` 工具） |
+| NCBI Entrez Gene（§6） | §3.x.1 基因功能（脚本侧在线查询） |
 | Open Targets MCP（§4） | §2.1 表型列（脚本侧）；Agent 工具复用同一 MCP |
 | Reactome Neo4j（§5） | §2.1 通路列（脚本侧，非 Agent 工具） |
 | `OPEN_TARGETS_ONLY=0` | 主 Agent 额外启用 ClinPGx + 文献（报告 Agent 的 PubMed 不受此开关影响） |
@@ -383,8 +418,10 @@ report/templates/
 | [`report/manifest.py`](../report/manifest.py) | 解析 test1.csv |
 | [`report/wide_table.py`](../report/wide_table.py) | 宽表加载、去重、Top N |
 | [`report/models.py`](../report/models.py) | Pydantic 数据模型 |
-| [`report/omim_lookup.py`](../report/omim_lookup.py) | OMIM SQLite 基因功能 / 遗传模式查询 |
-| [`report/omim_enrich.py`](../report/omim_enrich.py) | 为 Top 基因附加 OMIM 字段 |
+| [`report/ncbi_gene_lookup.py`](../report/ncbi_gene_lookup.py) | NCBI Entrez Gene 基因功能查询 |
+| [`report/gene_function_enrich.py`](../report/gene_function_enrich.py) | 为 Top 基因附加 `script_gene_function` |
+| [`report/omim_lookup.py`](../report/omim_lookup.py) | OMIM SQLite 遗传模式查询（及基因功能回退） |
+| [`report/omim_enrich.py`](../report/omim_enrich.py) | 为 Top 基因附加 OMIM 遗传模式 |
 | [`agent/omim_tools.py`](../agent/omim_tools.py) | Agent 工具 `lookup_omim_gene` |
 | [`report/open_targets_lookup.py`](../report/open_targets_lookup.py) | Open Targets 疾病关联查询 |
 | [`report/phenotypes.py`](../report/phenotypes.py) | 为 Top 基因附加 `main_associated_phenotype` |
@@ -403,7 +440,8 @@ report/templates/
 - **宽表/清单数据**：所有变异表格、评分、频率、排名、样本信息
 - **Open Targets 表型**：§2.1「主要关联表型」列（MCP 可达时自动填充；不可达时为 `-`）
 - **Reactome 通路**：§2.1「主要关联通路」列（Neo4j 可达时自动填充；不可达时为 `-`）
-- **OMIM 基因概述**：§3.x.1「基因功能」「遗传模式」（本地 SQLite 确定性填充）
+- **NCBI 基因功能**：§3.x.1「基因功能」（Entrez Gene summary；不可达时可 OMIM 回退）
+- **OMIM 遗传模式**：§3.x.1「遗传模式」（本地 SQLite 确定性填充）
 - **Agent 叙事**：表型关联、文献、§2.2 关键发现、§7 临床建议
 - **规则 Fallback**：Agent 失败时，§2.2 / §7 / §3 占位字段回退为模板化短句
 - **静态文案**：§4 流程说明、§5 免责声明、部分 Header 默认值
@@ -416,7 +454,8 @@ report/templates/
 |--------|------|------|
 | §2.1 主要关联表型 | ✅ | Open Targets 脚本查询 |
 | §2.1 主要关联通路 | ✅ | Reactome Neo4j |
-| §3.x.1 基因功能 / 遗传模式 | ✅ | OMIM SQLite 脚本查询 |
+| §3.x.1 基因功能 | ✅ | NCBI Entrez Gene 脚本查询（OMIM 可选回退） |
+| §3.x.1 遗传模式 | ✅ | OMIM SQLite 脚本查询 |
 | §2.1 排序得分列 | ➖ | 本框架用 `pathogenic_rank` 名次替代 GPA 得分 |
 | §3.x.3.6 文献 | 🔵 | 默认 Agent + PubMed 工具 |
 

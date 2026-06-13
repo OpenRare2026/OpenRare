@@ -100,9 +100,12 @@ table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.92rem;
-  display: block;
-  overflow-x: auto;
   page-break-inside: avoid;
+}
+
+.table-scroll {
+  overflow-x: auto;
+  margin: 0.75em 0;
 }
 
 th, td {

@@ -1,7 +1,7 @@
 请为给定基因生成叙事 JSON，字段：
 
-- `gene_function`: 基因功能 2-3 句
-- `inheritance_mode`: 遗传模式
+- `gene_function`: 基因功能 2-3 句（**必须原样采用** user message 中的 `script_gene_function`，来源 NCBI Gene）
+- `inheritance_mode`: 遗传模式（**必须原样采用** `omim_inheritance_mode` 或 `lookup_omim_gene` 工具结果）
 - `phenotype_association`: 与临床信息 / HPO 的关联
 - `pathway_summary`: 主要通路
 - `clinical_note`: 1-2 句临床建议（不得新增 strict_drug_candidates 以外的药名）

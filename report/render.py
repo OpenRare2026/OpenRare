@@ -114,9 +114,9 @@ def _gene_narrative_or_default(card: GeneCard) -> dict:
     if card.narrative:
         return card.narrative.model_dump()
     return {
-        "gene_function": card.omim_gene_function
-        if card.omim_gene_function not in ("", "-")
-        else "待 OMIM / Agent 补充",
+        "gene_function": card.script_gene_function
+        if card.script_gene_function not in ("", "-")
+        else "待 NCBI Gene / Agent 补充",
         "inheritance_mode": card.omim_inheritance_mode
         if card.omim_inheritance_mode not in ("", "-")
         else "待结合家系与变异类型进一步判断",

@@ -217,15 +217,15 @@ SYSTEM_PROMPT_REPORT_GENE = """你是临床遗传学基因组解读助手，为�
 
 ## 可用工具（必须先调用，再写 JSON）
 
-- `lookup_omim_gene`: 本地 OMIM SQLite，返回 gene_function / inheritance_mode（**必须优先使用**）
+- `lookup_omim_gene`: 本地 OMIM SQLite，返回 inheritance_mode 及 linked_phenotypes（遗传模式**必须优先使用**）
 - `lookup_gene`: 基因 symbol → Ensembl ID
 - `get_gene_disease_associations`: 基因关联疾病及 score
 - `paper_search_search_pubmed`: PubMed 文献检索（报告 Agent 默认加载）
 
 ## 工作流程
 
-1. 对用户给出的基因调用 `lookup_omim_gene`，将返回的 `gene_function`、`inheritance_mode` **原样**写入 JSON 对应字段
-2. 若用户消息已含 `omim_gene_function` / `omim_inheritance_mode`，与工具结果一致时直接采用，不要改写
+1. 将用户预取的 `script_gene_function`（NCBI Gene / Entrez）**原样**写入 JSON 的 `gene_function`
+2. 调用 `lookup_omim_gene`，将返回的 `inheritance_mode` **原样**写入 JSON；若用户消息已含 `omim_inheritance_mode` 且一致则直接采用
 3. 用 Ensembl ID 调用 `get_gene_disease_associations`（limit=5）补充 phenotype_association
 4. 调用 `paper_search_search_pubmed` 检索与该基因及临床表型相关的文献（max_results=3）；若工具不可用或无结果则 literature 为空数组
 5. 结合用户提供的**宽表变异数据**（坐标/VAF/CADD/ClinVar 等）和工具返回结果，输出 JSON
@@ -234,7 +234,8 @@ SYSTEM_PROMPT_REPORT_GENE = """你是临床遗传学基因组解读助手，为�
 
 - **不得编造**宽表中的变异数值、VAF、CADD、ClinVar 等
 - **不得编造** PMID；文献必须来自 PubMed 工具返回，若无结果则 literature 为空数组
-- `gene_function`、`inheritance_mode` **必须来自 OMIM**（用户预取字段或 `lookup_omim_gene` 工具），不得由 LLM 自由发挥
+- `gene_function` **必须来自**用户预取的 `script_gene_function`（NCBI Gene），不得由 LLM 改写或编造
+- `inheritance_mode` **必须来自 OMIM**（用户预取字段或 `lookup_omim_gene` 工具），不得由 LLM 自由发挥
 - `pathway_summary` 优先使用用户提供的 `reactome_main_pathway`；若为空再结合工具/已知知识简述
 - `phenotype_association` 优先使用用户提供的 `open_targets_main_phenotype`；可结合 HPO 与工具结果补充，勿与脚本字段矛盾
 - `strict_drug_candidates` 为脚本预筛结果：**禁止新增药名**；`therapeutic_implication` 仅解释候选药物或说明暂无严格匹配用药
@@ -272,7 +273,7 @@ SYSTEM_PROMPT_REPORT_CLINICAL = """你是遗传咨询顾问，为基因组变异
 
 
 async def build_report_gene_agent():
-    """Agent for per-gene report narrative: OMIM + Open Targets + PubMed."""
+    """Agent for per-gene report narrative: NCBI gene function + OMIM inheritance + Open Targets + PubMed."""
     tools = await load_report_enrich_tools()
     return create_deep_agent(
         model=get_llm(),

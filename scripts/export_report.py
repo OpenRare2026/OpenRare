@@ -14,6 +14,13 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 EXPORT_DIR = PROJECT_ROOT / "scripts" / "export"
 DEFAULT_CSS = EXPORT_DIR / "report.css"
 TOOLS_BIN = PROJECT_ROOT / "tools" / "bin"
+BUNDLED_FONTS_DIR = PROJECT_ROOT / "tools" / "fonts"
+BUNDLED_CJK_FONT = BUNDLED_FONTS_DIR / "NotoSansSC-Regular.otf"
+BUNDLED_CJK_FONT_URL = (
+    "https://cdn.jsdelivr.net/gh/notofonts/noto-cjk@main/Sans/SubsetOTF/SC/NotoSansSC-Regular.otf"
+)
+CJK_MAIN_FONT = "Noto Sans SC"
+CJK_MONO_FONT = "Noto Sans SC"
 
 
 def _resolve_path(path: str | Path) -> Path:
@@ -33,23 +40,49 @@ def _find_typst() -> str | None:
     return shutil.which("typst")
 
 
-def _pick_cjk_font() -> tuple[str, str]:
-    """Return (mainfont, monofont) with sensible fallbacks for Pandoc/Typst."""
+def _ensure_cjk_font() -> Path | None:
+    """Ensure bundled Noto Sans SC exists for Typst PDF export."""
+    if BUNDLED_CJK_FONT.is_file() and BUNDLED_CJK_FONT.stat().st_size > 0:
+        return BUNDLED_CJK_FONT
+
+    BUNDLED_FONTS_DIR.mkdir(parents=True, exist_ok=True)
+    try:
+        import urllib.request
+
+        print(f"  Downloading CJK font -> {BUNDLED_CJK_FONT}")
+        urllib.request.urlretrieve(BUNDLED_CJK_FONT_URL, BUNDLED_CJK_FONT)
+    except OSError as exc:
+        print(f"  Warning: failed to download CJK font ({exc})", file=sys.stderr)
+        return None
+
+    if BUNDLED_CJK_FONT.is_file() and BUNDLED_CJK_FONT.stat().st_size > 0:
+        return BUNDLED_CJK_FONT
+    return None
+
+
+def _pick_cjk_font() -> tuple[str, str, Path | None]:
+    """Return (mainfont, monofont, font_dir) for Pandoc/Typst."""
     candidates = [
+        (CJK_MAIN_FONT, CJK_MONO_FONT),
         ("Noto Sans CJK SC", "Noto Sans Mono CJK SC"),
         ("Source Han Sans SC", "Source Han Sans SC"),
         ("WenQuanYi Micro Hei", "WenQuanYi Micro Hei Mono"),
         ("DejaVu Sans", "DejaVu Sans Mono"),
     ]
+
+    bundled = _ensure_cjk_font()
+    if bundled:
+        return CJK_MAIN_FONT, CJK_MONO_FONT, BUNDLED_FONTS_DIR
+
     try:
         output = subprocess.check_output(["fc-list", ":lang=zh", "family"], text=True)
         families = {line.split(",")[0].strip() for line in output.splitlines() if line.strip()}
         for main, mono in candidates:
             if main in families:
-                return main, mono if mono in families else main
+                return main, mono if mono in families else main, None
     except (FileNotFoundError, subprocess.CalledProcessError):
         pass
-    return candidates[-1]
+    return candidates[-1][0], candidates[-1][1], None
 
 
 def export_html(md_path: Path, html_path: Path, *, title: str | None = None) -> None:
@@ -59,6 +92,7 @@ def export_html(md_path: Path, html_path: Path, *, title: str | None = None) -> 
     css_path = DEFAULT_CSS.resolve()
     extra_args = [
         "--standalone",
+        "--embed-resources",
         f"--css={css_path}",
         "--metadata",
         f"title={doc_title}",
@@ -71,6 +105,11 @@ def export_html(md_path: Path, html_path: Path, *, title: str | None = None) -> 
     html_path.parent.mkdir(parents=True, exist_ok=True)
     html_path.write_text(html, encoding="utf-8")
 
+    # Keep a sibling stylesheet for browsers that prefer external CSS.
+    bundled_css = html_path.with_name("report.css")
+    if bundled_css.resolve() != css_path.resolve():
+        shutil.copy2(css_path, bundled_css)
+
 
 def export_pdf_typst(md_path: Path, pdf_path: Path, *, title: str | None = None) -> None:
     import pypandoc
@@ -81,7 +120,7 @@ def export_pdf_typst(md_path: Path, pdf_path: Path, *, title: str | None = None)
             "Typst CLI not found. Install typst or place binary at tools/bin/typst"
         )
 
-    mainfont, monofont = _pick_cjk_font()
+    mainfont, monofont, font_dir = _pick_cjk_font()
     doc_title = title or md_path.stem
     pdf_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -114,8 +153,14 @@ def export_pdf_typst(md_path: Path, pdf_path: Path, *, title: str | None = None)
 
     env = os.environ.copy()
     env["PATH"] = f"{Path(typst_bin).parent}:{env.get('PATH', '')}"
+    if font_dir:
+        env["TYPST_FONT_PATHS"] = str(font_dir.resolve())
+
     old_path = os.environ.get("PATH")
+    old_font_paths = os.environ.get("TYPST_FONT_PATHS")
     os.environ["PATH"] = env["PATH"]
+    if font_dir:
+        os.environ["TYPST_FONT_PATHS"] = env["TYPST_FONT_PATHS"]
     try:
         pypandoc.convert_file(
             str(md_path),
@@ -129,6 +174,10 @@ def export_pdf_typst(md_path: Path, pdf_path: Path, *, title: str | None = None)
             os.environ.pop("PATH", None)
         else:
             os.environ["PATH"] = old_path
+        if old_font_paths is None:
+            os.environ.pop("TYPST_FONT_PATHS", None)
+        else:
+            os.environ["TYPST_FONT_PATHS"] = old_font_paths
 
 
 def export_pdf_chrome(md_path: Path, pdf_path: Path) -> None:
