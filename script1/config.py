@@ -191,8 +191,6 @@ if BaseModel is not None:
         @field_validator("candidate_genes")
         @classmethod
         def _validate_candidate_genes(cls, value):
-            if len(value) > 200000:
-                raise ValueError("candidate_genes 不应超过 2000 个；标准场景建议约 500 个以内")
             return value
 
         @field_validator("hpo_ids")
@@ -201,8 +199,6 @@ if BaseModel is not None:
             invalid = [x for x in value if not re.fullmatch(r"(HP:)?\d{1,7}", str(x).upper().replace("_", ":"))]
             if invalid:
                 raise ValueError(f"hpo_ids 包含非法 HPO ID: {invalid[:5]}")
-            if len(value) > 2000:
-                raise ValueError("hpo_ids 不应超过 2000 个")
             return value
 
         @field_validator(
@@ -288,10 +284,6 @@ def config_from_run_parameters(params: RunParameters) -> Config:
 
 def validate_run_parameters(params: RunParameters):
     """Validate merged CLI/API parameters."""
-    if len(params.candidate_genes) > 200000:
-        raise ValueError("candidate_genes 不应超过 2000 个；标准场景建议约 500 个以内")
-    if len(params.hpo_ids) > 2000:
-        raise ValueError("hpo_ids 不应超过 2000 个")
     weights = [params.w_disease, params.w_tissue, params.w_topology]
     if any(float(w) < 0 for w in weights):
         raise ValueError("w_disease/w_tissue/w_topology 不能为负数")

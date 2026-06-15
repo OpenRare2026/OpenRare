@@ -85,6 +85,17 @@ def _failure(message: str, **payload) -> Dict[str, Any]:
     return {"status": STATUS_FAILURE, "message": message, **payload}
 
 
+def _set_job_progress(job_id: str, stage: str, message: str, progress: float, **payload):
+    with _job_lock:
+        job = _jobs.setdefault(job_id, {"job_id": job_id, "status": STATUS_QUEUING})
+        job.update({
+            "stage": stage,
+            "message": message,
+            "progress": round(float(progress), 4),
+            **payload,
+        })
+
+
 def _jsonable(value: Any) -> Any:
     return json.loads(json.dumps(value, ensure_ascii=False, default=str))
 
@@ -326,17 +337,34 @@ def _run_score_job(job_id: str, params: RunParameters, input_dir: Optional[str] 
             _jobs[job_id] = _failure(str(exc), job_id=job_id)
 
 
-def _run_clean_case(params: CleanCaseParameters) -> Dict[str, Any]:
+def _run_clean_case(params: CleanCaseParameters, job_id: Optional[str] = None) -> Dict[str, Any]:
+    if job_id:
+        _set_job_progress(job_id, "prepare", "Preparing output paths", 0.02)
     output_csv = Path(params.output_csv or _default_clean_case_csv_path()).expanduser().resolve()
     if params.clean_output_dir:
         clean_output_dir(output_csv)
 
+    if job_id:
+        _set_job_progress(job_id, "read_hpo", "Reading HPO input", 0.05)
     hpo_ids = normalize_hpo_ids(list(params.hpo_ids) + _read_items_file(params.hpo_file), deduplicate=False)
     if not hpo_ids:
         raise ValueError("hpo_ids/hpo_file 不能为空")
 
+    if job_id:
+        _set_job_progress(job_id, "read_vep", "Streaming VEP CSV and aggregating genes", 0.10)
     vep_summary = build_vep_gene_summary(params.vep_output_csv, chunksize=params.vep_chunksize)
+    if job_id:
+        _set_job_progress(job_id, "read_phenotype", "Reading phenotype-gene CSV", 0.25, vep_gene_count=int(len(vep_summary)))
     phenotype_summary = build_phenotype_gene_summary(params.phenotype_gene_csv)
+    if job_id:
+        _set_job_progress(
+            job_id,
+            "select_candidates",
+            "Selecting top candidate gene union",
+            0.30,
+            vep_gene_count=int(len(vep_summary)),
+            phenotype_gene_count=int(len(phenotype_summary)),
+        )
     candidate_genes = select_candidate_gene_union(
         vep_summary,
         phenotype_summary,
@@ -352,8 +380,18 @@ def _run_clean_case(params: CleanCaseParameters) -> Dict[str, Any]:
         data_dir=params.data_dir,
         TOP_N_NEIGHBORS=Config.TOP_N_NEIGHBORS if include_neighbors else 0,
     )
+    if job_id:
+        _set_job_progress(
+            job_id,
+            "initialize_scorer",
+            "Loading cached databases and STRING graph",
+            0.35,
+            candidate_gene_count=int(len(candidate_genes)),
+        )
     scorer = _get_scorer(cfg)
     with _score_lock:
+        if job_id:
+            _set_job_progress(job_id, "score_ppi", "Scoring candidate genes with PPI anchors", 0.55)
         ppi = scorer.run(
             candidate_genes=candidate_genes,
             hpo_ids=hpo_ids,
@@ -361,6 +399,8 @@ def _run_clean_case(params: CleanCaseParameters) -> Dict[str, Any]:
         )
         audit = scorer.last_audit
 
+    if job_id:
+        _set_job_progress(job_id, "merge_outputs", "Merging PPI, phenotype, and VEP summaries", 0.85)
     final = build_final_table(
         ppi=ppi,
         phenotype_csv=params.phenotype_gene_csv,
@@ -369,6 +409,8 @@ def _run_clean_case(params: CleanCaseParameters) -> Dict[str, Any]:
         include_neighbors=include_neighbors,
         include_evidence_json=include_evidence_json,
     )
+    if job_id:
+        _set_job_progress(job_id, "write_csv", "Writing final CSV", 0.95, output_rows=int(len(final)))
     output_csv.parent.mkdir(parents=True, exist_ok=True)
     final.to_csv(output_csv, index=False)
 
@@ -400,14 +442,27 @@ def _run_clean_case(params: CleanCaseParameters) -> Dict[str, Any]:
 
 def _run_clean_case_job(job_id: str, params: CleanCaseParameters, input_dir: Optional[str] = None):
     try:
-        result = _run_clean_case(params)
+        result = _run_clean_case(params, job_id=job_id)
         if input_dir:
             result["input_dir"] = input_dir
         with _job_lock:
-            _jobs[job_id] = {"job_id": job_id, "status": STATUS_COMPLETION, **result}
+            _jobs[job_id] = {
+                **_jobs.get(job_id, {}),
+                "job_id": job_id,
+                "status": STATUS_COMPLETION,
+                "stage": "complete",
+                "message": "Job completed",
+                "progress": 1.0,
+                **result,
+            }
     except Exception as exc:
         with _job_lock:
-            _jobs[job_id] = _failure(str(exc), job_id=job_id)
+            _jobs[job_id] = {
+                **_jobs.get(job_id, {}),
+                **_failure(str(exc), job_id=job_id),
+                "stage": "failure",
+                "progress": _jobs.get(job_id, {}).get("progress", 0.0),
+            }
 
 
 @app.exception_handler(StarletteHTTPException)

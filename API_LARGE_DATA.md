@@ -20,7 +20,33 @@ cd script1
 RARE_PPI_PORT=9000 ./run_api.sh
 ```
 
-## Submit Large Local Files
+## Submit Large Files With curl -F
+
+Use the upload async endpoint when the client and API run on the same machine or
+when you need to upload files through HTTP:
+
+```bash
+curl -X POST http://127.0.0.1:9000/score/clean-case/upload/async \
+  -F "phenotype_gene_csv=@/home/xiesiwei/vep_runner/26B01490717_3a1e48_fork16_hpo_/gene_phenotype_score.csv" \
+  -F "vep_output_csv=@/home/xiesiwei/vep_runner/26B01490717_3a1e48_fork16_hpo_/tes1.vep.csv" \
+  -F "hpo_file=@/path/to/hpo_ids.txt" \
+  -F "output_csv=/home/xiesiwei/vep_runner/26B01490717_3a1e48_fork16_hpo_/output/case_final_score.csv" \
+  -F "clean_output_dir=true" \
+  -F "candidate_top_n=30000" \
+  -F "output_all_ppi_fields=true" \
+  -F "include_audit=false" \
+  -F "vep_chunksize=250000"
+```
+
+The response contains a `job_id`. Poll it to see progress:
+
+```bash
+curl http://127.0.0.1:9000/score/<job_id> | python -m json.tool
+```
+
+The job status includes `stage`, `message`, and `progress`.
+
+## Submit Existing Server Paths
 
 ```bash
 curl -X POST http://127.0.0.1:9000/score/clean-case/async \
@@ -69,15 +95,7 @@ curl http://127.0.0.1:9000/score/<job_id>
 curl -L -o final_score.csv http://127.0.0.1:9000/score/<job_id>/csv
 ```
 
-## Upload API
-
-Multipart clients can use:
-
-```text
-POST /score/clean-case/upload/async
-```
-
-Important form fields:
+Important upload form fields:
 
 ```text
 phenotype_gene_csv=@gene_phenotype_score.csv
