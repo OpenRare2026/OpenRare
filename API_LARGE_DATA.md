@@ -20,6 +20,17 @@ cd script1
 RARE_PPI_PORT=9000 ./run_api.sh
 ```
 
+Confirm that the running service is the large-data version:
+
+```bash
+curl http://127.0.0.1:9000/version | python -m json.tool
+```
+
+The response should list `candidate_top_n`, `output_all_ppi_fields`, and
+`vep_chunksize` under `supports_parameters`. If a request gets 422 saying these
+fields do not exist, the API process is still running old code; pull the latest
+repository and restart `run_api.sh`.
+
 ## Submit Large Files With curl -F
 
 Use the upload async endpoint when the client and API run on the same machine or
@@ -62,6 +73,7 @@ curl -X POST http://127.0.0.1:9000/score/clean-case/async \
     "include_audit": false,
     "output_all_ppi_fields": false,
     "candidate_top_n": 30000,
+    "timeout": 0,
     "vep_chunksize": 250000
   }'
 ```

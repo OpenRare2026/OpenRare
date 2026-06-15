@@ -53,7 +53,7 @@ STATUS_QUEUING = "queuing"
 class CleanCaseParameters(BaseModel):
     """Request model for clean final CSV case scoring."""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")
 
     data_dir: str = Field(default_factory=lambda: DEFAULT_DATA_DIR)
     phenotype_gene_csv: str
@@ -69,6 +69,7 @@ class CleanCaseParameters(BaseModel):
     assume_hgnc_standardized: bool = True
     vep_chunksize: int = 250_000
     candidate_top_n: int = 30_000
+    timeout: Optional[float] = None
 
 
 def _model_dump(model: Any) -> Dict[str, Any]:
@@ -481,6 +482,34 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception):
     return JSONResponse(status_code=500, content=_failure(str(exc)))
+
+
+@app.get("/version")
+def version():
+    commit = os.environ.get("RARE_PPI_GIT_COMMIT", "")
+    try:
+        import subprocess
+
+        commit = commit or subprocess.check_output(
+            ["git", "rev-parse", "--short", "HEAD"],
+            cwd=PROJECT_DIR,
+            stderr=subprocess.DEVNULL,
+            text=True,
+        ).strip()
+    except Exception:
+        commit = commit or "unknown"
+    return _completion(
+        api_version=app.version,
+        git_commit=commit,
+        supports_clean_case_upload=True,
+        supports_progress=True,
+        supports_parameters=[
+            "candidate_top_n",
+            "output_all_ppi_fields",
+            "vep_chunksize",
+            "timeout",
+        ],
+    )
 
 
 @app.get("/health")
