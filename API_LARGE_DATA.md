@@ -42,6 +42,7 @@ curl -X POST http://127.0.0.1:9000/score/clean-case/upload/async \
   -F "vep_output_csv=@/home/xiesiwei/vep_runner/26B01490717_3a1e48_fork16_hpo_/tes1.vep.csv" \
   -F "hpo_file=@/path/to/hpo_ids.txt" \
   -F "output_csv=/home/xiesiwei/vep_runner/26B01490717_3a1e48_fork16_hpo_/output/case_final_score.csv" \
+  -F "ppi_output_csv=/home/xiesiwei/vep_runner/26B01490717_3a1e48_fork16_hpo_/output/case_ppi_score.csv" \
   -F "clean_output_dir=true" \
   -F "candidate_top_n=30000" \
   -F "output_all_ppi_fields=true" \
@@ -67,6 +68,7 @@ curl -X POST http://127.0.0.1:9000/score/clean-case/async \
     "vep_output_csv": "../input/tes1.vep.csv",
     "hpo_file": "../input/hpo_ids.txt",
     "output_csv": "../output/case_final_score.csv",
+    "ppi_output_csv": "../output/case_ppi_score.csv",
     "clean_output_dir": true,
     "include_neighbors": false,
     "include_evidence_json": false,
@@ -89,6 +91,20 @@ To output all PPI fields, including evidence JSON and `top_neighbors_json`, use:
 
 This is heavier because every retained gene gets evidence JSON and top STRING
 neighbors in the final CSV.
+
+Each clean-case run writes two CSV files:
+
+```text
+ppi_output_csv  Pure PPI table. Its columns match the PPI output table in README.
+output_csv      Final case table. It merges phenotype-gene scores, VEP summary,
+                and PPI scores.
+```
+
+See `FINAL_SCORE_README.md` for the complete `*_final_score.csv` column
+definitions, ranking rule, and interpretation notes.
+
+If `ppi_output_csv` is omitted, it is derived from `output_csv`; for example
+`case_final_score.csv` becomes `case_ppi_score.csv`.
 
 Response:
 
@@ -114,6 +130,7 @@ phenotype_gene_csv=@gene_phenotype_score.csv
 vep_output_csv=@tes1.vep.csv
 hpo_file=@hpo_ids.txt
 output_csv=../output/case_final_score.csv
+ppi_output_csv=../output/case_ppi_score.csv
 include_neighbors=false
 include_evidence_json=false
 include_audit=false

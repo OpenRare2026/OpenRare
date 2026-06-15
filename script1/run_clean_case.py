@@ -170,11 +170,48 @@ def select_candidate_gene_union(
     return _unique_preserve_order(vep_genes + phenotype_genes)
 
 
-def clean_output_dir(output_csv: Path):
-    """Remove old output artifacts so the directory contains only final CSV."""
+PPI_README_COLUMNS = [
+    "gene",
+    "in_network",
+    "disease_score",
+    "tissue_score",
+    "topology_score",
+    "ppi_final",
+    "score_mode",
+    "score_weight_sum",
+    "note",
+    "gene_in_d",
+    "gene_d_evidence_score",
+    "gene_d_sources_json",
+    "gene_in_t",
+    "gene_t_weight",
+    "gene_t_layers_json",
+    "gene_t_tissues_json",
+    "mapped_tissues_json",
+    "d_gene_count",
+    "t_gene_count",
+    "top_neighbors_json",
+    "top_neighbors_count",
+]
+
+
+def derive_ppi_output_csv(output_csv: Path) -> Path:
+    """Derive a pure PPI CSV path from the clean-case final CSV path."""
+    stem = output_csv.stem
+    if "final" in stem:
+        ppi_stem = stem.replace("final", "ppi", 1)
+    else:
+        ppi_stem = f"{stem}_ppi"
+    return output_csv.with_name(f"{ppi_stem}{output_csv.suffix}")
+
+
+def clean_output_dir(output_csv: Path, keep_paths: Iterable[Path] = ()):
+    """Remove old output artifacts while preserving requested output files."""
     output_dir = output_csv.parent
     if not output_dir.exists():
         return
+    keep = {output_csv.resolve()}
+    keep.update(Path(path).resolve() for path in keep_paths)
     protected = {
         Path("/").resolve(),
         Path(PROJECT_DIR).resolve(),
@@ -183,10 +220,25 @@ def clean_output_dir(output_csv: Path):
     if output_dir.resolve() in protected:
         raise ValueError(f"refuse to clean protected output directory: {output_dir}")
     for child in output_dir.iterdir():
-        if child.resolve() == output_csv.resolve():
+        if child.resolve() in keep:
             continue
         if child.is_file():
             child.unlink()
+
+
+def build_ppi_table(
+    ppi: pd.DataFrame,
+    include_neighbors: bool = False,
+    include_evidence_json: bool = False,
+) -> pd.DataFrame:
+    """Return the pure PPI table documented in README."""
+    columns = list(PPI_README_COLUMNS)
+    if not include_evidence_json:
+        columns = [col for col in columns if col not in {"gene_d_sources_json", "gene_t_layers_json", "gene_t_tissues_json"}]
+    if not include_neighbors:
+        columns = [col for col in columns if col not in {"top_neighbors_json", "top_neighbors_count"}]
+    columns = [col for col in columns if col in ppi.columns]
+    return ppi.sort_values("ppi_final", ascending=False)[columns].reset_index(drop=True)
 
 
 def build_final_table(
@@ -315,9 +367,14 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--hpo-file", required=True, help="HPO ID list file")
     parser.add_argument("--output-csv", required=True, help="final CSV path")
     parser.add_argument(
+        "--ppi-output-csv",
+        default=None,
+        help="pure PPI CSV path matching README output columns; default is derived from --output-csv",
+    )
+    parser.add_argument(
         "--clean-output-dir",
         action="store_true",
-        help="delete all other files/directories in output directory before writing final CSV",
+        help="delete old files in the final output directory before writing final and PPI CSVs",
     )
     parser.add_argument("--include-neighbors", action="store_true", help="keep top_neighbors_json in final CSV")
     parser.add_argument("--include-evidence-json", action="store_true", help="keep D/T evidence JSON columns in final CSV")
@@ -330,9 +387,11 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     output_csv = Path(args.output_csv).resolve()
+    ppi_output_csv = Path(args.ppi_output_csv).resolve() if args.ppi_output_csv else derive_ppi_output_csv(output_csv)
     output_csv.parent.mkdir(parents=True, exist_ok=True)
+    ppi_output_csv.parent.mkdir(parents=True, exist_ok=True)
     if args.clean_output_dir:
-        clean_output_dir(output_csv)
+        clean_output_dir(output_csv, keep_paths=[ppi_output_csv])
 
     vep_summary = build_vep_gene_summary(args.vep_output_csv, chunksize=args.vep_chunksize)
     phenotype_summary = build_phenotype_gene_summary(args.phenotype_gene_csv)
@@ -353,6 +412,11 @@ def main() -> int:
         assume_hgnc_standardized=not args.no_assume_hgnc_standardized,
     )
 
+    ppi_table = build_ppi_table(
+        ppi=ppi,
+        include_neighbors=args.include_neighbors,
+        include_evidence_json=args.include_evidence_json,
+    )
     final = build_final_table(
         ppi=ppi,
         phenotype_csv=args.phenotype_gene_csv,
@@ -362,16 +426,20 @@ def main() -> int:
         include_evidence_json=args.include_evidence_json,
     )
     output_csv.parent.mkdir(parents=True, exist_ok=True)
+    ppi_output_csv.parent.mkdir(parents=True, exist_ok=True)
+    ppi_table.to_csv(ppi_output_csv, index=False)
     final.to_csv(output_csv, index=False)
 
     summary = {
         "output_csv": str(output_csv),
+        "ppi_output_csv": str(ppi_output_csv),
         "candidate_gene_count": int(len(candidate_genes)),
         "candidate_top_n": int(args.candidate_top_n),
         "vep_top_gene_count": int(min(len(vep_summary), args.candidate_top_n) if args.candidate_top_n else len(vep_summary)),
         "phenotype_top_gene_count": int(min(len(phenotype_summary), args.candidate_top_n) if args.candidate_top_n else len(phenotype_summary)),
         "hpo_count": int(len(hpo_ids)),
         "output_rows": int(len(final)),
+        "ppi_output_rows": int(len(ppi_table)),
         "ranked_gene_count": int(final["final_rank"].notna().sum()) if "final_rank" in final else 0,
         "in_network": int(ppi["in_network"].sum()),
         "not_in_string": int((~ppi["in_network"]).sum()),

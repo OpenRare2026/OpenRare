@@ -22,10 +22,12 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from config import Config, DEFAULT_DATA_DIR, PROJECT_DIR, RunParameters, config_from_run_parameters, validate_run_parameters
 from Network import RareDiseasePPIScorer, _read_items_file, _unique_preserve_order, normalize_hpo_ids
 from run_clean_case import (
+    build_ppi_table,
     build_final_table,
     build_phenotype_gene_summary,
     build_vep_gene_summary,
     clean_output_dir,
+    derive_ppi_output_csv,
     select_candidate_gene_union,
 )
 
@@ -61,6 +63,7 @@ class CleanCaseParameters(BaseModel):
     hpo_file: Optional[str] = None
     hpo_ids: List[str] = Field(default_factory=list)
     output_csv: Optional[str] = None
+    ppi_output_csv: Optional[str] = None
     clean_output_dir: bool = True
     include_audit: bool = False
     include_neighbors: bool = False
@@ -181,6 +184,7 @@ async def _clean_case_params_from_uploads(
     hpo_ids: Optional[str],
     data_dir: str,
     output_csv: Optional[str],
+    ppi_output_csv: Optional[str],
     clean_output_dir: bool,
     include_audit: bool,
     include_neighbors: bool,
@@ -199,6 +203,7 @@ async def _clean_case_params_from_uploads(
     vep_path = await _save_upload(vep_output_csv, input_dir, "vep_output.csv")
     hpo_path = await _save_upload(hpo_file, input_dir, "hpo_ids.txt") if hpo_file is not None else None
     csv_path = output_csv or str(output_dir / "final_score.csv")
+    ppi_csv_path = ppi_output_csv or str(output_dir / "ppi_score.csv")
     params = CleanCaseParameters(
         data_dir=data_dir,
         phenotype_gene_csv=phenotype_path,
@@ -206,6 +211,7 @@ async def _clean_case_params_from_uploads(
         hpo_file=hpo_path,
         hpo_ids=_split_form_list(hpo_ids),
         output_csv=csv_path,
+        ppi_output_csv=ppi_csv_path,
         clean_output_dir=clean_output_dir,
         include_audit=include_audit,
         include_neighbors=include_neighbors,
@@ -342,8 +348,11 @@ def _run_clean_case(params: CleanCaseParameters, job_id: Optional[str] = None) -
     if job_id:
         _set_job_progress(job_id, "prepare", "Preparing output paths", 0.02)
     output_csv = Path(params.output_csv or _default_clean_case_csv_path()).expanduser().resolve()
+    ppi_output_csv = Path(params.ppi_output_csv).expanduser().resolve() if params.ppi_output_csv else derive_ppi_output_csv(output_csv)
+    if output_csv.resolve() == ppi_output_csv.resolve():
+        raise ValueError("ppi_output_csv must be different from output_csv")
     if params.clean_output_dir:
-        clean_output_dir(output_csv)
+        clean_output_dir(output_csv, keep_paths=[ppi_output_csv])
 
     if job_id:
         _set_job_progress(job_id, "read_hpo", "Reading HPO input", 0.05)
@@ -401,7 +410,12 @@ def _run_clean_case(params: CleanCaseParameters, job_id: Optional[str] = None) -
         audit = scorer.last_audit
 
     if job_id:
-        _set_job_progress(job_id, "merge_outputs", "Merging PPI, phenotype, and VEP summaries", 0.85)
+        _set_job_progress(job_id, "merge_outputs", "Preparing PPI and final CSV outputs", 0.85)
+    ppi_table = build_ppi_table(
+        ppi=ppi,
+        include_neighbors=include_neighbors,
+        include_evidence_json=include_evidence_json,
+    )
     final = build_final_table(
         ppi=ppi,
         phenotype_csv=params.phenotype_gene_csv,
@@ -411,8 +425,17 @@ def _run_clean_case(params: CleanCaseParameters, job_id: Optional[str] = None) -
         include_evidence_json=include_evidence_json,
     )
     if job_id:
-        _set_job_progress(job_id, "write_csv", "Writing final CSV", 0.95, output_rows=int(len(final)))
+        _set_job_progress(
+            job_id,
+            "write_csv",
+            "Writing PPI CSV and final CSV",
+            0.95,
+            output_rows=int(len(final)),
+            ppi_output_rows=int(len(ppi_table)),
+        )
     output_csv.parent.mkdir(parents=True, exist_ok=True)
+    ppi_output_csv.parent.mkdir(parents=True, exist_ok=True)
+    ppi_table.to_csv(ppi_output_csv, index=False)
     final.to_csv(output_csv, index=False)
 
     payload = {
@@ -420,7 +443,9 @@ def _run_clean_case(params: CleanCaseParameters, job_id: Optional[str] = None) -
         "count": int(len(final)),
         "output_format": "csv",
         "csv_path": str(output_csv),
+        "ppi_csv_path": str(ppi_output_csv),
         "columns": list(final.columns),
+        "ppi_columns": list(ppi_table.columns),
         "candidate_gene_count": int(len(candidate_genes)),
         "candidate_top_n": int(params.candidate_top_n),
         "vep_top_gene_count": int(min(len(vep_summary), params.candidate_top_n) if params.candidate_top_n else len(vep_summary)),
@@ -431,6 +456,7 @@ def _run_clean_case(params: CleanCaseParameters, job_id: Optional[str] = None) -
         "output_all_ppi_fields": bool(params.output_all_ppi_fields),
         "hpo_count": int(len(hpo_ids)),
         "ranked_gene_count": int(final["final_rank"].notna().sum()) if "final_rank" in final else 0,
+        "ppi_output_rows": int(len(ppi_table)),
         "in_network": int(ppi["in_network"].sum()) if "in_network" in ppi else 0,
         "not_in_string": int((~ppi["in_network"]).sum()) if "in_network" in ppi else 0,
         "mapped_tissues": audit.get("mapped_tissues", []),
@@ -506,6 +532,7 @@ def version():
         supports_parameters=[
             "candidate_top_n",
             "output_all_ppi_fields",
+            "ppi_output_csv",
             "vep_chunksize",
             "timeout",
         ],
@@ -643,6 +670,7 @@ async def score_clean_case_upload(
     hpo_ids: Optional[str] = Form(None),
     data_dir: str = Form(DEFAULT_DATA_DIR),
     output_csv: Optional[str] = Form(None),
+    ppi_output_csv: Optional[str] = Form(None),
     clean_output_dir: bool = Form(True),
     include_audit: bool = Form(False),
     include_neighbors: bool = Form(False),
@@ -660,6 +688,7 @@ async def score_clean_case_upload(
             hpo_ids=hpo_ids,
             data_dir=data_dir,
             output_csv=output_csv,
+            ppi_output_csv=ppi_output_csv,
             clean_output_dir=clean_output_dir,
             include_audit=include_audit,
             include_neighbors=include_neighbors,
@@ -777,6 +806,7 @@ async def score_clean_case_upload_async(
     hpo_ids: Optional[str] = Form(None),
     data_dir: str = Form(DEFAULT_DATA_DIR),
     output_csv: Optional[str] = Form(None),
+    ppi_output_csv: Optional[str] = Form(None),
     clean_output_dir: bool = Form(True),
     include_audit: bool = Form(False),
     include_neighbors: bool = Form(False),
@@ -794,6 +824,7 @@ async def score_clean_case_upload_async(
             hpo_ids=hpo_ids,
             data_dir=data_dir,
             output_csv=output_csv,
+            ppi_output_csv=ppi_output_csv,
             clean_output_dir=clean_output_dir,
             include_audit=include_audit,
             include_neighbors=include_neighbors,
@@ -842,4 +873,20 @@ def download_score_csv(job_id: str):
         csv_path = job.get("csv_path")
     if not csv_path or not os.path.exists(csv_path):
         raise HTTPException(status_code=404, detail="CSV 文件不存在")
+    return FileResponse(csv_path, media_type="text/csv", filename=os.path.basename(csv_path))
+
+
+@app.get("/score/{job_id}/ppi-csv")
+def download_score_ppi_csv(job_id: str):
+    with _job_lock:
+        job = _jobs.get(job_id)
+        if job is None:
+            raise HTTPException(status_code=404, detail=f"job_id 不存在: {job_id}")
+        if job.get("status") == STATUS_QUEUING:
+            raise HTTPException(status_code=202, detail="任务仍在等待或运行")
+        if job.get("status") == STATUS_FAILURE:
+            raise HTTPException(status_code=400, detail=job.get("message", "任务失败"))
+        csv_path = job.get("ppi_csv_path")
+    if not csv_path or not os.path.exists(csv_path):
+        raise HTTPException(status_code=404, detail="PPI CSV 文件不存在")
     return FileResponse(csv_path, media_type="text/csv", filename=os.path.basename(csv_path))
