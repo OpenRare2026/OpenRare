@@ -10,6 +10,8 @@ This path is optimized for files like a 9.8 GB VEP CSV:
   traversal per candidate gene.
 - Neighbor JSON is skipped by default; set `include_neighbors=true` only for
   small debug runs.
+- By default, candidates are the union of the top 30000 VEP genes and the top
+  30000 phenotype-ranked genes. Set `candidate_top_n=0` to use all genes.
 
 ## Start API
 
@@ -32,9 +34,23 @@ curl -X POST http://127.0.0.1:9000/score/clean-case/async \
     "include_neighbors": false,
     "include_evidence_json": false,
     "include_audit": false,
+    "output_all_ppi_fields": false,
+    "candidate_top_n": 30000,
     "vep_chunksize": 250000
   }'
 ```
+
+To output all PPI fields, including evidence JSON and `top_neighbors_json`, use:
+
+```json
+{
+  "output_all_ppi_fields": true,
+  "candidate_top_n": 30000
+}
+```
+
+This is heavier because every retained gene gets evidence JSON and top STRING
+neighbors in the final CSV.
 
 Response:
 
@@ -71,5 +87,7 @@ output_csv=../output/case_final_score.csv
 include_neighbors=false
 include_evidence_json=false
 include_audit=false
+output_all_ppi_fields=false
+candidate_top_n=30000
 vep_chunksize=250000
 ```

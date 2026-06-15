@@ -121,6 +121,55 @@ def build_vep_gene_summary(vep_csv: str, chunksize: int = 250_000) -> pd.DataFra
     return summary.reset_index(drop=True)
 
 
+def build_phenotype_gene_summary(phenotype_csv: str) -> pd.DataFrame:
+    header = pd.read_csv(phenotype_csv, nrows=0)
+    if "gene_symbol" not in header.columns:
+        raise ValueError(f"phenotype-gene CSV missing gene_symbol column: {phenotype_csv}")
+    usecols = ["gene_symbol"]
+    for col in ("gene_score", "gene_rank"):
+        if col in header.columns:
+            usecols.append(col)
+    phenotype = pd.read_csv(phenotype_csv, usecols=usecols)
+    phenotype["gene_symbol"] = phenotype["gene_symbol"].map(_clean_str)
+    phenotype = phenotype[(phenotype["gene_symbol"] != "") & (phenotype["gene_symbol"] != "-")]
+    if phenotype.empty:
+        return pd.DataFrame(columns=["gene_symbol"])
+    if "gene_rank" in phenotype.columns:
+        phenotype["gene_rank_num"] = pd.to_numeric(phenotype["gene_rank"], errors="coerce")
+    else:
+        phenotype["gene_rank_num"] = pd.NA
+    if "gene_score" in phenotype.columns:
+        phenotype["gene_score_num"] = pd.to_numeric(phenotype["gene_score"], errors="coerce")
+    else:
+        phenotype["gene_score_num"] = pd.NA
+    summary = phenotype.groupby("gene_symbol", as_index=False).agg(
+        best_gene_rank=("gene_rank_num", "min"),
+        best_gene_score=("gene_score_num", "max"),
+    )
+    summary["_rank_sort"] = pd.to_numeric(summary["best_gene_rank"], errors="coerce").fillna(10**9)
+    summary["_score_sort"] = pd.to_numeric(summary["best_gene_score"], errors="coerce").fillna(-10**9)
+    summary = summary.sort_values(
+        ["_rank_sort", "_score_sort", "gene_symbol"],
+        ascending=[True, False, True],
+    ).drop(columns=["_rank_sort", "_score_sort"])
+    return summary.reset_index(drop=True)
+
+
+def select_candidate_gene_union(
+    vep_summary: pd.DataFrame,
+    phenotype_summary: pd.DataFrame,
+    top_n: int = 30_000,
+) -> List[str]:
+    limit = max(int(top_n), 0)
+    if limit == 0:
+        vep_genes = vep_summary["gene_symbol"].astype(str).tolist()
+        phenotype_genes = phenotype_summary["gene_symbol"].astype(str).tolist()
+    else:
+        vep_genes = vep_summary.head(limit)["gene_symbol"].astype(str).tolist()
+        phenotype_genes = phenotype_summary.head(limit)["gene_symbol"].astype(str).tolist()
+    return _unique_preserve_order(vep_genes + phenotype_genes)
+
+
 def clean_output_dir(output_csv: Path):
     """Remove old output artifacts so the directory contains only final CSV."""
     output_dir = output_csv.parent
@@ -208,23 +257,30 @@ def build_final_table(
         "combined_score",
         "gene_score",
         "ppi_final",
+        "in_network",
+        "disease_score",
+        "tissue_score",
+        "topology_score",
+        "score_mode",
+        "score_weight_sum",
+        "note",
+        "gene_in_d",
+        "gene_d_evidence_score",
+        "gene_d_sources_json",
+        "gene_in_t",
+        "gene_t_weight",
+        "gene_t_layers_json",
+        "gene_t_tissues_json",
+        "mapped_tissues_json",
+        "d_gene_count",
+        "t_gene_count",
+        "top_neighbors_json",
+        "top_neighbors_count",
         "gene_rank",
         "ppi_rank",
         "best_pathogenic_rank",
         "variant_row_count",
         "max_cadd_phred",
-        "in_network",
-        "score_mode",
-        "note",
-        "disease_score",
-        "tissue_score",
-        "topology_score",
-        "gene_in_d",
-        "gene_d_evidence_score",
-        "gene_in_t",
-        "gene_t_weight",
-        "d_gene_count",
-        "t_gene_count",
         "mapped_tissues",
         "mapped_tissue_counts_json",
         "conclusion_code",
@@ -236,10 +292,11 @@ def build_final_table(
         "best_disease_match_status",
         "mapping_basis",
     ]
-    if include_evidence_json:
-        columns.extend(["gene_d_sources_json", "gene_t_layers_json", "gene_t_tissues_json"])
-    if include_neighbors:
-        columns.append("top_neighbors_json")
+    if not include_evidence_json:
+        columns = [col for col in columns if col not in {"gene_d_sources_json", "gene_t_layers_json", "gene_t_tissues_json"}]
+    if not include_neighbors:
+        columns = [col for col in columns if col not in {"top_neighbors_json", "top_neighbors_count"}]
+    columns = list(dict.fromkeys(columns))
     columns = [col for col in columns if col in merged.columns]
 
     final = merged.sort_values(
@@ -265,6 +322,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--include-neighbors", action="store_true", help="keep top_neighbors_json in final CSV")
     parser.add_argument("--include-evidence-json", action="store_true", help="keep D/T evidence JSON columns in final CSV")
     parser.add_argument("--vep-chunksize", type=int, default=250_000, help="rows per chunk when reading large VEP CSV")
+    parser.add_argument("--candidate-top-n", type=int, default=30_000, help="use union of top N VEP genes and top N phenotype genes; 0 means all")
     parser.add_argument("--no-assume-hgnc-standardized", action="store_true")
     return parser.parse_args()
 
@@ -277,7 +335,8 @@ def main() -> int:
         clean_output_dir(output_csv)
 
     vep_summary = build_vep_gene_summary(args.vep_output_csv, chunksize=args.vep_chunksize)
-    candidate_genes = _unique_preserve_order(vep_summary["gene_symbol"].astype(str).tolist())
+    phenotype_summary = build_phenotype_gene_summary(args.phenotype_gene_csv)
+    candidate_genes = select_candidate_gene_union(vep_summary, phenotype_summary, top_n=args.candidate_top_n)
     hpo_ids = normalize_hpo_ids(_read_items_file(args.hpo_file), deduplicate=False)
     if not hpo_ids:
         raise SystemExit("HPO list is empty")
@@ -308,6 +367,9 @@ def main() -> int:
     summary = {
         "output_csv": str(output_csv),
         "candidate_gene_count": int(len(candidate_genes)),
+        "candidate_top_n": int(args.candidate_top_n),
+        "vep_top_gene_count": int(min(len(vep_summary), args.candidate_top_n) if args.candidate_top_n else len(vep_summary)),
+        "phenotype_top_gene_count": int(min(len(phenotype_summary), args.candidate_top_n) if args.candidate_top_n else len(phenotype_summary)),
         "hpo_count": int(len(hpo_ids)),
         "output_rows": int(len(final)),
         "ranked_gene_count": int(final["final_rank"].notna().sum()) if "final_rank" in final else 0,

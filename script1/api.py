@@ -21,7 +21,13 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from config import Config, DEFAULT_DATA_DIR, PROJECT_DIR, RunParameters, config_from_run_parameters, validate_run_parameters
 from Network import RareDiseasePPIScorer, _read_items_file, _unique_preserve_order, normalize_hpo_ids
-from run_clean_case import build_final_table, build_vep_gene_summary, clean_output_dir
+from run_clean_case import (
+    build_final_table,
+    build_phenotype_gene_summary,
+    build_vep_gene_summary,
+    clean_output_dir,
+    select_candidate_gene_union,
+)
 
 
 app = FastAPI(
@@ -59,8 +65,10 @@ class CleanCaseParameters(BaseModel):
     include_audit: bool = False
     include_neighbors: bool = False
     include_evidence_json: bool = False
+    output_all_ppi_fields: bool = False
     assume_hgnc_standardized: bool = True
     vep_chunksize: int = 250_000
+    candidate_top_n: int = 30_000
 
 
 def _model_dump(model: Any) -> Dict[str, Any]:
@@ -165,8 +173,10 @@ async def _clean_case_params_from_uploads(
     include_audit: bool,
     include_neighbors: bool,
     include_evidence_json: bool,
+    output_all_ppi_fields: bool,
     assume_hgnc_standardized: bool,
     vep_chunksize: int,
+    candidate_top_n: int,
 ) -> tuple[CleanCaseParameters, str]:
     run_dir = Path(DEFAULT_UPLOAD_DIR) / f"clean_case_{uuid.uuid4().hex}"
     input_dir = run_dir / "inputs"
@@ -188,8 +198,10 @@ async def _clean_case_params_from_uploads(
         include_audit=include_audit,
         include_neighbors=include_neighbors,
         include_evidence_json=include_evidence_json,
+        output_all_ppi_fields=output_all_ppi_fields,
         assume_hgnc_standardized=assume_hgnc_standardized,
         vep_chunksize=vep_chunksize,
+        candidate_top_n=candidate_top_n,
     )
     return params, str(run_dir)
 
@@ -324,13 +336,21 @@ def _run_clean_case(params: CleanCaseParameters) -> Dict[str, Any]:
         raise ValueError("hpo_ids/hpo_file 不能为空")
 
     vep_summary = build_vep_gene_summary(params.vep_output_csv, chunksize=params.vep_chunksize)
-    candidate_genes = _unique_preserve_order(vep_summary["gene_symbol"].astype(str).tolist())
+    phenotype_summary = build_phenotype_gene_summary(params.phenotype_gene_csv)
+    candidate_genes = select_candidate_gene_union(
+        vep_summary,
+        phenotype_summary,
+        top_n=params.candidate_top_n,
+    )
     if not candidate_genes:
-        raise ValueError("VEP 输入中没有可用 gene_symbol")
+        raise ValueError("VEP/phenotype 输入中没有可用 gene_symbol")
+
+    include_neighbors = params.include_neighbors or params.output_all_ppi_fields
+    include_evidence_json = params.include_evidence_json or params.output_all_ppi_fields
 
     cfg = Config(
         data_dir=params.data_dir,
-        TOP_N_NEIGHBORS=Config.TOP_N_NEIGHBORS if params.include_neighbors else 0,
+        TOP_N_NEIGHBORS=Config.TOP_N_NEIGHBORS if include_neighbors else 0,
     )
     scorer = _get_scorer(cfg)
     with _score_lock:
@@ -346,8 +366,8 @@ def _run_clean_case(params: CleanCaseParameters) -> Dict[str, Any]:
         phenotype_csv=params.phenotype_gene_csv,
         vep_summary=vep_summary,
         audit=audit,
-        include_neighbors=params.include_neighbors,
-        include_evidence_json=params.include_evidence_json,
+        include_neighbors=include_neighbors,
+        include_evidence_json=include_evidence_json,
     )
     output_csv.parent.mkdir(parents=True, exist_ok=True)
     final.to_csv(output_csv, index=False)
@@ -359,8 +379,13 @@ def _run_clean_case(params: CleanCaseParameters) -> Dict[str, Any]:
         "csv_path": str(output_csv),
         "columns": list(final.columns),
         "candidate_gene_count": int(len(candidate_genes)),
+        "candidate_top_n": int(params.candidate_top_n),
+        "vep_top_gene_count": int(min(len(vep_summary), params.candidate_top_n) if params.candidate_top_n else len(vep_summary)),
+        "phenotype_top_gene_count": int(min(len(phenotype_summary), params.candidate_top_n) if params.candidate_top_n else len(phenotype_summary)),
         "vep_chunksize": int(params.vep_chunksize),
-        "include_neighbors": bool(params.include_neighbors),
+        "include_neighbors": bool(include_neighbors),
+        "include_evidence_json": bool(include_evidence_json),
+        "output_all_ppi_fields": bool(params.output_all_ppi_fields),
         "hpo_count": int(len(hpo_ids)),
         "ranked_gene_count": int(final["final_rank"].notna().sum()) if "final_rank" in final else 0,
         "in_network": int(ppi["in_network"].sum()) if "in_network" in ppi else 0,
@@ -538,8 +563,10 @@ async def score_clean_case_upload(
     include_audit: bool = Form(False),
     include_neighbors: bool = Form(False),
     include_evidence_json: bool = Form(False),
+    output_all_ppi_fields: bool = Form(False),
     assume_hgnc_standardized: bool = Form(True),
     vep_chunksize: int = Form(250_000),
+    candidate_top_n: int = Form(30_000),
 ):
     try:
         params, input_dir = await _clean_case_params_from_uploads(
@@ -553,8 +580,10 @@ async def score_clean_case_upload(
             include_audit=include_audit,
             include_neighbors=include_neighbors,
             include_evidence_json=include_evidence_json,
+            output_all_ppi_fields=output_all_ppi_fields,
             assume_hgnc_standardized=assume_hgnc_standardized,
             vep_chunksize=vep_chunksize,
+            candidate_top_n=candidate_top_n,
         )
         result = await run_in_threadpool(_run_clean_case, params)
         return _completion(input_dir=input_dir, **result)
@@ -668,8 +697,10 @@ async def score_clean_case_upload_async(
     include_audit: bool = Form(False),
     include_neighbors: bool = Form(False),
     include_evidence_json: bool = Form(False),
+    output_all_ppi_fields: bool = Form(False),
     assume_hgnc_standardized: bool = Form(True),
     vep_chunksize: int = Form(250_000),
+    candidate_top_n: int = Form(30_000),
 ):
     try:
         params, input_dir = await _clean_case_params_from_uploads(
@@ -683,8 +714,10 @@ async def score_clean_case_upload_async(
             include_audit=include_audit,
             include_neighbors=include_neighbors,
             include_evidence_json=include_evidence_json,
+            output_all_ppi_fields=output_all_ppi_fields,
             assume_hgnc_standardized=assume_hgnc_standardized,
             vep_chunksize=vep_chunksize,
+            candidate_top_n=candidate_top_n,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
