@@ -23,7 +23,6 @@ import pandas as pd
 import networkx as nx
 from collections import Counter, defaultdict
 from typing import Any, List, Dict, Set, Tuple, Optional
-from scipy.stats import percentileofscore
 from config import Config, RunParameters, config_from_run_parameters, validate_run_parameters
 
 
@@ -1732,6 +1731,7 @@ class PPIEngine:
         self.avg_degree = 0.0
         self.std_degree = 0.0
         self.betweenness = {}
+        self.betweenness_rank_pct = {}
         
     def load(self):
         """加载 STRING 并构建 networkx 图。"""
@@ -1758,6 +1758,9 @@ class PPIEngine:
             self.avg_degree = cached.get("avg_degree", 0.0)
             self.std_degree = cached.get("std_degree", 1e-9)
             self.betweenness = cached.get("betweenness", {})
+            self.betweenness_rank_pct = cached.get("betweenness_rank_pct", {})
+            if not self.betweenness_rank_pct:
+                self._prepare_betweenness_rank()
             self._network_stats_ready = True
             log(f"[STRING] 使用缓存: {cache_path}")
             log(f"[STRING] 网络: {self.G.number_of_nodes()} nodes, {self.G.number_of_edges()} edges")
@@ -1789,6 +1792,7 @@ class PPIEngine:
             "avg_degree": self.avg_degree,
             "std_degree": self.std_degree,
             "betweenness": self.betweenness,
+            "betweenness_rank_pct": self.betweenness_rank_pct,
         })
         
     def _string_id_to_symbol(self, string_id: str) -> Optional[str]:
@@ -1814,7 +1818,16 @@ class PPIEngine:
         # betweenness 用 k 采样近似（大图加速）
         k = min(self.cfg.BETWEENNESS_SAMPLE_K, self.G.number_of_nodes())
         self.betweenness = nx.betweenness_centrality(self.G, k=k, seed=42)
+        self._prepare_betweenness_rank()
         self._network_stats_ready = True
+
+    def _prepare_betweenness_rank(self):
+        """Precompute betweenness rank percentiles once for fast per-gene scoring."""
+        if not self.betweenness:
+            self.betweenness_rank_pct = {}
+            return
+        ranks = pd.Series(self.betweenness, dtype=float).rank(method="average", pct=True)
+        self.betweenness_rank_pct = {gene: float(rank) for gene, rank in ranks.items()}
         
     def score_gene(self, g: str, D: List[str], T: List[str], T_weights: Dict[str, int]) -> Dict:
         """
@@ -1895,6 +1908,86 @@ class PPIEngine:
             result["note"] = "OK"
             
         return result
+
+    def score_genes_batch(self, genes: List[str], D: List[str], T: List[str], T_weights: Dict[str, int]) -> List[Dict]:
+        """Score many genes using anchor-side BFS maps instead of one BFS per gene."""
+        D_set = set(D)
+        T_set = set(T)
+        D_in_graph = {d for d in D_set if d in self.G}
+        T_in_graph = {t for t in T_set if t in self.G}
+        cutoff = self.cfg.SSSP_CUTOFF if self.cfg.SSSP_CUTOFF > 0 else None
+        disease_available = bool(D_set and D_in_graph)
+        tissue_available = bool(T_set and T_in_graph)
+
+        d_dist = {}
+        t_dist = {}
+        if disease_available:
+            d_dist = dict(nx.multi_source_dijkstra_path_length(self.G, D_in_graph, cutoff=cutoff, weight=None))
+        if tissue_available:
+            t_dist = dict(nx.multi_source_dijkstra_path_length(self.G, T_in_graph, cutoff=cutoff, weight=None))
+
+        records = []
+        for g in genes:
+            result = {
+                "gene": g,
+                "in_network": g in self.G,
+                "disease_score": 0.0,
+                "tissue_score": 0.0,
+                "topology_score": 0.0,
+                "ppi_final": 0.0,
+                "score_mode": "",
+                "score_weight_sum": 0.0,
+                "note": "",
+            }
+            if g not in self.G:
+                result["note"] = "NOT_IN_STRING"
+                result["score_mode"] = "NOT_IN_STRING"
+                records.append(result)
+                continue
+
+            weighted_scores = []
+            if not D_set:
+                result["note"] += "EMPTY_D;"
+            elif not D_in_graph:
+                result["note"] += "NO_D_IN_STRING;"
+            else:
+                result["disease_score"] = self._calc_disease_score_fast(g, D_in_graph, d_dist)
+                weighted_scores.append((self.cfg.W_DISEASE, result["disease_score"]))
+
+            if not T_set:
+                result["note"] += "EMPTY_T;"
+            elif not T_in_graph:
+                result["note"] += "NO_T_IN_STRING;"
+            else:
+                result["tissue_score"] = self._calc_tissue_score_fast(g, T_in_graph, T_weights, t_dist)
+                weighted_scores.append((self.cfg.W_TISSUE, result["tissue_score"]))
+
+            result["topology_score"] = self._calc_topology_score(g)
+            weighted_scores.append((self.cfg.W_TOPOLOGY, result["topology_score"]))
+
+            weight_sum = sum(w for w, _ in weighted_scores)
+            result["score_weight_sum"] = round(float(weight_sum), 4)
+            if weight_sum > 0:
+                result["ppi_final"] = sum(w * score for w, score in weighted_scores) / weight_sum
+            result["disease_score"] = float(result["disease_score"])
+            result["tissue_score"] = float(result["tissue_score"])
+            result["topology_score"] = float(result["topology_score"])
+            result["ppi_final"] = float(result["ppi_final"])
+
+            if disease_available and tissue_available:
+                result["score_mode"] = "FULL_ANCHOR"
+            elif disease_available:
+                result["score_mode"] = "NO_T_REWEIGHTED"
+            elif tissue_available:
+                result["score_mode"] = "NO_D_REWEIGHTED"
+            else:
+                result["score_mode"] = "TOPOLOGY_ONLY"
+            if self.G.degree(g) == 0:
+                result["note"] += "ISOLATED;"
+            if not result["note"]:
+                result["note"] = "OK"
+            records.append(result)
+        return records
     
     def _calc_disease_score(self, g: str, D_set: Set[str], dist_from_g: Dict[str, int]) -> float:
         """疾病锚点评分：直接互作 + 基于单源最短路径结果的网络距离倒数。"""
@@ -1917,6 +2010,16 @@ class PPIEngine:
                 distances.append(1.0 / (1.0 + dist))
         proximity_d = np.mean(distances) if distances else 0.0
         
+        return 0.6 * direct_score + 0.4 * proximity_d
+
+    def _calc_disease_score_fast(self, g: str, D_set: Set[str], min_dist_to_d: Dict[str, int]) -> float:
+        if g in D_set:
+            return 1.0
+        neighbors = set(self.G.neighbors(g))
+        direct_d = len(neighbors & D_set)
+        direct_score = min(direct_d / self.cfg.K_NEIGHBOR_CAP, 1.0)
+        dist = min_dist_to_d.get(g)
+        proximity_d = 0.0 if dist is None else 1.0 / (1.0 + dist)
         return 0.6 * direct_score + 0.4 * proximity_d
     
     def _calc_tissue_score(
@@ -1952,16 +2055,32 @@ class PPIEngine:
         proximity_t = np.mean(distances_t) if distances_t else 0.0
         
         return 0.6 * direct_t_score + 0.4 * proximity_t
+
+    def _calc_tissue_score_fast(
+        self,
+        g: str,
+        T_set: Set[str],
+        T_weights: Dict[str, int],
+        min_dist_to_t: Dict[str, int],
+    ) -> float:
+        if g in T_set:
+            w = T_weights.get(g, 1)
+            return 0.5 + 0.5 * (min(w, 3) / 3.0)
+        neighbors = set(self.G.neighbors(g))
+        direct_t = neighbors & T_set
+        direct_t_score = sum(min(T_weights.get(t, 1), 3) / 3.0 for t in direct_t)
+        direct_t_score = min(direct_t_score / self.cfg.K_NEIGHBOR_CAP, 1.0)
+        dist = min_dist_to_t.get(g)
+        proximity_t = 0.0 if dist is None else 1.0 / (1.0 + dist)
+        return 0.6 * direct_t_score + 0.4 * proximity_t
     
     def _calc_topology_score(self, g: str) -> float:
         """全局拓扑评分：degree Z-score + betweenness rank（避免量纲被吞）。"""
         degree = self.G.degree(g)
         degree_z = (degree - self.avg_degree) / self.std_degree
         
-        # betweenness 做 rank 百分位标准化，而非原始值（原始值在 2 万节点网络中接近 0）
-        bt_raw = self.betweenness.get(g, 0.0)
-        bt_all = np.array(list(self.betweenness.values()))
-        bt_rank_pct = percentileofscore(bt_all, bt_raw, kind='rank') / 100.0  # 0~1
+        # betweenness rank is precomputed once; building the full array here is expensive at scale.
+        bt_rank_pct = self.betweenness_rank_pct.get(g, 0.0)
         
         # sigmoid 压缩 degree_z（避免极端 hub 基因垄断）
         sigmoid_dz = 1.0 / (1.0 + np.exp(-degree_z))
@@ -2112,10 +2231,11 @@ class RareDiseasePPIScorer:
         }
         
         # Step 5: 双轴评分
-        records = []
-        for g in G:
-            score_dict = self.ppi_engine.score_gene(g, D, T, T_weights)
-            top_n = self.ppi_engine.get_top_neighbors(g, D, T, T_weights)
+        records = self.ppi_engine.score_genes_batch(G, D, T, T_weights)
+        include_neighbors = self.cfg.TOP_N_NEIGHBORS > 0
+        for score_dict in records:
+            g = score_dict["gene"]
+            top_n = self.ppi_engine.get_top_neighbors(g, D, T, T_weights) if include_neighbors else []
             d_gene_evidence = D_evidence.get(g, {}) if g in D_set else {}
             t_gene_evidence = T_evidence.get(g, {})
             
@@ -2132,7 +2252,6 @@ class RareDiseasePPIScorer:
             score_dict["t_gene_count"] = len(T)
             score_dict["top_neighbors_json"] = json.dumps(top_n, ensure_ascii=False)
             score_dict["top_neighbors_count"] = len(top_n)
-            records.append(score_dict)
             
         df = pd.DataFrame(records)
         

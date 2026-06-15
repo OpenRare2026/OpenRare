@@ -47,32 +47,72 @@ def _unique_preserve_order(values: Iterable[str]) -> List[str]:
     return out
 
 
-def build_vep_gene_summary(vep_csv: str) -> pd.DataFrame:
-    vep = pd.read_csv(vep_csv, low_memory=False)
-    if "gene_symbol" not in vep.columns:
+def build_vep_gene_summary(vep_csv: str, chunksize: int = 250_000) -> pd.DataFrame:
+    header = pd.read_csv(vep_csv, nrows=0)
+    if "gene_symbol" not in header.columns:
         raise ValueError(f"VEP CSV missing gene_symbol column: {vep_csv}")
 
-    vep["gene_symbol"] = vep["gene_symbol"].map(_clean_str)
-    vep = vep[(vep["gene_symbol"] != "") & (vep["gene_symbol"] != "-")]
-    if vep.empty:
+    has_rank = "pathogenic_rank" in header.columns
+    has_cadd = "cadd_phred" in header.columns
+    usecols = ["gene_symbol"]
+    if has_rank:
+        usecols.append("pathogenic_rank")
+    if has_cadd:
+        usecols.append("cadd_phred")
+
+    stats: Dict[str, Dict[str, Any]] = {}
+    reader = pd.read_csv(
+        vep_csv,
+        usecols=usecols,
+        chunksize=max(int(chunksize), 1),
+        low_memory=True,
+    )
+    for chunk in reader:
+        chunk["gene_symbol"] = chunk["gene_symbol"].map(_clean_str)
+        chunk = chunk[(chunk["gene_symbol"] != "") & (chunk["gene_symbol"] != "-")]
+        if chunk.empty:
+            continue
+
+        if has_rank:
+            chunk["pathogenic_rank_num"] = pd.to_numeric(chunk["pathogenic_rank"], errors="coerce")
+        else:
+            chunk["pathogenic_rank_num"] = pd.NA
+        if has_cadd:
+            chunk["cadd_phred_num"] = pd.to_numeric(chunk["cadd_phred"], errors="coerce")
+        else:
+            chunk["cadd_phred_num"] = pd.NA
+
+        grouped = chunk.groupby("gene_symbol", sort=False).agg(
+            variant_row_count=("gene_symbol", "size"),
+            best_pathogenic_rank=("pathogenic_rank_num", "min"),
+            max_cadd_phred=("cadd_phred_num", "max"),
+        )
+        for gene, row in grouped.iterrows():
+            current = stats.setdefault(
+                gene,
+                {
+                    "variant_row_count": 0,
+                    "best_pathogenic_rank": pd.NA,
+                    "max_cadd_phred": pd.NA,
+                },
+            )
+            current["variant_row_count"] += int(row["variant_row_count"])
+            rank = row["best_pathogenic_rank"]
+            if pd.notna(rank):
+                if pd.isna(current["best_pathogenic_rank"]) or float(rank) < float(current["best_pathogenic_rank"]):
+                    current["best_pathogenic_rank"] = float(rank)
+            cadd = row["max_cadd_phred"]
+            if pd.notna(cadd):
+                if pd.isna(current["max_cadd_phred"]) or float(cadd) > float(current["max_cadd_phred"]):
+                    current["max_cadd_phred"] = float(cadd)
+
+    if not stats:
         raise ValueError("VEP CSV has no usable gene_symbol values")
 
-    if "pathogenic_rank" in vep.columns:
-        vep["pathogenic_rank_num"] = pd.to_numeric(vep["pathogenic_rank"], errors="coerce")
-    else:
-        vep["pathogenic_rank_num"] = pd.NA
-
-    cadd_col = "cadd_phred" if "cadd_phred" in vep.columns else None
-    agg: Dict[str, Any] = {
-        "best_pathogenic_rank": ("pathogenic_rank_num", "min"),
-        "variant_row_count": ("gene_symbol", "size"),
-    }
-    if cadd_col:
-        agg["max_cadd_phred"] = (cadd_col, lambda s: pd.to_numeric(s, errors="coerce").max())
-
-    summary = vep.groupby("gene_symbol", as_index=False).agg(**agg)
-    if "max_cadd_phred" not in summary.columns:
-        summary["max_cadd_phred"] = pd.NA
+    summary = pd.DataFrame(
+        {"gene_symbol": gene, **values}
+        for gene, values in stats.items()
+    )
     summary["_rank_sort"] = pd.to_numeric(summary["best_pathogenic_rank"], errors="coerce").fillna(10**9)
     summary = summary.sort_values(
         ["_rank_sort", "variant_row_count", "gene_symbol"],
@@ -108,8 +148,8 @@ def build_final_table(
     include_neighbors: bool = False,
     include_evidence_json: bool = False,
 ) -> pd.DataFrame:
-    phenotype = pd.read_csv(phenotype_csv)
-    if "gene_symbol" not in phenotype.columns:
+    phenotype_header = pd.read_csv(phenotype_csv, nrows=0)
+    if "gene_symbol" not in phenotype_header.columns:
         raise ValueError(f"phenotype-gene CSV missing gene_symbol column: {phenotype_csv}")
 
     ppi = ppi.sort_values("ppi_final", ascending=False).reset_index(drop=True)
@@ -128,7 +168,8 @@ def build_final_table(
         "best_disease_match_status",
         "mapping_basis",
     ]
-    phenotype_columns = [col for col in phenotype_columns if col in phenotype.columns]
+    phenotype_columns = [col for col in phenotype_columns if col in phenotype_header.columns]
+    phenotype = pd.read_csv(phenotype_csv, usecols=phenotype_columns)
 
     merged = ppi.merge(phenotype[phenotype_columns], left_on="gene", right_on="gene_symbol", how="left")
     if "gene_symbol" in merged.columns:
@@ -223,6 +264,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--include-neighbors", action="store_true", help="keep top_neighbors_json in final CSV")
     parser.add_argument("--include-evidence-json", action="store_true", help="keep D/T evidence JSON columns in final CSV")
+    parser.add_argument("--vep-chunksize", type=int, default=250_000, help="rows per chunk when reading large VEP CSV")
     parser.add_argument("--no-assume-hgnc-standardized", action="store_true")
     return parser.parse_args()
 
@@ -234,13 +276,16 @@ def main() -> int:
     if args.clean_output_dir:
         clean_output_dir(output_csv)
 
-    vep_summary = build_vep_gene_summary(args.vep_output_csv)
+    vep_summary = build_vep_gene_summary(args.vep_output_csv, chunksize=args.vep_chunksize)
     candidate_genes = _unique_preserve_order(vep_summary["gene_symbol"].astype(str).tolist())
     hpo_ids = normalize_hpo_ids(_read_items_file(args.hpo_file), deduplicate=False)
     if not hpo_ids:
         raise SystemExit("HPO list is empty")
 
-    cfg = Config(data_dir=args.data_dir)
+    cfg = Config(
+        data_dir=args.data_dir,
+        TOP_N_NEIGHBORS=Config.TOP_N_NEIGHBORS if args.include_neighbors else 0,
+    )
     scorer = RareDiseasePPIScorer(cfg)
     scorer.initialize()
     ppi = scorer.run(

@@ -191,7 +191,7 @@ if BaseModel is not None:
         @field_validator("candidate_genes")
         @classmethod
         def _validate_candidate_genes(cls, value):
-            if len(value) > 2000:
+            if len(value) > 200000:
                 raise ValueError("candidate_genes 不应超过 2000 个；标准场景建议约 500 个以内")
             return value
 
@@ -288,7 +288,7 @@ def config_from_run_parameters(params: RunParameters) -> Config:
 
 def validate_run_parameters(params: RunParameters):
     """Validate merged CLI/API parameters."""
-    if len(params.candidate_genes) > 2000:
+    if len(params.candidate_genes) > 200000:
         raise ValueError("candidate_genes 不应超过 2000 个；标准场景建议约 500 个以内")
     if len(params.hpo_ids) > 2000:
         raise ValueError("hpo_ids 不应超过 2000 个")
@@ -307,7 +307,6 @@ def validate_run_parameters(params: RunParameters):
         "t_top_n_expr": params.t_top_n_expr,
         "t_pathway_top_n": params.t_pathway_top_n,
         "k_neighbor_cap": params.k_neighbor_cap,
-        "top_n_neighbors": params.top_n_neighbors,
         "string_chunksize": params.string_chunksize,
         "betweenness_sample_k": params.betweenness_sample_k,
     }

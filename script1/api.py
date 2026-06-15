@@ -60,6 +60,7 @@ class CleanCaseParameters(BaseModel):
     include_neighbors: bool = False
     include_evidence_json: bool = False
     assume_hgnc_standardized: bool = True
+    vep_chunksize: int = 250_000
 
 
 def _model_dump(model: Any) -> Dict[str, Any]:
@@ -165,6 +166,7 @@ async def _clean_case_params_from_uploads(
     include_neighbors: bool,
     include_evidence_json: bool,
     assume_hgnc_standardized: bool,
+    vep_chunksize: int,
 ) -> tuple[CleanCaseParameters, str]:
     run_dir = Path(DEFAULT_UPLOAD_DIR) / f"clean_case_{uuid.uuid4().hex}"
     input_dir = run_dir / "inputs"
@@ -187,6 +189,7 @@ async def _clean_case_params_from_uploads(
         include_neighbors=include_neighbors,
         include_evidence_json=include_evidence_json,
         assume_hgnc_standardized=assume_hgnc_standardized,
+        vep_chunksize=vep_chunksize,
     )
     return params, str(run_dir)
 
@@ -320,12 +323,15 @@ def _run_clean_case(params: CleanCaseParameters) -> Dict[str, Any]:
     if not hpo_ids:
         raise ValueError("hpo_ids/hpo_file 不能为空")
 
-    vep_summary = build_vep_gene_summary(params.vep_output_csv)
+    vep_summary = build_vep_gene_summary(params.vep_output_csv, chunksize=params.vep_chunksize)
     candidate_genes = _unique_preserve_order(vep_summary["gene_symbol"].astype(str).tolist())
     if not candidate_genes:
         raise ValueError("VEP 输入中没有可用 gene_symbol")
 
-    cfg = Config(data_dir=params.data_dir)
+    cfg = Config(
+        data_dir=params.data_dir,
+        TOP_N_NEIGHBORS=Config.TOP_N_NEIGHBORS if params.include_neighbors else 0,
+    )
     scorer = _get_scorer(cfg)
     with _score_lock:
         ppi = scorer.run(
@@ -333,7 +339,7 @@ def _run_clean_case(params: CleanCaseParameters) -> Dict[str, Any]:
             hpo_ids=hpo_ids,
             assume_hgnc_standardized=params.assume_hgnc_standardized,
         )
-        audit = json.loads(json.dumps(scorer.last_audit, ensure_ascii=False, default=str))
+        audit = scorer.last_audit
 
     final = build_final_table(
         ppi=ppi,
@@ -353,6 +359,8 @@ def _run_clean_case(params: CleanCaseParameters) -> Dict[str, Any]:
         "csv_path": str(output_csv),
         "columns": list(final.columns),
         "candidate_gene_count": int(len(candidate_genes)),
+        "vep_chunksize": int(params.vep_chunksize),
+        "include_neighbors": bool(params.include_neighbors),
         "hpo_count": int(len(hpo_ids)),
         "ranked_gene_count": int(final["final_rank"].notna().sum()) if "final_rank" in final else 0,
         "in_network": int(ppi["in_network"].sum()) if "in_network" in ppi else 0,
@@ -361,7 +369,7 @@ def _run_clean_case(params: CleanCaseParameters) -> Dict[str, Any]:
         "mapped_tissue_counts": audit.get("mapped_tissue_counts", {}),
     }
     if params.include_audit:
-        payload["audit"] = audit
+        payload["audit"] = json.loads(json.dumps(audit, ensure_ascii=False, default=str))
     return payload
 
 
@@ -531,6 +539,7 @@ async def score_clean_case_upload(
     include_neighbors: bool = Form(False),
     include_evidence_json: bool = Form(False),
     assume_hgnc_standardized: bool = Form(True),
+    vep_chunksize: int = Form(250_000),
 ):
     try:
         params, input_dir = await _clean_case_params_from_uploads(
@@ -545,6 +554,7 @@ async def score_clean_case_upload(
             include_neighbors=include_neighbors,
             include_evidence_json=include_evidence_json,
             assume_hgnc_standardized=assume_hgnc_standardized,
+            vep_chunksize=vep_chunksize,
         )
         result = await run_in_threadpool(_run_clean_case, params)
         return _completion(input_dir=input_dir, **result)
@@ -659,6 +669,7 @@ async def score_clean_case_upload_async(
     include_neighbors: bool = Form(False),
     include_evidence_json: bool = Form(False),
     assume_hgnc_standardized: bool = Form(True),
+    vep_chunksize: int = Form(250_000),
 ):
     try:
         params, input_dir = await _clean_case_params_from_uploads(
@@ -673,6 +684,7 @@ async def score_clean_case_upload_async(
             include_neighbors=include_neighbors,
             include_evidence_json=include_evidence_json,
             assume_hgnc_standardized=assume_hgnc_standardized,
+            vep_chunksize=vep_chunksize,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
