@@ -21,6 +21,25 @@ def _parse_hpo_terms(raw: str) -> list[str]:
     return sorted(set(_HPO_PATTERN.findall(raw or "")))
 
 
+def _hpo_terms_from_raghpo_returns(payload: dict | None) -> list[str]:
+    if not payload:
+        return []
+    terms: list[str] = []
+    for row in payload.get("results") or []:
+        if not isinstance(row, dict):
+            continue
+        hpo_id = (row.get("hpo_id") or "").strip()
+        if _HPO_PATTERN.fullmatch(hpo_id):
+            terms.append(hpo_id)
+    return sorted(set(terms))
+
+
+def _resolve_hpo_terms(hpo_raw: str, raghpo_returns: dict | None) -> list[str]:
+    from_raw = _parse_hpo_terms(hpo_raw)
+    from_returns = _hpo_terms_from_raghpo_returns(raghpo_returns)
+    return sorted(set(from_raw) | set(from_returns))
+
+
 def _parse_raghpo_returns(raw: str) -> dict | None:
     text = (raw or "").strip()
     if not text:
@@ -78,6 +97,7 @@ def load_manifest(path: str | Path, row_index: int = 0) -> SampleMeta:
     family_type = (row.get("家系类型") or "").strip()
 
     hpo_raw = row.get("raghpo", "") or ""
+    raghpo_returns = _parse_raghpo_returns(row.get("raghpo-returns", "") or "")
     wide_table = _clean_path(row.get("宽表", "") or "")
 
     if wide_table and not Path(wide_table).is_absolute():
@@ -89,8 +109,8 @@ def load_manifest(path: str | Path, row_index: int = 0) -> SampleMeta:
         sample_id=(row.get("样本编号") or "").strip(),
         clinical_info=(row.get("临床信息") or "").strip(),
         hpo_raw=hpo_raw.strip(),
-        hpo_terms=_parse_hpo_terms(hpo_raw),
-        raghpo_returns=_parse_raghpo_returns(row.get("raghpo-returns", "") or ""),
+        hpo_terms=_resolve_hpo_terms(hpo_raw, raghpo_returns),
+        raghpo_returns=raghpo_returns,
         liftover_path=_clean_path(row.get("37 to 38", "") or ""),
         vcf_path=_clean_path(row.get("gz to vcf", "") or ""),
         wide_table_path=wide_table,

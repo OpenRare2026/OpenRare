@@ -17,10 +17,10 @@
 
 #### 3.{{ card.rank }}.2 变异列表
 
-| 变异 | 坐标（GRCh38） | 转录本 | 后果 | CADD | SpliceAI DS max | gnomAD AF | ClinVar | VAF |
+| 变异 | 坐标（GRCh38） | 转录本 | 后果 | CADD | SpliceAI DS max | gnomAD AF | ClinVar | 测序比例 |
 |------|----------------|--------|------|------|-----------------|-----------|---------|-----|
 {% for variant in card.variants %}
-| {{ variant.variant_label }} | {{ variant.chrom }}:{{ variant.pos }} {{ variant.ref }}>{{ variant.alt }} | {{ variant.transcript_id }} | {{ variant.consequence }} | {{ variant.cadd_phred }} | {{ variant.spliceai_ds_max }} | {{ variant.gnomad_eas_af | format_af }} | {{ variant.clinvar_significance }} | **{{ variant.vcf_info_af | format_vaf }}** |
+| {{ variant.variant_label }} | {{ variant.chrom }}:{{ variant.pos }} {{ variant.ref }}>{{ variant.alt }} | {{ variant.transcript_id }} | {{ variant.consequence }} | {{ variant.cadd_phred }} | {{ variant.spliceai_ds_max }} | {{ variant.gnomad_eas_af | format_af }} | {{ variant.clinvar_significance }} | **{{ variant.primary_vaf | format_vaf }}** |
 {% endfor %}
 
 #### 3.{{ card.rank }}.3 变异详细分析
@@ -33,9 +33,23 @@
 | 属性 | 内容 |
 |------|------|
 | 基因组坐标 | {{ variant.chrom }}:{{ variant.pos }} {{ variant.ref }}>{{ variant.alt }}（GRCh38） |
-| VAF | **{{ variant.vcf_info_af | format_vaf }}** |
-| DP | {{ variant.vcf_info_dp }} |
-| 外显子 | {{ variant.exon }} |
+| 测序等位基因比例 | **{{ variant.primary_vaf | format_vaf }}**{% if variant.has_read_level_vaf %}（基于测序 reads）{% else %}（基于 GATK 基因型 AF，当前宽表无 read 计数）{% endif %} |
+{% if variant.has_read_support %}| Reads 支持 | {{ variant.read_support_summary }} |
+{% endif %}{% if variant.show_gatk_af_row %}| GATK 基因型 AF | {{ variant.vcf_info_af | format_vaf }} |
+{% endif %}| 测序深度 | {{ variant.vcf_info_dp }} |
+{% if variant.sequencing_metrics_text != "-" %}| 碱基质量指标 | {{ variant.sequencing_metrics_text }} |
+{% endif %}{% if variant.sequencing_quality_note != "-" %}| 解读提示 | {{ variant.sequencing_quality_note }} |
+{% endif %}| 外显子 | {{ variant.exon }} |
+
+{% if has_genomic_context(variant, card, ctx.meta) %}
+###### 3.{{ card.rank }}.3.{{ loop.index }}.1b 基因组注释与人群上下文
+
+| 维度 | 结果 | 解读提示 |
+|------|------|----------|
+{% for item in genomic_context_items(variant, card, ctx.meta) %}
+| {{ item.label }} | {{ item.value }} | {{ item.note }} |
+{% endfor %}
+{% endif %}
 
 ###### 3.{{ card.rank }}.3.{{ loop.index }}.2 转录本与功能影响
 
@@ -82,10 +96,10 @@
 |------|------|----------------|------------|----------|
 {% if narrative.literature %}
 {% for paper in narrative.literature %}
-| {{ paper.pmid or "待补充" }} | {{ paper.title or "待补充" }} | {{ paper.authors_journal_year or "待补充" }} | {{ paper.summary or "待补充" }} | {{ paper.evidence_level or "supporting" }} |
+| {{ paper.pmid or "-" }} | {{ paper.title or "-" }} | {{ paper.authors_journal_year or "-" }} | {{ paper.summary or "-" }} | {{ paper.evidence_level or "supporting" }} |
 {% endfor %}
 {% else %}
-| 待 Agent 补充 | - | - | - | - |
+| - | - | - | 暂无检索到相关文献 | - |
 {% endif %}
 
 {% endfor %}

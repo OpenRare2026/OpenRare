@@ -6,7 +6,7 @@ from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
-from report.models import GeneCard, ReportContext, VariantRecord
+from report.models import GeneCard, ReportContext, SampleMeta, VariantRecord, build_genomic_context_items
 
 TEMPLATE_DIR = Path(__file__).resolve().parent / "templates"
 
@@ -116,16 +116,16 @@ def _gene_narrative_or_default(card: GeneCard) -> dict:
     return {
         "gene_function": card.script_gene_function
         if card.script_gene_function not in ("", "-")
-        else "待 NCBI Gene / Agent 补充",
+        else "-",
         "inheritance_mode": card.omim_inheritance_mode
         if card.omim_inheritance_mode not in ("", "-")
         else "待结合家系与变异类型进一步判断",
         "phenotype_association": card.main_associated_phenotype
         if card.main_associated_phenotype not in ("", "-")
-        else "待 Agent 结合 HPO 与疾病数据库补充",
+        else "-",
         "pathway_summary": card.main_pathway
         if card.main_pathway not in ("", "-")
-        else "待 Agent 补充",
+        else "-",
         "literature": [],
         "clinical_note": card.evidence_summary if card.evidence_summary != "-" else "",
         "therapeutic_implication": card.drug_recommendation_summary or "",
@@ -139,6 +139,18 @@ def _safe_float(value: str) -> float:
         return 0.0
 
 
+def _genomic_context_items(variant: VariantRecord, card: GeneCard, meta: SampleMeta) -> list[dict[str, str]]:
+    return build_genomic_context_items(
+        variant,
+        gene_variant_count=len(card.variants),
+        family_type=meta.family_type,
+    )
+
+
+def _has_genomic_context(variant: VariantRecord, card: GeneCard, meta: SampleMeta) -> bool:
+    return bool(_genomic_context_items(variant, card, meta))
+
+
 def _create_env() -> Environment:
     env = Environment(
         loader=FileSystemLoader(TEMPLATE_DIR),
@@ -149,6 +161,8 @@ def _create_env() -> Environment:
     env.filters["format_af"] = _format_af
     env.filters["format_vaf"] = _format_vaf
     env.filters["safe_float"] = _safe_float
+    env.globals["genomic_context_items"] = _genomic_context_items
+    env.globals["has_genomic_context"] = _has_genomic_context
     env.globals["parse_evidence_tree"] = _parse_evidence_tree
     env.globals["fallback_clinical_advice"] = _fallback_clinical_advice
     env.globals["fallback_key_findings"] = _fallback_key_findings

@@ -15,6 +15,7 @@ from report.models import (
     ReportContext,
     ReportNarrative,
     SampleMeta,
+    build_genomic_context_items,
 )
 
 _report_gene_agent = None
@@ -59,20 +60,31 @@ async def _run_agent_json(agent, user_message: str) -> dict[str, Any]:
     return _extract_json(_final_agent_text(result))
 
 
-def _variant_payload(card: GeneCard) -> list[dict[str, Any]]:
-    return [
-        {
-            "coordinate": variant.coordinate,
-            "hgvsc": variant.hgvsc,
-            "hgvsp": variant.hgvsp,
-            "consequence": variant.consequence,
-            "clinvar": variant.clinvar_significance,
-            "cadd": variant.cadd_phred,
-            "vaf": variant.vcf_info_af,
-            "evidence_summary": variant.evidence_summary,
-        }
-        for variant in card.variants
-    ]
+def _variant_payload(meta: SampleMeta, card: GeneCard) -> list[dict[str, Any]]:
+    payloads: list[dict[str, Any]] = []
+    for variant in card.variants:
+        payloads.append(
+            {
+                "coordinate": variant.coordinate,
+                "hgvsc": variant.hgvsc,
+                "hgvsp": variant.hgvsp,
+                "consequence": variant.consequence,
+                "clinvar": variant.clinvar_significance,
+                "cadd": variant.cadd_phred,
+                "vaf": variant.primary_vaf,
+                "gatk_af": variant.vcf_info_af,
+                "read_vaf": variant.vcf_info_vaf,
+                "read_support": variant.read_support_summary,
+                "sequencing_quality_note": variant.sequencing_quality_note,
+                "genomic_context": build_genomic_context_items(
+                    variant,
+                    gene_variant_count=len(card.variants),
+                    family_type=meta.family_type,
+                ),
+                "evidence_summary": variant.evidence_summary,
+            }
+        )
+    return payloads
 
 
 def _drug_payload(card: GeneCard) -> dict[str, Any]:
@@ -102,7 +114,7 @@ def _gene_card_payload(meta: SampleMeta, card: GeneCard) -> dict[str, Any]:
         "omim_inheritance_mode": card.omim_inheritance_mode,
         "clinvar": card.top_clinvar,
         "main_consequence": card.main_consequence,
-        "variants": _variant_payload(card),
+        "variants": _variant_payload(meta, card),
         "strict_drug_candidates": _drug_payload(card),
     }
 
@@ -175,7 +187,7 @@ async def enrich_clinical_advice(context: ReportContext) -> ClinicalAdvice:
                 "consequence": card.main_consequence,
                 "reactome_main_pathway": card.main_pathway,
                 "open_targets_main_phenotype": card.main_associated_phenotype,
-                "variants": _variant_payload(card),
+                "variants": _variant_payload(context.meta, card),
                 "strict_drug_candidates": _drug_payload(card),
             }
             for card in context.gene_cards
