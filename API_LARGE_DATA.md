@@ -1,148 +1,80 @@
-# 大数据 API 使用说明
+# Rare Disease Dual-Anchor PPI Scoring
 
-大 VEP CSV 推荐使用 clean-case 异步 API。
+This repository keeps the runnable workflow in `script1/`. Large reference databases, local Python environments, logs, and generated outputs are intentionally excluded from Git so other users can clone the code and reproduce the workflow with their own `data/` directory.
 
-该入口针对 9GB 以上 VEP CSV 做了优化：
-
-- VEP CSV 按 chunk 流式读取。
-- 只读取 `gene_symbol`、`pathogenic_rank`、`cadd_phred` 三类必要列。
-- PPI 评分使用锚点侧批量最短路径映射，避免对每个候选基因单独遍历图。
-- 邻居 JSON 默认可关闭；只有调试或需要完整证据时再打开。
-- 默认候选基因取 top 30000 VEP 基因和 top 30000 phenotype-ranked 基因的并集。设置 `candidate_top_n=0` 表示使用全部基因。
-
-## 启动 API
-
-```bash
-cd script1
-RARE_PPI_PORT=9000 ./run_api.sh
-```
-
-确认当前服务是支持大数据参数的新版本：
-
-```bash
-curl http://127.0.0.1:9000/version | python -m json.tool
-```
-
-返回结果的 `supports_parameters` 应包含：
+Clean-case 病例流程会为每个样本输出两张结果表：
 
 ```text
-candidate_top_n
-output_all_ppi_fields
-ppi_output_csv
-vep_chunksize
+*_ppi_score.csv    纯 PPI 评分表；字段与下方 PPI 输出字段一致
+*_final_score.csv  最终病例融合表；合并 phenotype、VEP 和 PPI 证据，详见 FINAL_SCORE_README.md
 ```
 
-如果请求返回 422，并提示这些字段不存在，说明 9000 端口还在跑旧代码，需要重新拉取代码并重启 `run_api.sh`。
-
-## 每个样本输出两张表
-
-clean-case 每次运行会写两个 CSV：
-
-```text
-ppi_output_csv  纯 PPI 评分表，字段与主 README 的 PPI 输出表一致
-output_csv      最终病例融合表，合并 phenotype-gene 分数、VEP 汇总和 PPI 分数
-```
-
-最终融合表 `*_final_score.csv` 的完整字段、排名规则和解读方式见：
-
-```text
-FINAL_SCORE_README.md
-```
-
-如果不传 `ppi_output_csv`，程序会根据 `output_csv` 自动生成，例如：
-
-```text
-case_final_score.csv -> case_ppi_score.csv
-final_score.csv      -> ppi_score.csv
-```
-
-## 用 curl -F 上传大文件
-
-当客户端需要通过 HTTP 上传文件时，使用 upload 异步接口：
+## Quick Start
 
 ```bash
-curl -X POST http://127.0.0.1:9000/score/clean-case/upload/async \
-  -F "phenotype_gene_csv=@/home/xiesiwei/vep_runner/26B01490717_3a1e48_fork16_hpo_/gene_phenotype_score.csv" \
-  -F "vep_output_csv=@/home/xiesiwei/vep_runner/26B01490717_3a1e48_fork16_hpo_/tes1.vep.csv" \
-  -F "hpo_file=@/path/to/hpo_ids.txt" \
-  -F "output_csv=/home/xiesiwei/vep_runner/26B01490717_3a1e48_fork16_hpo_/output/case_final_score.csv" \
-  -F "ppi_output_csv=/home/xiesiwei/vep_runner/26B01490717_3a1e48_fork16_hpo_/output/case_ppi_score.csv" \
-  -F "clean_output_dir=true" \
-  -F "candidate_top_n=30000" \
-  -F "output_all_ppi_fields=true" \
-  -F "include_audit=false" \
-  -F "vep_chunksize=250000"
+
+git clone https://github.com/ChangQing-LU/PPI_network.git
+cd PPI_network/script1
+./setup_env.sh
+
+./download_data.sh
 ```
 
-返回结果会包含 `job_id`。用下面命令查看进度：
+Unless otherwise noted, the commands below are run from `script1/`.
 
-```bash
-curl http://127.0.0.1:9000/score/<job_id> | python -m json.tool
-```
 
-任务状态会包含：
+本项目用于对罕见病候选基因做 PPI 网络优先级排序。核心思想是把每个候选基因分别放到疾病锚点 `D` 和组织核心锚点 `T` 构成的锚点网络中评分，而不是只分析候选基因列表内部的互作。
+
+## 核心逻辑
+
+候选基因列表 `G` 已经是 HGNC 标准化后的基因名。
+
+评分目标：
 
 ```text
-stage
-message
-progress
+candidate gene g
+  -> 在完整 STRING 网络中计算一次从 g 出发的单源最短路径
+  -> 对 D ∪ T 锚点查表得到网络邻近分
+  -> 计算 disease_score、tissue_score、topology_score
+  -> 加权融合得到 ppi_final
 ```
 
-## 直接提交服务器上的已有路径
+三条轴的含义：
 
-如果 VEP 和 phenotype CSV 已经在 API 所在服务器上，推荐用路径型异步接口，避免把 9GB 文件再上传复制一份：
+1. `D` 轴：这个病或相近表型已知哪些基因致病。
+2. `T` 轴：目标组织离不开哪些核心基因。
+3. `Topology` 轴：候选基因在 STRING 网络中的拓扑重要性。
 
-```bash
-curl -X POST http://127.0.0.1:9000/score/clean-case/async \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "phenotype_gene_csv": "../input/gene_phenotype_score.csv",
-    "vep_output_csv": "../input/tes1.vep.csv",
-    "hpo_file": "../input/hpo_ids.txt",
-    "output_csv": "../output/case_final_score.csv",
-    "ppi_output_csv": "../output/case_ppi_score.csv",
-    "clean_output_dir": true,
-    "include_neighbors": false,
-    "include_evidence_json": false,
-    "include_audit": false,
-    "output_all_ppi_fields": false,
-    "candidate_top_n": 30000,
-    "timeout": 0,
-    "vep_chunksize": 250000
-  }'
-```
-
-如果需要完整 PPI 证据字段，包括证据 JSON 和 `top_neighbors_json`，设置：
-
-```json
-{
-  "output_all_ppi_fields": true,
-  "candidate_top_n": 30000
-}
-```
-
-注意：完整证据字段会让 CSV 更大，因为每个保留基因都写入证据 JSON 和 STRING Top 邻居。
-
-## 查询和下载
-
-```bash
-curl http://127.0.0.1:9000/score/<job_id>
-curl -L -o final_score.csv http://127.0.0.1:9000/score/<job_id>/csv
-curl -L -o ppi_score.csv http://127.0.0.1:9000/score/<job_id>/ppi-csv
-```
-
-## 常用表单字段
+基础权重：
 
 ```text
-phenotype_gene_csv=@gene_phenotype_score.csv
-vep_output_csv=@tes1.vep.csv
-hpo_file=@hpo_ids.txt
-output_csv=../output/case_final_score.csv
-ppi_output_csv=../output/case_ppi_score.csv
-include_neighbors=false
-include_evidence_json=false
-include_audit=false
-output_all_ppi_fields=false
-candidate_top_n=30000
-vep_chunksize=250000
+W_disease  = 0.30
+W_tissue   = 0.45
+W_topology = 0.25
 ```
+
+最终融合时只使用可用轴，并按参与权重重归一化：
+
+```text
+ppi_final = sum(W_i * score_i for available axes)
+          / sum(W_i for available axes)
+```
+
+如果 `D` 或 `T` 为空，不给常数分，也不用 degree 伪造锚点分；该轴直接不参与最终融合。
+
+组织轴权重最高，因为罕见病的新致病基因往往不在已知疾病基因集 `D` 中，但可能和目标组织核心功能模块 `T` 紧密互作。
+
+## 输入与输出
+
+输入：
+
+| 参数 | 类型 | 说明 |
+| --- | --- | --- |
+| `candidate_genes` | `List[str]` | 已 HGNC 标准化的候选基因 SYMBOL 列表 |
+| `hpo_ids` | `List[str]` | 患者 HPO ID 列表，例如 `["HP:0000488", "HP:0000505"]` |
+
+输出：
+
+`RareDiseasePPIScorer.run()` 返回 `pandas.DataFrame`，每行对应一个候选基因。
+
+| 字段 | 说明 |
