@@ -1,0 +1,8 @@
+source_path	v3_path	role
+/mnt/workspace/changan/1kgp/beagle_pipeline_param/scripts/run_beagle_refsupport_pipeline.sh	phasing_beagle_refsupport/scripts/run_beagle_refsupport_pipeline.sh	main phasing/ref-support pipeline dispatcher
+/mnt/workspace/changan/1kgp/beagle_pipeline_param/scripts/process_one_chromosome.sh	phasing_beagle_refsupport/scripts/process_one_chromosome.sh	per-chromosome worker, runs Beagle no-impute
+/mnt/workspace/changan/1kgp/beagle_pipeline_param/scripts/merge_beagle_with_ref_support.py	phasing_beagle_refsupport/scripts/merge_beagle_with_ref_support.py	merge phased GT and reference support INFO back to original sites
+/mnt/workspace/changan/1kgp/beagle_pipeline_param/scripts/package_chn_ref.sh	phasing_beagle_refsupport/scripts/package_chn_ref.sh	package and verify CHN reference panel
+/mnt/workspace/changan/1kgp/beagle_pipeline_param/api_service/app.py	phasing_beagle_refsupport/api_service/app.py	FastAPI wrapper around phasing pipeline
+/mnt/workspace/changan/1kgp/beagle_pipeline_param/api_service/run_api_docker.sh	phasing_beagle_refsupport/api_service/run_api_docker.sh	Docker API launcher
+/mnt/workspace/changan/1kgp/beagle_pipeline_param/api_service/test_api_curl.sh	phasing_beagle_refsupport/api_service/test_api_curl.sh	API curl smoke test

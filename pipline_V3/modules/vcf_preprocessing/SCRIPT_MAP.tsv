@@ -1,0 +1,11 @@
+source_path	v3_path	role
+/mnt/workspace/wangzilu1/openrare_submit/repo/run_vcf_preprocessing.sh	vcf_preprocessing/run_vcf_preprocessing.sh	main VCF preprocessing dispatcher: VAF then CRE/NCRNA annotation
+/mnt/workspace/wangzilu1/openrare_submit/repo/preprocessing_api.py	vcf_preprocessing/preprocessing_api.py	FastAPI wrapper for full preprocessing pipeline
+/mnt/workspace/wangzilu1/openrare_submit/repo/start_preprocessing_api.sh	vcf_preprocessing/start_preprocessing_api.sh	API launcher
+/mnt/workspace/wangzilu1/openrare_submit/repo/add_vaf_to_vcf_info/step2_add_vaf_to_vcf_info.py	vcf_preprocessing/add_vaf_to_vcf_info/step2_add_vaf_to_vcf_info.py	compute VAF and write INFO/VAF
+/mnt/workspace/wangzilu1/openrare_submit/repo/regulatory_annotation/regulatory_annotation_api.py	vcf_preprocessing/regulatory_annotation/regulatory_annotation_api.py	FastAPI wrapper for CRE/NCRNA annotation
+/mnt/workspace/wangzilu1/openrare_submit/repo/regulatory_annotation/scripts/run_regulatory_annotation.sh	vcf_preprocessing/regulatory_annotation/scripts/run_regulatory_annotation.sh	regulatory annotation shell dispatcher
+/mnt/workspace/wangzilu1/openrare_submit/repo/regulatory_annotation/scripts/annotate_vcf_regulatory.py	vcf_preprocessing/regulatory_annotation/scripts/annotate_vcf_regulatory.py	annotate ENCODE SCREEN cCRE overlaps into VCF INFO
+/mnt/workspace/wangzilu1/openrare_submit/repo/regulatory_annotation/scripts/annotate_vcf_ncrna.py	vcf_preprocessing/regulatory_annotation/scripts/annotate_vcf_ncrna.py	annotate GENCODE ncRNA overlaps into VCF INFO
+/mnt/workspace/wangzilu1/openrare_submit/repo/regulatory_annotation/scripts/prepare_encode_ccre_bed.py	vcf_preprocessing/regulatory_annotation/scripts/prepare_encode_ccre_bed.py	prepare cCRE slim BED
+/mnt/workspace/wangzilu1/openrare_submit/repo/regulatory_annotation/scripts/prepare_gencode_ncrna_bed.py	vcf_preprocessing/regulatory_annotation/scripts/prepare_gencode_ncrna_bed.py	prepare ncRNA slim BED

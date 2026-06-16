@@ -1,0 +1,91 @@
+{
+  "base_dir": "/mnt/workspace/pangjiangshuan/vep_runner",
+  "vep": "/mnt/workspace/pangjiangshuan/vep_runner/bin/vep",
+  "env_bin": "/mnt/workspace/pangjiangshuan/vep_runner/envs/vep/bin",
+  "tmp_dir": "/mnt/workspace/pangjiangshuan/vep_runner/tmp",
+  "cache_dir": "/mnt/workspace/pangjiangshuan/vep_runner/vep_cache",
+  "plugin_dir": "/mnt/workspace/pangjiangshuan/vep_runner/vep_cache/Plugins",
+  "assembly": "GRCh38",
+  "species": "homo_sapiens",
+  "fasta": "/mnt/workspace/pangjiangshuan/vep_runner/vep_data/reference/GRCh38.p14.genome.fa",
+  "gtex_transcript_tpm": "/mnt/workspace/pangjiangshuan/vep_runner/vep_data/GTEx/v11/expression/gtex_v11_transcript_tpm.parquet",
+  "hpo_data_dir": "/mnt/workspace/pangjiangshuan/vep_runner/vep_data/hpo_tpm",
+  "regulatory_ccre_bed": "/mnt/workspace/pangjiangshuan/vep_runner/vep_data/regulatory/hg38/encode_screen_v4_grch38_ccre.slim.bed.gz",
+  "plugins": {
+    "cadd": {
+      "enabled": true,
+      "snv": "/mnt/workspace/pangjiangshuan/vep_runner/vep_data/CADD/whole_genome_SNVs.tsv.gz",
+      "indels": "/mnt/workspace/pangjiangshuan/vep_runner/vep_data/CADD/gnomad.genomes.r4.0.indel.tsv.gz"
+    },
+    "spliceai": {
+      "enabled": true,
+      "snv": "/mnt/workspace/pangjiangshuan/vep_runner/vep_data/SpliceAI/spliceai_scores.masked.snv.ensembl_mane_v1.4.grch38.vcf.gz",
+      "indel": "/mnt/workspace/pangjiangshuan/vep_runner/vep_data/SpliceAI/spliceai_scores.empty.indel.grch38.vcf.gz"
+    },
+    "alphamissense": {
+      "enabled": true,
+      "file": "/mnt/workspace/pangjiangshuan/vep_runner/vep_data/AlphaMissense/AlphaMissense_hg38.tsv.gz"
+    },
+    "dbnsfp": {
+      "enabled": true,
+      "file": "/mnt/workspace/pangjiangshuan/vep_runner/vep_data/dbNSFP/dbNSFP5.3.1a_grch38.gz",
+      "params": [
+        "pep_match=0",
+        "transcript_match=1",
+        "SIFT_score",
+        "SIFT_pred",
+        "Polyphen2_HDIV_score",
+        "Polyphen2_HDIV_pred",
+        "REVEL_score",
+        "CADD_phred",
+        "gnomAD4.1_joint_POPMAX_AF",
+        "gnomAD4.1_joint_EAS_AF",
+        "gnomAD4.1_joint_nhomalt"
+      ]
+    },
+    "loftee": {
+      "enabled": true,
+      "loftee_path": "/mnt/workspace/pangjiangshuan/vep_runner/vep_cache/Plugins/loftee",
+      "human_ancestor_fa": "/mnt/workspace/pangjiangshuan/vep_runner/vep_cache/Plugins/loftee/human_ancestor.fa.gz",
+      "gerp_file": "false",
+      "conservation_file": "false"
+    },
+    "clinvar": {
+      "enabled": true,
+      "file": "/mnt/workspace/pangjiangshuan/vep_runner/vep_data/ClinVar/clinvar_20260523.vcf.gz",
+      "name": "ClinVar",
+      "format": "vcf",
+      "match": "exact",
+      "overlap": "0",
+      "fields": [
+        "CLNSIG",
+        "CLNDN",
+        "CLNDISDB",
+        "CLNREVSTAT",
+        "CLNVC",
+        "ALLELEID",
+        "GENEINFO"
+      ]
+    }
+  },
+  "default_options": [
+    "--cache",
+    "--offline",
+    "--symbol",
+    "--canonical",
+    "--mane",
+    "--appris",
+    "--tsl",
+    "--ccds",
+    "--biotype",
+    "--transcript_version",
+    "--xref_refseq",
+    "--flag_pick",
+    "--protein",
+    "--numbers",
+    "--domains",
+    "--af_gnomade",
+    "--af_gnomadg",
+    "--no_stats"
+  ]
+}
