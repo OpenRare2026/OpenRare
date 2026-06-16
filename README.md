@@ -138,20 +138,6 @@ curl -X POST http://127.0.0.1:9000/score/clean-case/upload/async \
 | --- | --- |
 | `gene_symbol` | HGNC gene symbol |
 
-推荐包含：
-
-| 字段 | 说明 |
-| --- | --- |
-| `gene_score` | phenotype-gene 分数；用于最终融合排名 |
-| `gene_rank` | phenotype-gene 排名 |
-| `conclusion_code` | phenotype 结论标签 |
-| `best_disease_score` | 最佳疾病匹配分 |
-| `best_disease_name` | 最佳疾病名称 |
-| `best_omim_id` | 最佳 OMIM ID |
-| `best_orpha_id` | 最佳 Orphanet ID |
-| `best_mondo_id` | 最佳 MONDO ID |
-| `best_disease_match_status` | 疾病匹配状态 |
-| `mapping_basis` | 疾病匹配依据 |
 
 ### VEP CSV
 
@@ -161,14 +147,6 @@ curl -X POST http://127.0.0.1:9000/score/clean-case/upload/async \
 | --- | --- |
 | `gene_symbol` | 变异对应的基因 |
 
-推荐包含：
-
-| 字段 | 说明 |
-| --- | --- |
-| `pathogenic_rank` | 变异致病性排序；按基因取最小值 |
-| `cadd_phred` | CADD PHRED 分数；按基因取最大值 |
-
-大文件模式只读取 `gene_symbol`、`pathogenic_rank`、`cadd_phred`，避免全量加载 9GB 以上 VEP CSV。
 
 ### HPO 输入
 
