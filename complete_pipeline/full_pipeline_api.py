@@ -241,7 +241,7 @@ def enqueue_run(
     status_payload = {
         "status": "queued",
         "created_at": now_iso(),
-        "request": req.dict(),
+        "request": req.model_dump(),
         "command": cmd,
         "output_dir": str(output_dir),
     }

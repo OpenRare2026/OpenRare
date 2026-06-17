@@ -1,0 +1,21 @@
+[project]
+name = "openrare-pipeline"
+version = "0.2.0"
+description = "OpenRare V3 rare disease variant analysis pipeline API"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.100.0",
+    "uvicorn[standard]>=0.20.0",
+    "pydantic>=2.0.0",
+    "python-multipart>=0.0.6",
+]
+
+[project.scripts]
+openrare-api = "backend.main:app"
+
+[tool.setuptools.packages.find]
+include = ["backend*"]
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.backends._legacy:_Backend"

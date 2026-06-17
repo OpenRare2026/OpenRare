@@ -1,0 +1,25 @@
+# OpenRare V3 Pipeline Configuration
+# Environment variables override these values at runtime.
+
+api:
+  host: "0.0.0.0"
+  port: 18081
+  jobs_dir: ~  # default: <project_root>/complete_pipeline/api_jobs
+
+phasing:
+  ref_dir: "/mnt/workspace/changan/1kgp/beagle_pipeline_param/packages/CHN_ref"
+  beagle_jar: "/mnt/workspace/changan/1kgp/beagle.27Feb25.75f.jar"
+  java_bin: "/mnt/workspace/pangjiangshuan/vep_runner/envs/vep/lib/jvm/bin/java"
+  chr_jobs: 1
+  beagle_threads: 4
+  java_heap_gb: 12
+
+pseudogene:
+  gencode_gtf: "/mnt/workspace/xiongliwen/00.PublicData/Pseudogene/GENCODE/release_49/gencode.v49.2wayconspseudos.gtf.gz"
+  pseudogene_org: "/mnt/workspace/xiongliwen/00.PublicData/Pseudogene/Pseudogene.org/Human90/Human90.txt"
+  hgnc: "/mnt/workspace/xiongliwen/00.PublicData/phenotype_hpo_v1/hgnc_complete_set.txt"
+
+vep:
+  fork: 1
+  top_k_transcripts: 5
+  keep_raw_vep: yes
