@@ -6,7 +6,7 @@ from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
-from report.models import GeneCard, ReportContext, SampleMeta, VariantRecord, build_genomic_context_items
+from report.models import ClinicalAdvice, GeneCard, ReportContext, SampleMeta, VariantRecord, build_genomic_context_items
 
 TEMPLATE_DIR = Path(__file__).resolve().parent / "templates"
 
@@ -56,21 +56,110 @@ def _parse_evidence_tree(evidence_summary: str) -> str:
     return "\n".join(lines)
 
 
+def _tokenize_phenotype_text(text: str) -> set[str]:
+    stopwords = frozenset(
+        {"the", "and", "for", "with", "type", "disease", "syndrome", "disorder", "of", "in", "to", "a", "an"}
+    )
+    tokens = re.findall(r"[a-z0-9\u4e00-\u9fff]{3,}", (text or "").lower())
+    return {token for token in tokens if token not in stopwords}
+
+
+def _phenotype_overlap(left: str, right: str) -> float:
+    left_tokens = _tokenize_phenotype_text(left)
+    right_tokens = _tokenize_phenotype_text(right)
+    if not left_tokens or not right_tokens:
+        return 0.0
+    shared = left_tokens & right_tokens
+    if shared:
+        return len(shared) / min(len(left_tokens), len(right_tokens))
+    combined_left = " ".join(sorted(left_tokens))
+    combined_right = " ".join(sorted(right_tokens))
+    if combined_left in combined_right or combined_right in combined_left:
+        return 0.6
+    return 0.0
+
+
+def _patient_phenotype_text(context: ReportContext) -> str:
+    parts = [context.meta.clinical_info, " ".join(context.meta.hpo_terms)]
+    return " ".join(part.strip() for part in parts if part and part.strip())
+
+
+def _patient_phenotype_summary(context: ReportContext) -> str:
+    parts: list[str] = []
+    if context.meta.clinical_info.strip():
+        text = context.meta.clinical_info.strip()
+        parts.append(text[:77] + "..." if len(text) > 80 else text)
+    if context.meta.hpo_terms:
+        hpo = ", ".join(context.meta.hpo_terms[:6])
+        if len(context.meta.hpo_terms) > 6:
+            hpo += " 等"
+        parts.append(hpo)
+    return "；".join(parts) if parts else "未提供临床表型信息"
+
+
+def _gene_associated_phenotype(card: GeneCard) -> str:
+    if card.narrative and card.narrative.phenotype_association.strip():
+        return card.narrative.phenotype_association.strip()
+    if card.main_associated_phenotype not in ("", "-"):
+        return card.main_associated_phenotype.strip()
+    return ""
+
+
+def _best_phenotype_overlap(associated: str, patient_text: str) -> float:
+    parts = [part.strip() for part in re.split(r"[;/|]", associated) if part.strip()]
+    if not parts:
+        return _phenotype_overlap(associated, patient_text)
+    return max(_phenotype_overlap(part, patient_text) for part in parts)
+
+
+def _phenotype_match_label(overlap: float, associated: str, patient_text: str) -> str:
+    if overlap >= 0.35:
+        return "与患者临床/HPO 重叠较高"
+    if overlap >= 0.15:
+        return "与患者临床/HPO 部分重叠"
+    has_latin = bool(re.search(r"[a-zA-Z]", associated))
+    has_cjk = bool(re.search(r"[\u4e00-\u9fff]", patient_text))
+    if has_latin and has_cjk:
+        return "关键词未直接重叠（疾病名为英文、临床为中文时可能低估匹配度，需结合临床判断）"
+    return "与患者临床/HPO 未见明显重叠"
+
+
 def _fallback_key_findings(context: ReportContext) -> list[str]:
     findings: list[str] = []
+    patient_text = _patient_phenotype_text(context)
+    patient_summary = _patient_phenotype_summary(context)
+
     for card in context.gene_cards:
-        findings.append(
-            f"**{card.gene_symbol}**：{card.main_consequence}，ClinVar={card.top_clinvar or '未提供'}，"
-            f"致病性排名 #{card.best_pathogenic_rank}"
-            f"{'；Open Targets 主要关联表型：' + card.main_associated_phenotype if card.main_associated_phenotype not in ('', '-') else ''}。"
-        )
-        if not card.drug_recommendations and card.drug_recommendation_summary:
-            findings.append(f"**{card.gene_symbol} 用药**：{card.drug_recommendation_summary}")
-    if context.meta.hpo_terms:
-        findings.append(
-            f"临床 HPO 表型 {', '.join(context.meta.hpo_terms)} 需在解读中与候选基因逐一比对。"
-        )
+        associated = _gene_associated_phenotype(card)
+        if associated:
+            overlap = _best_phenotype_overlap(associated, patient_text)
+            match_label = _phenotype_match_label(overlap, associated, patient_text)
+            findings.append(
+                f"**{card.gene_symbol}**（致病性排名 #{card.best_pathogenic_rank}）："
+                f"主要关联疾病/表型为「{associated}」；{match_label}。"
+                f"患者表型：{patient_summary}。"
+            )
+        else:
+            findings.append(
+                f"**{card.gene_symbol}**（致病性排名 #{card.best_pathogenic_rank}）："
+                f"暂无 Open Targets 主要关联疾病/表型；需结合患者表型（{patient_summary}）与变异证据进一步评估。"
+            )
+
+    if not context.gene_cards:
+        findings.append(f"当前无 Top 基因；患者表型：{patient_summary}。")
+
     return findings
+
+
+def _clinical_advice_is_usable(advice: ClinicalAdvice | None) -> bool:
+    """§7 临床建议：Agent 未运行、调用失败或 §7 相关字段均为空时使用脚本 fallback。"""
+    if advice is None:
+        return False
+    return bool(
+        advice.immediate_recommendations
+        or advice.monitoring
+        or advice.communication_points
+    )
 
 
 def _fallback_clinical_advice(context: ReportContext) -> dict:
@@ -164,6 +253,7 @@ def _create_env() -> Environment:
     env.globals["genomic_context_items"] = _genomic_context_items
     env.globals["has_genomic_context"] = _has_genomic_context
     env.globals["parse_evidence_tree"] = _parse_evidence_tree
+    env.globals["clinical_advice_is_usable"] = _clinical_advice_is_usable
     env.globals["fallback_clinical_advice"] = _fallback_clinical_advice
     env.globals["fallback_key_findings"] = _fallback_key_findings
     env.globals["gene_narrative_or_default"] = _gene_narrative_or_default

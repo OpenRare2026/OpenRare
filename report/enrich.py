@@ -173,7 +173,7 @@ async def enrich_gene_narrative(meta: SampleMeta, card: GeneCard) -> GeneNarrati
     )
 
 
-async def enrich_clinical_advice(context: ReportContext) -> ClinicalAdvice:
+async def enrich_clinical_advice(context: ReportContext) -> ClinicalAdvice | None:
     agent = await _get_report_clinical_agent()
     payload = {
         "sample_id": context.meta.sample_id,
@@ -199,21 +199,31 @@ async def enrich_clinical_advice(context: ReportContext) -> ClinicalAdvice:
         "请先对关键基因调用 lookup_gene 和 get_gene_disease_associations 了解疾病背景，"
         "再结合临床信息、HPO 与 strict_drug_candidates 输出 JSON。"
         "**immediate_recommendations 中的用药建议只能引用 strict_drug_candidates.candidates 中已列出的药物**，"
-        "并说明需专家复核；无候选时不得编造具体药名。\n\n"
+        "并说明需专家复核；无候选时不得编造具体药名。"
+        "**key_findings 须逐基因写表型匹配**：对照 open_targets_main_phenotype 与 clinical_info/hpo_terms，"
+        "说明疾病关键表型是否与患者一致，避免只列变异注释。\n\n"
         f"{json.dumps(payload, ensure_ascii=False, indent=2)}"
     )
 
     try:
         data = await _run_agent_json(agent, user_message)
     except Exception:
-        return ClinicalAdvice()
+        return None
 
-    return ClinicalAdvice(
+    advice = ClinicalAdvice(
         immediate_recommendations=data.get("immediate_recommendations", []),
         monitoring=data.get("monitoring", []),
         communication_points=data.get("communication_points", []),
         key_findings=data.get("key_findings", []),
     )
+    if not (
+        advice.immediate_recommendations
+        or advice.monitoring
+        or advice.communication_points
+        or advice.key_findings
+    ):
+        return None
+    return advice
 
 
 async def enrich_report_context(context: ReportContext) -> ReportContext:

@@ -19,7 +19,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--manifest",
-        default="test_data/test_case/test1.csv",
+        default="examples/demo_case/manifest.csv",
         help="Test case manifest CSV (test1.csv format).",
     )
     parser.add_argument(
@@ -50,6 +50,11 @@ def build_parser() -> argparse.ArgumentParser:
         default=5,
         help="Number of top genes to include.",
     )
+    parser.add_argument(
+        "--no-agent",
+        action="store_true",
+        help="Skip LLM Agent enrichment (script prefetch + template only).",
+    )
     return parser
 
 
@@ -74,13 +79,13 @@ async def _main() -> int:
         from report.manifest import load_manifest
 
         meta = load_manifest(manifest_path, row_index=args.row_index)
-        report_md = PROJECT_ROOT / "test_data" / "output" / f"{meta.sample_id}_final_report.md"
+        report_md = PROJECT_ROOT / "examples" / "demo_case" / "output_agent" / "report.md"
 
     context, paths = await generate_report(
         manifest_path,
         row_index=args.row_index,
         top_n=args.top_n,
-        with_agent=True,
+        with_agent=not args.no_agent,
         output_dir=output_dir,
         report_md=report_md,
         context_json=context_json,

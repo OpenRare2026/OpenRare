@@ -52,7 +52,7 @@
 ## 7. 临床建议摘要（遗传咨询师视角）
 
 {% set advice = ctx.narrative.clinical_advice %}
-{% if advice %}
+{% if clinical_advice_is_usable(advice) %}
 ### 7.1 立即建议
 
 {% for item in advice.immediate_recommendations %}
