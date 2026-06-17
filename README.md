@@ -72,6 +72,68 @@ manifest.csv + 宽表 CSV
 
 入口代码：`scripts/generate_final_report.py` → `report/pipeline.py`
 
+字段解析见 `report/wide_table.py`；下表为当前流水线**实际读取**的宽表列名（CSV 表头须一致）。
+
+### 宽表字段
+
+宽表为 VEP 注释 + 排序后的 CSV。流水线先按 `(chrom, pos, ref, alt)` 去重，每个变异保留一条最佳转录本行，再按 `pathogenic_rank` 取 Top 基因。
+
+**变异定位与排序（必需）**
+
+| 列名 | 用途 |
+|------|------|
+| `chrom`, `pos`, `ref`, `alt` | 变异坐标，去重主键 |
+| `gene_symbol` | 基因分组与报告展示 |
+| `pathogenic_rank` | 致病性排序名次；基因级排名 = 组内最小值 |
+| `vep_pick`, `tx_rank_within_variant`, `mane_select` | 同一变异多转录本时选最佳行（不写入报告正文） |
+
+**转录本与变异后果**
+
+| 列名 | 报告中的用途 |
+|------|----------------|
+| `transcript_id`, `refseq_id`, `mane_select` | 基因卡片：转录本、MANE |
+| `consequence`, `impact` | 后果类型、VEP 影响等级 |
+| `hgvsc`, `hgvsp`, `exon` | HGVS 命名、外显子 |
+| `protein_domains` | 蛋白结构域 |
+
+**预测与数据库证据**
+
+| 列名 | 报告中的用途 |
+|------|----------------|
+| `revel_score`, `cadd_phred` | 有害性预测 |
+| `spliceAI_ds_max`, `spliceAI_type` | 剪接影响 |
+| `loftee_lof_flag` | LoF 预测 |
+| `gnomAD_popmax_AF`, `gnomAD_eas_AF`, `gnomAD_nhomalt` | 人群频率 |
+| `clinvar_significance`, `clinvar_review_status`, `clinvar_star_rating` | ClinVar 分类与星级 |
+| `evidence_summary` | §2.3 排序得分白盒、证据分解 |
+
+**测序质量与等位基因比例**
+
+| 列名 | 报告中的用途 |
+|------|----------------|
+| `vcf_info_AF` | GATK 基因型 AF |
+| `vcf_info_VAF`, `vcf_info_REF_DP`, `vcf_info_ALT_DP` | reads 层 VAF 与深度 |
+| `vcf_info_DP`, `vcf_info_QD`, `vcf_info_FS`, `vcf_info_MQ` | 深度与质量指标 |
+| `vcf_info_BEAGLE_PHASED`, `vcf_info_PHASING_CONFIDENCE` | 定相信息 |
+| `vcf_info_CHN_REF_SUPPORT`, `vcf_info_CHN_ALT_CARRIER_COUNT`, `vcf_info_CHN_ALT_AC` | 家系/携带者相关 read 支持 |
+
+**基因组注释上下文（可选，有则展示）**
+
+| 列名 | 报告中的用途 |
+|------|----------------|
+| `vcf_info_REG_CCRE_ID`, `vcf_info_REG_CCRE_CLASS`, `vcf_info_REG_CCRE_COUNT` | 调控元件 |
+| `vcf_info_NCRNA_GENE_NAME`, `vcf_info_NCRNA_GENE_TYPE` | 非编码 RNA 注释 |
+| `vcf_info_is_pseudogene`, `vcf_info_pseudogene_name`, `vcf_info_pseudogene_source` | 假基因上下文 |
+
+**表达组织**
+
+| 列名 | 报告中的用途 |
+|------|----------------|
+| `clinical_best_tissue`, `clinical_transcript_tpm` | 临床相关表达组织与 TPM |
+| `gtex_transcript_top5_tissues` | GTEx Top5 组织 |
+
+宽表未列出的字段不会被读取。`主要关联表型`、`主要关联通路`、基因功能、遗传模式、用药候选等由脚本预取（Open Targets / NCBI / OMIM / Reactome）或 Agent 补充，不来自宽表列。
+
 ---
 
 ## 前置依赖
