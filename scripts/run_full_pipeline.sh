@@ -13,7 +13,7 @@ VEP_CONFIG="${ROOT}/modules/vep_runner/config/vep_runner_config.json"
 usage() {
   cat <<'EOF'
 Usage:
-  run_full_pipeline.sh --input-vcf FILE --out-dir DIR [--fork N]
+   bash scripts/run_full_pipeline.sh --input-vcf FILE --out-dir DIR [--fork N]
 
 Required:
   --input-vcf FILE          Input patient VCF/VCF.GZ; .vcf is automatically bgzip-compressed and indexed

@@ -14,7 +14,7 @@ from backend.utils.file_utils import resolve_path, save_upload
 
 router = APIRouter(prefix="/api/v1/pipeline", tags=["pipeline"])
 
-RUN_SCRIPT = ROOT / "complete_pipeline" / "run_full_pipeline.sh"
+RUN_SCRIPT = ROOT / "scripts" / "run_full_pipeline.sh"
 
 
 def _normalize_hpo_ids(raw: str) -> str:

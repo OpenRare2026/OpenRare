@@ -6,7 +6,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 MODULES_DIR = ROOT / "modules"
-COMPLETE_PIPELINE_DIR = ROOT / "complete_pipeline"
+SCRIPTS_DIR = ROOT / "scripts"
 
 
 class PhasingConfig:
@@ -60,6 +60,6 @@ class SortingConfig:
 class ApiConfig:
     host: str = os.getenv("API_HOST", "0.0.0.0")
     port: int = int(os.getenv("API_PORT", "18081"))
-    jobs_dir: Path = Path(os.getenv("API_JOBS_DIR", str(ROOT / "complete_pipeline" / "api_jobs")))
+    jobs_dir: Path = Path(os.getenv("API_JOBS_DIR", str(ROOT / "api_jobs")))
     title: str = "OpenRare V3 Pipeline API"
     version: str = "0.2.0"

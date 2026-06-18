@@ -1,20 +1,17 @@
-# pipline_V3 OpenRare V3 全流程
+# OpenRare V3 全流程
 
-本目录是 OpenRare V3 的完整流程代码。它把 Beagle phasing/ref-support、VCF 前置处理、假基因注释、VEP runner、VCF INFO 回填 CSV 和最终排序串成一个统一入口，并提供命令行与 FastAPI 两种调用方式。
-
-
-本目录是 `pipline_V3` 的总入口，负责把 phasing、VCF 前处理、假基因注释、VEP runner、VCF INFO 回填 CSV、最终排序串成一个完整流程。
+本仓库是 OpenRare V3 的完整流程代码。它把 Beagle phasing/ref-support、VCF 前置处理、假基因注释、VEP runner、VCF INFO 回填 CSV 和最终排序串成一个统一入口，并提供命令行与 FastAPI 两种调用方式。
 
 主程序：
 
 ```bash
-/mnt/workspace/wangzilu1/pipline_V3/complete_pipeline/run_full_pipeline.sh
+bash scripts/run_full_pipeline.sh --input-vcf FILE --out-dir DIR
 ```
 
 API 服务：
 
 ```bash
-/mnt/workspace/wangzilu1/pipline_V3/complete_pipeline/start_full_pipeline_api.sh
+bash scripts/start_backend.sh
 ```
 
 ## 流程顺序
