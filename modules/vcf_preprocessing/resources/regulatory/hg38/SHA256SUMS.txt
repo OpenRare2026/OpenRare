@@ -1,2 +1,0 @@
-39d75c8e034d4c81b32020b14a9a616b6204215dccde18934450d02440e8f850  resources/regulatory/hg38/ENCFF420VPZ.bed.gz
-4eac0e471e671eda882a86a93cf785dc6be543238ed28e884d47a8ffe3812c6e  resources/regulatory/hg38/encode_screen_v4_grch38_ccre.slim.bed.gz

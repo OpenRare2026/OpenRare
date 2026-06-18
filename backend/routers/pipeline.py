@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import re
 import uuid
 from pathlib import Path
+from typing import Optional
 
 from fastapi import APIRouter, BackgroundTasks, File, Form, HTTPException, UploadFile
-from typing import Optional
 
 from backend.config import ApiConfig, ROOT
 from backend.job_manager import create_job_dir, now_iso, run_command, read_status, write_status
@@ -14,6 +15,18 @@ from backend.utils.file_utils import resolve_path, save_upload
 router = APIRouter(prefix="/api/v1/pipeline", tags=["pipeline"])
 
 RUN_SCRIPT = ROOT / "complete_pipeline" / "run_full_pipeline.sh"
+
+
+def _normalize_hpo_ids(raw: str) -> str:
+    tokens = re.split(r"[\s,;]+", raw.strip())
+    return ",".join(token for token in tokens if token)
+
+
+def _read_hpo_upload(upload: UploadFile | None) -> str:
+    if upload is None:
+        return ""
+    data = upload.file.read()
+    return _normalize_hpo_ids(data.decode("utf-8", errors="replace"))
 
 
 def _build_full_cmd(req: PipelineRequest, output_dir: Path) -> list[str]:
@@ -87,6 +100,7 @@ def submit_pipeline_upload(
     output_dir: Optional[str] = Form(None),
     fork: int = Form(1),
     hpo_id: str = Form(""),
+    hpo_file: UploadFile | None = File(None, description="Optional TXT file containing HPO IDs"),
     sample_id: Optional[str] = Form(None),
     chromosomes: Optional[str] = Form(None),
     ref_dir: Optional[str] = Form(None),
@@ -105,13 +119,15 @@ def submit_pipeline_upload(
     job_id = uuid.uuid4().hex
     job_dir = create_job_dir(job_id)
     uploaded_path = save_upload(input_vcf, job_dir / "input")
+    hpo_from_file = _read_hpo_upload(hpo_file)
+    merged_hpo_id = _normalize_hpo_ids(",".join(x for x in [hpo_id, hpo_from_file] if x))
     output_dir_path = job_dir / "output"
 
     req = PipelineRequest(
         input_vcf=str(uploaded_path),
         output_dir=str(output_dir_path),
         fork=fork,
-        hpo_id=hpo_id,
+        hpo_id=merged_hpo_id,
         sample_id=sample_id,
         chromosomes=chromosomes,
         ref_dir=ref_dir,

@@ -7,11 +7,8 @@ import json
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[3]
-VEP_SCRIPTS = ROOT / "modules" / "vep_runner" / "scripts"
-sys.path.insert(0, str(VEP_SCRIPTS))
-
-from run_vep_to_csv import add_pathogenic_fields, clean_output_value, row_score  # type: ignore
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+from backend.utils.scoring import add_pathogenic_fields, clean_output_value, row_score
 
 HIDDEN_SCORE_FIELDS = [
     "_clinvar_score",

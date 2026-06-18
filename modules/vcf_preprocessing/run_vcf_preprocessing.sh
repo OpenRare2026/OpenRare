@@ -10,8 +10,8 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 input_vcf="$1"
 out_prefix="$2"
 sample="${3:-}"
-ccre_bed="${4:-$script_dir/regulatory_annotation/resources/regulatory/hg38/encode_screen_v4_grch38_ccre.slim.bed.gz}"
-ncrna_bed="${5:-$script_dir/regulatory_annotation/resources/ncrna/hg38/gencode.v49.ncrna_gene.slim.bed.gz}"
+ccre_bed="${4:-$script_dir/resources/regulatory/hg38/encode_screen_v4_grch38_ccre.slim.bed.gz}"
+ncrna_bed="${5:-$script_dir/resources/ncrna/hg38/gencode.v49.ncrna_gene.slim.bed.gz}"
 
 mkdir -p "$(dirname "$out_prefix")"
 

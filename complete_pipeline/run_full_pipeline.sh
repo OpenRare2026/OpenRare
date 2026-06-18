@@ -44,10 +44,10 @@ EOF
 INPUT_VCF=""
 OUT_DIR=""
 SAMPLE_ID="auto"
-REF_DIR="/mnt/workspace/changan/1kgp/beagle_pipeline_param/packages/CHN_ref"
-BEAGLE_JAR="/mnt/workspace/changan/1kgp/beagle.27Feb25.75f.jar"
+REF_DIR="${PHASING_REF_DIR:-/mnt/workspace/changan/1kgp/beagle_pipeline_param/packages/CHN_ref}"
+BEAGLE_JAR="${PHASING_BEAGLE_JAR:-/mnt/workspace/changan/1kgp/beagle.27Feb25.75f.jar}"
 CHROMOSOMES="1-22"
-JAVA_BIN="/mnt/workspace/pangjiangshuan/vep_runner/envs/vep/lib/jvm/bin/java"
+JAVA_BIN="${PHASING_JAVA_BIN:-/mnt/workspace/pangjiangshuan/vep_runner/envs/vep/lib/jvm/bin/java}"
 CCRE_BED="${ROOT}/modules/vcf_preprocessing/resources/regulatory/hg38/encode_screen_v4_grch38_ccre.slim.bed.gz"
 NCRNA_BED="${ROOT}/modules/vcf_preprocessing/resources/ncrna/hg38/gencode.v49.ncrna_gene.slim.bed.gz"
 FORK=1
