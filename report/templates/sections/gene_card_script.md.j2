@@ -17,10 +17,10 @@
 
 #### 3.{{ card.rank }}.2 变异列表
 
-| 变异 | 坐标（GRCh38） | 转录本 | 后果 | CADD | SpliceAI DS max | gnomAD AF | ClinVar | 测序比例 |
-|------|----------------|--------|------|------|-----------------|-----------|---------|-----|
+| 变异 | 转录本 / 后果 | 评分 | ClinVar / VAF |
+|------|---------------|------|---------------|
 {% for variant in card.variants %}
-| {{ variant.variant_label }} | {{ variant.chrom }}:{{ variant.pos }} {{ variant.ref }}>{{ variant.alt }} | {{ variant.transcript_id }} | {{ variant.consequence }} | {{ variant.cadd_phred }} | {{ variant.spliceai_ds_max }} | {{ variant.gnomad_eas_af | format_af }} | {{ variant.clinvar_significance }} | **{{ variant.primary_vaf | format_vaf }}** |
+| {{ variant.variant_label }} | {{ variant.transcript_id }} · {{ variant.consequence }} | CADD {{ variant.cadd_phred }} | {{ variant.clinvar_significance }}（VAF {{ variant.primary_vaf | format_vaf }}） |
 {% endfor %}
 
 #### 3.{{ card.rank }}.3 变异详细分析
@@ -87,8 +87,15 @@
 | 属性 | 内容 |
 |------|------|
 | 蛋白结构域 | {{ variant.protein_domains }} |
-| 证据摘要 | {{ variant.evidence_summary }} |
 | 治疗意义 | {% if narrative.therapeutic_implication %}{{ narrative.therapeutic_implication }}{% elif card.drug_recommendations %}见下方严格筛选用药建议{% else %}{{ card.drug_recommendation_summary or "暂无严格匹配的靶向/已批准用药依据" }}{% endif %} |
+
+{% if variant.evidence_summary != "-" %}
+**证据摘要**
+
+```
+{{ parse_evidence_tree(variant.evidence_summary) }}
+```
+{% endif %}
 
 ###### 3.{{ card.rank }}.3.{{ loop.index }}.6 文献证据
 

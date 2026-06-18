@@ -13,6 +13,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 EXPORT_DIR = PROJECT_ROOT / "scripts" / "export"
 DEFAULT_CSS = EXPORT_DIR / "report.css"
+TYPST_PREAMBLE = EXPORT_DIR / "typst_preamble.typ"
 TOOLS_BIN = PROJECT_ROOT / "tools" / "bin"
 BUNDLED_FONTS_DIR = PROJECT_ROOT / "tools" / "fonts"
 BUNDLED_CJK_FONT = BUNDLED_FONTS_DIR / "NotoSansSC-Regular.otf"
@@ -21,6 +22,145 @@ BUNDLED_CJK_FONT_URL = (
 )
 CJK_MAIN_FONT = "Noto Sans SC"
 CJK_MONO_FONT = "Noto Sans SC"
+
+_VARIANT_LIST_HEADER_COMPACT = (
+    "| 变异 | 转录本 / 后果 | 评分 | ClinVar（VAF） |\n"
+    "|------|---------------|------|----------------|"
+)
+
+
+def _is_variant_list_header(cells: list[str]) -> bool:
+    if len(cells) < 6:
+        return False
+    if cells[0] != "变异":
+        return False
+    if len(cells) >= 9:
+        return "坐标" in cells[1] and cells[2] == "转录本"
+    return cells[1] in ("转录本", "转录本 / 后果") and cells[2] in ("后果", "评分")
+
+
+def _pdf_display(value: str) -> str:
+    text = value.strip().strip("*")
+    return "无" if text in ("-", "") else text
+
+
+def _compact_variant_row(cells: list[str]) -> list[str] | None:
+    if len(cells) >= 9:
+        label, transcript, consequence, cadd, clinvar, vaf = (
+            cells[0],
+            cells[2],
+            cells[3],
+            cells[4],
+            cells[7],
+            cells[8],
+        )
+    elif len(cells) == 6:
+        label, transcript, consequence, cadd, clinvar, vaf = cells[:6]
+    elif len(cells) == 4 and (" · " in cells[1] or "<br>" in cells[1]):
+        return None
+    else:
+        return None
+
+    if "<br>" in transcript or " · " in transcript:
+        annot = transcript.replace("<br>", " · ")
+    else:
+        annot = f"{transcript} · {consequence}"
+    vaf_clean = vaf.strip().strip("*")
+    clin_text = _pdf_display(clinvar)
+    vaf_text = _pdf_display(vaf_clean)
+    cadd_text = _pdf_display(cadd)
+    return [
+        label,
+        annot,
+        f"CADD {cadd_text}",
+        f"{clin_text}（VAF {vaf_text}）",
+    ]
+
+
+def _is_attribute_table_header(cells: list[str]) -> bool:
+    return len(cells) == 2 and cells[0] == "属性" and cells[1] == "内容"
+
+
+def _split_table_row(line: str) -> list[str]:
+    stripped = line.strip()
+    if not stripped.startswith("|"):
+        return []
+    return [part.strip() for part in stripped.strip("|").split("|")]
+
+
+def _join_table_row(cells: list[str]) -> str:
+    return "| " + " | ".join(cells) + " |"
+
+
+def _extract_evidence_block(content: str) -> tuple[str, list[str]]:
+    """Move long 证据摘要 out of 2-column tables into a fenced code block."""
+    from report.render import _parse_evidence_tree
+
+    extra: list[str] = []
+    if content in ("-", "", "见下方评分分解"):
+        return content, extra
+    if len(content) < 60:
+        return content, extra
+
+    extra.extend(["", "**证据摘要**", "", "```", _parse_evidence_tree(content), "```", ""])
+    return "见下方评分分解", extra
+
+
+def preprocess_markdown_for_pdf(markdown: str) -> str:
+    """Normalize wide tables for PDF export (column overlap fixes)."""
+    lines = markdown.splitlines()
+    output: list[str] = []
+    index = 0
+
+    while index < len(lines):
+        line = lines[index]
+        header_cells = _split_table_row(line)
+
+        if _is_variant_list_header(header_cells):
+            output.append(_VARIANT_LIST_HEADER_COMPACT)
+            index += 1
+            if index < len(lines) and lines[index].strip().startswith("|------"):
+                index += 1
+            while index < len(lines):
+                row = lines[index]
+                if not row.strip().startswith("|") or row.strip().startswith("|------"):
+                    break
+                cells = _split_table_row(row)
+                compact = _compact_variant_row(cells)
+                if compact:
+                    output.append(_join_table_row(compact))
+                else:
+                    output.append(row)
+                index += 1
+            continue
+
+        if _is_attribute_table_header(header_cells):
+            table_lines = [line]
+            index += 1
+            if index < len(lines) and lines[index].strip().startswith("|------"):
+                table_lines.append(lines[index])
+                index += 1
+            pending_evidence: list[str] = []
+            while index < len(lines):
+                row = lines[index]
+                if not row.strip().startswith("|") or row.strip().startswith("|------"):
+                    break
+                cells = _split_table_row(row)
+                if len(cells) == 2 and cells[0] == "证据摘要":
+                    short, extra = _extract_evidence_block(cells[1])
+                    table_lines.append(_join_table_row([cells[0], short]))
+                    pending_evidence.extend(extra)
+                else:
+                    table_lines.append(row)
+                index += 1
+            output.extend(table_lines)
+            output.extend(pending_evidence)
+            continue
+
+        output.append(line)
+        index += 1
+
+    return "\n".join(output) + ("\n" if markdown.endswith("\n") else "")
 
 
 def _resolve_path(path: str | Path) -> Path:
@@ -124,6 +264,10 @@ def export_pdf_typst(md_path: Path, pdf_path: Path, *, title: str | None = None)
     doc_title = title or md_path.stem
     pdf_path.parent.mkdir(parents=True, exist_ok=True)
 
+    md_text = preprocess_markdown_for_pdf(md_path.read_text(encoding="utf-8"))
+    pdf_source = md_path.with_name(f"{md_path.stem}.export.pdf.md")
+    pdf_source.write_text(md_text, encoding="utf-8")
+
     extra_args = [
         "--pdf-engine=typst",
         "--from=markdown+pipe_tables+table_captions+yaml_metadata_block",
@@ -151,6 +295,9 @@ def export_pdf_typst(md_path: Path, pdf_path: Path, *, title: str | None = None)
         "fontsize=11pt",
     ]
 
+    if TYPST_PREAMBLE.is_file():
+        extra_args.extend(["--include-in-header", str(TYPST_PREAMBLE.resolve())])
+
     env = os.environ.copy()
     env["PATH"] = f"{Path(typst_bin).parent}:{env.get('PATH', '')}"
     if font_dir:
@@ -163,7 +310,7 @@ def export_pdf_typst(md_path: Path, pdf_path: Path, *, title: str | None = None)
         os.environ["TYPST_FONT_PATHS"] = env["TYPST_FONT_PATHS"]
     try:
         pypandoc.convert_file(
-            str(md_path),
+            str(pdf_source),
             "pdf",
             format="md",
             outputfile=str(pdf_path),
@@ -178,6 +325,8 @@ def export_pdf_typst(md_path: Path, pdf_path: Path, *, title: str | None = None)
             os.environ.pop("TYPST_FONT_PATHS", None)
         else:
             os.environ["TYPST_FONT_PATHS"] = old_font_paths
+        if pdf_source.is_file():
+            pdf_source.unlink()
 
 
 def export_pdf_chrome(md_path: Path, pdf_path: Path) -> None:

@@ -60,6 +60,76 @@ uv run python scripts/generate_final_report.py \
 
 ---
 
+## FastAPI 报告服务
+
+除 CLI 脚本外，可通过 HTTP API 流式生成报告（SSE），适合前端对接。
+
+### 启动
+
+```bash
+uv sync
+cp .env.example .env   # 与 CLI 相同：LLM_API_KEY、OPEN_TARGETS_MCP_URL 等
+
+# 方式一（推荐）
+uv run uvicorn api.main:app --host 0.0.0.0 --port 8800
+
+# 方式二
+uv run python -m api.main
+```
+
+启动后访问 [http://127.0.0.1:8800/docs](http://127.0.0.1:8800/docs) 查看交互式 API 文档。
+
+### 接口
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| `GET` | `/health` | 健康检查，返回 `{"status":"ok"}` |
+| `POST` | `/report/stream` | SSE 流式分析并生成报告 |
+| `GET` | `/report/{run_id}/md` | 按 `run_id` 下载 `report.md` |
+
+### 请求参数（`POST /report/stream`）
+
+| 字段 | 说明 | 默认 |
+|------|------|------|
+| `wide_path` | V3 排序宽表 CSV 路径（仅读取前 10000 行） | 见 `api/schemas.py` |
+| `phenotype_path` | 样本表型 CSV（`ID` + `Phenotype` 两列） | 同上 |
+| `hpo_path` | HPO 术语文件（每行一个 `HP:xxxxxxx`） | 同上 |
+| `top_n` | Top 基因数 | `5` |
+
+示例：
+
+```bash
+curl -N -X POST http://127.0.0.1:8800/report/stream \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "wide_path": "/path/to/vep_output.with_info.ranked_large.csv",
+    "phenotype_path": "/path/to/phenotype.csv",
+    "hpo_path": "/path/to/hpo_terms.txt",
+    "top_n": 5
+  }'
+```
+
+### SSE 事件格式
+
+流式响应按顺序推送三类事件（`data: {json}\n\n`）：
+
+1. **meta** — 任务元信息  
+   `{"type":"meta","run_id":"64cec2d4c34c","genes":["SCN1A","KMT2D"]}`
+
+2. **md** — 完整报告章节（按 `##` 一级标题切分，可有多条）  
+   `{"type":"md","text":"# 基因组变异分析报告\n\n..."}`
+
+3. **done** — 生成结束，附下载地址  
+   `{"type":"done","md_url":"/report/64cec2d4c34c/md"}`
+
+报告产物写入 `test_data/output/{run_id}/`（含 `report.md`、`context.json` 等）。
+
+```bash
+curl -OJ http://127.0.0.1:8800/report/64cec2d4c34c/md
+```
+
+---
+
 ## 报告流水线概览
 
 ```
@@ -206,6 +276,8 @@ uv run python main.py "TPMT pharmacogenomics" --format json -o report.json
 
 ```
 search_agent/
+├── api/                           # FastAPI 报告服务（SSE + MD 下载）
+│   └── main.py                    # 启动：uv run uvicorn api.main:app --port 8800
 ├── examples/
 │   └── demo_case/                 # 内置 manifest + 宽表 + 样例输出
 │       ├── output_agent/          # 默认：含 Agent 的预生成报告

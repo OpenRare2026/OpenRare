@@ -113,6 +113,8 @@ th, td {
   padding: 0.55em 0.75em;
   vertical-align: top;
   text-align: left;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }
 
 th {

@@ -493,6 +493,22 @@ wheels = [
 ]
 
 [[package]]
+name = "fastapi"
+version = "0.137.1"
+source = { registry = "https://mirrors.cernet.edu.cn/pypi/web/simple" }
+dependencies = [
+    { name = "annotated-doc" },
+    { name = "pydantic" },
+    { name = "starlette" },
+    { name = "typing-extensions" },
+    { name = "typing-inspection" },
+]
+sdist = { url = "https://mirror.nju.edu.cn/pypi/web/packages/d5/b1/e5b92c59d2c37817e77c1a8c2fc1f79cdcc04c68253e5406b43e3204cba7/fastapi-0.137.1.tar.gz", hash = "sha256:822360704230d9533d8d9475399613525968aa2f0b5bd2a3ccc9f18c88fd541c" }
+wheels = [
+    { url = "https://mirror.nju.edu.cn/pypi/web/packages/da/35/380b9a5922f4340e51c309cde09e5bd32e62f02302971bee30dc15aa0624/fastapi-0.137.1-py3-none-any.whl", hash = "sha256:64f6983c59e45c4b9fdc44e57cb8035c2451ee91ea8e8ec042aca37de7cf6b69" },
+]
+
+[[package]]
 name = "fastmcp"
 version = "3.4.2"
 source = { registry = "https://mirrors.cernet.edu.cn/pypi/web/simple" }
@@ -2249,6 +2265,7 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "deepagents" },
+    { name = "fastapi" },
     { name = "jinja2" },
     { name = "langchain-mcp-adapters" },
     { name = "langchain-openai" },
@@ -2256,6 +2273,8 @@ dependencies = [
     { name = "paper-search-mcp" },
     { name = "pydantic" },
     { name = "python-dotenv" },
+    { name = "sse-starlette" },
+    { name = "uvicorn" },
 ]
 
 [package.optional-dependencies]
@@ -2266,6 +2285,7 @@ export = [
 [package.metadata]
 requires-dist = [
     { name = "deepagents", specifier = ">=0.6.8" },
+    { name = "fastapi", specifier = ">=0.115.0" },
     { name = "jinja2", specifier = ">=3.1.0" },
     { name = "langchain-mcp-adapters", specifier = ">=0.2.2" },
     { name = "langchain-openai", specifier = ">=1.2.2" },
@@ -2274,6 +2294,8 @@ requires-dist = [
     { name = "pydantic", specifier = ">=2.0.0" },
     { name = "pypandoc-binary", marker = "extra == 'export'", specifier = ">=1.17" },
     { name = "python-dotenv", specifier = ">=1.2.2" },
+    { name = "sse-starlette", specifier = ">=2.0.0" },
+    { name = "uvicorn", specifier = ">=0.30.0" },
 ]
 provides-extras = ["export"]
 
