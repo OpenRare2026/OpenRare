@@ -33,6 +33,7 @@ pixi run serve
 | `pixi run serve` | 启动 FastAPI 服务。 |
 | `pixi run health` | 调用 `/health`，确认数据文件齐全。 |
 | `pixi run test-score` | 运行一个小型 `/score` 测试。 |
+| `pixi run clean-case-upload -- <phenotype.csv> <vep.csv> <hpo.txt>` | multipart 上传文件版 clean-case。 |
 | `pixi run case5-clean` | 使用 Case5 示例输入运行 clean-case。 |
 | `pixi run case6-clean` | 使用 Case6 示例输入运行 clean-case。 |
 | `pixi run check-imports` | 检查主要依赖和 API 模块可导入。 |
@@ -58,6 +59,42 @@ clean-case 接口需要：
 | phenotype-gene CSV | `gene_symbol`；推荐包含 `gene_score`、`gene_rank`。 |
 | VEP CSV | `gene_symbol`；可选 `pathogenic_rank`、`cadd_phred`。 |
 | HPO 文件或 `hpo_ids` | HPO ID 列表，重复项会保留。 |
+
+## 上传文件运行
+
+如果调用端持有输入文件，使用 `curl -F` 最直接：
+
+```bash
+curl -X POST http://127.0.0.1:9000/score/clean-case/upload \
+  -F "phenotype_gene_csv=@gene_phenotype_score.csv" \
+  -F "vep_output_csv=@case.vep.csv" \
+  -F "hpo_file=@hpo_ids.txt" \
+  -F "data_dir=../../data" \
+  -F "output_csv=output/case_final_score.csv" \
+  -F "ppi_output_csv=output/case_ppi_score.csv" \
+  -F "candidate_top_n=30000" \
+  -F "vep_chunksize=250000"
+```
+
+也可以使用脚本：
+
+```bash
+pixi run clean-case-upload -- \
+  gene_phenotype_score.csv \
+  case.vep.csv \
+  hpo_ids.txt \
+  case_name
+```
+
+如果不想单独准备 HPO 文件，可以传环境变量：
+
+```bash
+HPO_IDS="HP:0002352,HP:0002500" \
+pixi run clean-case-upload -- gene_phenotype_score.csv case.vep.csv
+```
+
+当 VEP 大文件已经在服务器上时，仍建议使用 `/score/clean-case` 的 JSON
+路径接口，避免重复上传。
 
 ## 输出
 

@@ -69,7 +69,33 @@ clean-case 流程输入三类文件：
 
 ## 运行 clean-case
 
-推荐使用路径型接口，避免上传 9GB 以上的大 VEP 文件：
+如果输入文件在调用端机器上，推荐用 `curl -F` 走文件上传接口：
+
+```bash
+curl -X POST http://127.0.0.1:9000/score/clean-case/upload \
+  -F "phenotype_gene_csv=@gene_phenotype_score.csv" \
+  -F "vep_output_csv=@case.vep.csv" \
+  -F "hpo_file=@hpo_ids.txt" \
+  -F "data_dir=../../data" \
+  -F "output_csv=output/case_final_score.csv" \
+  -F "ppi_output_csv=output/case_ppi_score.csv" \
+  -F "candidate_top_n=30000" \
+  -F "vep_chunksize=250000"
+```
+
+也可以使用脚本封装：
+
+```bash
+cd pixi_ppi_score
+pixi run clean-case-upload -- \
+  gene_phenotype_score.csv \
+  case.vep.csv \
+  hpo_ids.txt \
+  case_name
+```
+
+如果 VEP 文件已经在服务器文件系统中，尤其是 9GB 以上的大文件，路径型
+JSON 接口更省时间，因为可以避免重复上传：
 
 ```bash
 curl -X POST http://127.0.0.1:9000/score/clean-case \

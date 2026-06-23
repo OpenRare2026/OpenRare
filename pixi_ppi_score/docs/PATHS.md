@@ -72,6 +72,8 @@ Case5/Case6 的大输入文件位于仓库外部，具体见
 | Case5 PPI 输出 | `tests/outputs/clean_cases/case5/case5_ppi_score.csv` |
 | Case6 final 输出 | `tests/outputs/clean_cases/case6/case6_final_score.csv` |
 | Case6 PPI 输出 | `tests/outputs/clean_cases/case6/case6_ppi_score.csv` |
+| 上传脚本输出 | `tests/outputs/upload_cases/<case_name>/` |
+| 上传脚本响应 | `tests/outputs/upload_responses/<case_name>_response.json` |
 | 默认 API 输出 | `output/` |
 | 上传模式保存 | `uploads/` |
 
