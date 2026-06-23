@@ -53,6 +53,7 @@ async def stream_report_events(
     wide_path: str,
     phenotype_path: str,
     hpo_path: str,
+    ppi_path: str = "",
     top_n: int = 5,
 ) -> AsyncIterator[dict[str, Any]]:
     run_id = uuid.uuid4().hex[:12]
@@ -63,6 +64,7 @@ async def stream_report_events(
         wide_path=wide_path,
         phenotype_path=phenotype_path,
         hpo_path=hpo_path,
+        ppi_path=ppi_path,
     )
     paths = resolve_output_paths(
         meta.sample_id,

@@ -14,13 +14,14 @@
 | 主要关联表型 | {{ card.main_associated_phenotype or "-" }} |
 | 主要关联通路 | {{ card.main_pathway or "-" }} |
 | 致病性排名 | #{{ card.best_pathogenic_rank }} |
+| GENOS-EVEE | {{ card.genos_evee or "-" }} |
 
 #### 3.{{ card.rank }}.2 变异列表
 
-| 变异 | 转录本 / 后果 | 评分 | ClinVar / VAF |
-|------|---------------|------|---------------|
+| 变异 | 转录本 / 后果 | GENOS-EVEE | 评分 | ClinVar（VAF） |
+|------|---------------|------------|------|----------------|
 {% for variant in card.variants %}
-| {{ variant.variant_label }} | {{ variant.transcript_id }} · {{ variant.consequence }} | CADD {{ variant.cadd_phred }} | {{ variant.clinvar_significance }}（VAF {{ variant.primary_vaf | format_vaf }}） |
+| {{ variant.variant_label }} | {{ variant.transcript_id }} · {{ variant.consequence }} | {{ variant.genos_evee }} | CADD {{ variant.cadd_phred }} | {{ variant.clinvar_significance }}（VAF {{ variant.primary_vaf | format_vaf }}） |
 {% endfor %}
 
 #### 3.{{ card.rank }}.3 变异详细分析
@@ -57,6 +58,7 @@
 |------|------|
 | 转录本 | {{ variant.transcript_id }} |
 | RefSeq | {{ variant.refseq_id }} |
+| GENOS-EVEE | {{ variant.genos_evee }} |
 | HGVSc | {{ variant.hgvsc }} |
 | HGVSp | {{ variant.hgvsp }} |
 | VEP 后果 | {{ variant.consequence }} |

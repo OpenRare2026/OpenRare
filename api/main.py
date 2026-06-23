@@ -57,6 +57,8 @@ def _validate_input_paths(request: ReportStreamRequest) -> None:
     ):
         if not Path(path_str).is_file():
             missing.append(f"{label}: {path_str}")
+    # if request.ppi_path.strip() and not Path(request.ppi_path).is_file():
+    #     missing.append(f"ppi_path: {request.ppi_path}")
     if missing:
         raise HTTPException(
             status_code=400,
@@ -83,6 +85,7 @@ async def report_stream(request: ReportStreamRequest) -> EventSourceResponse:
                 wide_path=request.wide_path,
                 phenotype_path=request.phenotype_path,
                 hpo_path=request.hpo_path,
+                ppi_path=request.ppi_path,
                 top_n=request.top_n,
             ):
                 yield {"data": json.dumps(event, ensure_ascii=False)}

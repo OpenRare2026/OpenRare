@@ -238,6 +238,7 @@ class VariantRecord(BaseModel):
     gtex_transcript_top5_tissues: str = ""
     pathogenic_rank: int | None = None
     evidence_summary: str = ""
+    genos_evee: str = ""
 
     @property
     def coordinate(self) -> str:
@@ -375,6 +376,7 @@ class GeneCard(BaseModel):
     script_gene_function_source: str = "-"
     omim_gene_function: str = "-"
     omim_inheritance_mode: str = "-"
+    genos_evee: str = "-"
     evidence_summary: str = ""
     variants: list[VariantRecord] = Field(default_factory=list)
     drug_recommendations: list[StrictDrugRecommendation] = Field(default_factory=list)

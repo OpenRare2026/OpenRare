@@ -84,6 +84,7 @@ def _row_to_variant(row: dict[str, str]) -> VariantRecord:
         gtex_transcript_top5_tissues=_display(row.get("gtex_transcript_top5_tissues")),
         pathogenic_rank=_parse_int(row.get("pathogenic_rank")),
         evidence_summary=_display(row.get("evidence_summary")),
+        genos_evee=_display(row.get("GENOS-EVEE")),
     )
 
 
@@ -166,6 +167,7 @@ def build_gene_cards(variants: list[VariantRecord], top_n: int) -> tuple[list[Ge
             main_phenotype_hint=primary.clinical_best_tissue
             if primary.clinical_best_tissue != "-"
             else "",
+            genos_evee=primary.genos_evee,
             evidence_summary=primary.evidence_summary,
             variants=gene_variants,
         )

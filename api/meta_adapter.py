@@ -73,10 +73,12 @@ def build_sample_meta(
     wide_path: str | Path,
     phenotype_path: str | Path,
     hpo_path: str | Path,
+    ppi_path: str | Path = "",
 ) -> SampleMeta:
     wide_table = str(Path(wide_path).resolve())
     sample_id, clinical_info = load_phenotype_csv(phenotype_path)
     hpo_raw, hpo_terms = _parse_hpo_file(Path(hpo_path))
+    ppi = str(Path(ppi_path).resolve()) if str(ppi_path).strip() else ""
 
     return SampleMeta(
         sample_id=sample_id,
@@ -84,4 +86,5 @@ def build_sample_meta(
         hpo_raw=hpo_raw,
         hpo_terms=hpo_terms,
         wide_table_path=wide_table,
+        ppi_path=ppi,
     )
