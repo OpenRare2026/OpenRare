@@ -1,240 +1,126 @@
-# Rare Disease Dual-Anchor PPI Scoring
+# OpenRare PPI 评分服务
 
-## 项目简介
+本仓库提供罕见病候选基因的 PPI 网络评分服务。当前推荐使用
+`pixi_ppi_score/`，它已经用 Pixi 固定运行环境，并通过 Case5、Case6
+clean-case 测试。
 
-本项目用于对罕见病候选基因进行 PPI 网络优先级排序，判断候选基因是否在疾病相关网络中具有生物学合理性。
+## 目录说明
 
-核心思路：不只分析候选基因列表内部的互作，而是把每个候选基因放到完整 STRING PPI 网络中，分别计算它与疾病锚点 `D`、组织核心锚点 `T`、全局拓扑特征的关系，最后得到 PPI 综合分数。
+| 路径 | 说明 |
+| --- | --- |
+| `pixi_ppi_score/` | 推荐入口。Pixi 环境、FastAPI 服务、测试请求和文档都在这里。 |
+| `script1/` | 旧版脚本目录，保留用于追溯；新运行请优先使用 `pixi_ppi_score/`。 |
+| `docs/FINAL_SCORE_README.md` | `*_final_score.csv` 字段和排名规则说明。 |
+| `docs/PPI_SCORE.md` | PPI 评分逻辑的简要说明。 |
 
-clean-case 病例流程支持输入：
+大型数据库、VEP 文件、上传文件和结果 CSV 不提交到 GitHub。
 
-```text
-phenotype-gene CSV + VEP CSV + HPO 列表
-```
-
-每个样本会输出两张表：
-
-```text
-*_ppi_score.csv    纯 PPI 评分表
-*_final_score.csv  最终病例融合表，合并 phenotype、VEP 和 PPI 证据
-```
-
-## 使用方法
-
-### 1. 克隆项目
+## 快速启动
 
 ```bash
 git clone -b dev_lq https://github.com/OpenRare2026/OpenRare.git
-cd OpenRare/script1
+cd OpenRare/pixi_ppi_score
+pixi install
+pixi run serve
 ```
 
-### 2. 准备环境和数据
-
-```bash
-./setup_env.sh
-./download_data.sh
-```
-
-大型参考数据库、虚拟环境、日志和输出结果不上传 GitHub。复现时需要在本地或服务器准备 `data/` 目录。
-
-### 3. 启动 API
-
-```bash
-cd script1
-RARE_PPI_DATA_DIR=../data RARE_PPI_PORT=9000 ./run_api.sh
-```
-
-API 基础地址：
+默认服务地址：
 
 ```text
 http://127.0.0.1:9000
 ```
 
-常用检查接口：
-
-```bash
-curl http://127.0.0.1:9000/health
-curl http://127.0.0.1:9000/version
-```
-
-`/version` 中应包含这些参数：
+默认外部数据目录：
 
 ```text
-candidate_top_n
-output_all_ppi_fields
-ppi_output_csv
-vep_chunksize
+../../data
 ```
 
-### 4. 推荐接口：clean-case 异步评分
-
-如果输入文件已经在 API 所在服务器上，推荐使用路径型接口，避免重复上传 9GB 以上的大 VEP 文件：
+如果数据不在默认位置，可以显式指定：
 
 ```bash
-curl -X POST http://127.0.0.1:9000/score/clean-case/async \
+RARE_PPI_DATA_DIR=/path/to/data pixi run serve
+```
+
+健康检查：
+
+```bash
+pixi run health
+curl http://127.0.0.1:9000/health
+```
+
+## 输入和输出
+
+clean-case 流程输入三类文件：
+
+| 输入 | 说明 |
+| --- | --- |
+| phenotype-gene CSV | 至少包含 `gene_symbol`，通常也包含 `gene_score`、`gene_rank` 等字段。 |
+| VEP CSV | 至少包含 `gene_symbol`；如有 `pathogenic_rank`、`cadd_phred` 会参与汇总。 |
+| HPO 列表 | 每行一个 HPO ID；重复 HPO 会保留并参与组织投票。 |
+
+每个病例输出两张表：
+
+| 输出 | 说明 |
+| --- | --- |
+| `*_ppi_score.csv` | 纯 PPI 网络评分表。 |
+| `*_final_score.csv` | phenotype、VEP 和 PPI 融合后的最终候选基因排序表。 |
+
+最终表字段见 `docs/FINAL_SCORE_README.md`。
+
+## 运行 clean-case
+
+推荐使用路径型接口，避免上传 9GB 以上的大 VEP 文件：
+
+```bash
+curl -X POST http://127.0.0.1:9000/score/clean-case \
   -H 'Content-Type: application/json' \
   -d '{
-    "phenotype_gene_csv": "../input/gene_phenotype_score.csv",
-    "vep_output_csv": "../input/tes1.vep.csv",
-    "hpo_file": "../input/hpo_ids.txt",
-    "output_csv": "../output/case_final_score.csv",
-    "ppi_output_csv": "../output/case_ppi_score.csv",
-    "clean_output_dir": true,
+    "data_dir": "../../data",
+    "phenotype_gene_csv": "../../input/gene_phenotype_score.csv",
+    "vep_output_csv": "../../input/case.vep.csv",
+    "hpo_file": "../../input/hpo_ids.txt",
+    "output_csv": "output/case_final_score.csv",
+    "ppi_output_csv": "output/case_ppi_score.csv",
     "candidate_top_n": 30000,
-    "output_all_ppi_fields": true,
-    "include_audit": false,
     "vep_chunksize": 250000
   }'
 ```
 
-返回示例：
-
-```json
-{
-  "job_id": "...",
-  "status": "queuing",
-  "mode": "clean_case"
-}
-```
-
-查询进度：
+也可以使用已保存的测试请求：
 
 ```bash
-curl http://127.0.0.1:9000/score/<job_id> | python -m json.tool
+cd pixi_ppi_score
+pixi run case5-clean
+pixi run case6-clean
 ```
 
-下载结果：
+测试数据说明见 `pixi_ppi_score/docs/CLEAN_CASE_TESTS.md`。
+
+## 常用 Pixi 命令
 
 ```bash
-curl -L -o final_score.csv http://127.0.0.1:9000/score/<job_id>/csv
-curl -L -o ppi_score.csv http://127.0.0.1:9000/score/<job_id>/ppi-csv
+cd pixi_ppi_score
+pixi install
+pixi run serve
+pixi run health
+pixi run test-score
+pixi run case5-clean
+pixi run case6-clean
 ```
 
-### 5. curl -F 上传文件
+更多路径说明见 `pixi_ppi_score/docs/PATHS.md`。
 
-如果需要通过 HTTP 上传输入文件，使用 upload 异步接口：
+## 环境说明
 
-```bash
-curl -X POST http://127.0.0.1:9000/score/clean-case/upload/async \
-  -F "phenotype_gene_csv=@gene_phenotype_score.csv" \
-  -F "vep_output_csv=@tes1.vep.csv" \
-  -F "hpo_file=@hpo_ids.txt" \
-  -F "output_csv=../output/case_final_score.csv" \
-  -F "ppi_output_csv=../output/case_ppi_score.csv" \
-  -F "clean_output_dir=true" \
-  -F "candidate_top_n=30000" \
-  -F "output_all_ppi_fields=true" \
-  -F "include_audit=false" \
-  -F "vep_chunksize=250000"
-```
+Pixi 环境锁定在 `pixi_ppi_score/pixi.lock`。其中 `pandas` 固定为
+`>=2.3,<3`，避免 Pandas 3.x 在大 VEP CSV 分块读取时触发解析问题。
 
-## 输入
+## 当前验证
 
-### phenotype-gene CSV
+已在服务器上完成：
 
-必须包含：
-
-| 字段 | 说明 |
-| --- | --- |
-| `gene_symbol` | HGNC gene symbol |
-
-
-### VEP CSV
-
-必须包含：
-
-| 字段 | 说明 |
-| --- | --- |
-| `gene_symbol` | 变异对应的基因 |
-
-
-### HPO 输入
-
-可以传：
-
-```text
-hpo_file
-```
-
-或：
-
-```text
-hpo_ids
-```
-
-示例：
-
-```text
-HP:0001250
-HP:0001259
-HP:0410263
-```
-
-## 输出
-
-### 1. `*_ppi_score.csv`
-
-纯 PPI 评分表。字段与 `RareDiseasePPIScorer.run()` 输出一致。
-
-| 字段 | 说明 |
-| --- | --- |
-| `gene` | 候选基因 |
-| `in_network` | 是否存在于 STRING 网络 |
-| `disease_score` | 与疾病锚点 `D` 的互作和距离分数 |
-| `tissue_score` | 与组织核心锚点 `T` 的互作和距离分数 |
-| `topology_score` | 全局 degree 和 betweenness 拓扑分数 |
-| `ppi_final` | 最终 PPI 综合分数 |
-| `score_mode` | PPI 融合模式 |
-| `score_weight_sum` | 本次参与 PPI 融合的权重和 |
-| `note` | 边界情况标记 |
-| `gene_in_d` | 是否进入疾病锚点 `D` |
-| `gene_d_evidence_score` | D 集证据加权分 |
-| `gene_d_sources_json` | D 集支持来源 JSON |
-| `gene_in_t` | 是否进入组织锚点 `T` |
-| `gene_t_weight` | T 层支持权重 |
-| `gene_t_layers_json` | T 集层来源 JSON |
-| `gene_t_tissues_json` | T 集组织来源 JSON |
-| `mapped_tissues_json` | HPO 映射得到的 Top 组织 JSON |
-| `d_gene_count` | D 集基因数 |
-| `t_gene_count` | T 集基因数 |
-| `top_neighbors_json` | STRING Top 邻居及 D/T 标签 |
-| `top_neighbors_count` | 返回的邻居数量 |
-
-### 2. `*_final_score.csv`
-
-最终病例融合表，合并 phenotype-gene 分数、VEP 基因汇总和 PPI 网络分数。
-
-核心字段：
-
-| 字段 | 说明 |
-| --- | --- |
-| `final_rank` | 最终综合排名；只给 `gene_score` 非空且 `in_network=true` 的基因编号 |
-| `combined_score` | `(gene_score + ppi_final) / 2` |
-| `gene_score` | phenotype-gene 分数 |
-| `ppi_final` | PPI 综合分数 |
-| `ppi_rank` | 只按 `ppi_final` 排序的 PPI 名次 |
-| `best_pathogenic_rank` | 该基因 VEP 记录中的最佳致病性排名 |
-| `variant_row_count` | 该基因对应的 VEP 记录数 |
-| `max_cadd_phred` | 该基因 VEP 记录中的最大 CADD PHRED |
-
-`final_rank` 不是文件行号。若某个基因有 PPI 分数，但 phenotype 输入中的 `gene_score` 为空，则该基因会保留在最终表里，但 `combined_score` 和 `final_rank` 为空。
-
-完整字段解释见：
-
-```text
-FINAL_SCORE_README.md
-```
-
-## 主要参数
-
-| 参数 | 默认值 | 说明 |
-| --- | --- | --- |
-| `candidate_top_n` | `30000` | 取 VEP top N 和 phenotype top N 基因的并集；`0` 表示全部基因 |
-| `vep_chunksize` | `250000` | VEP CSV 分块读取行数 |
-| `output_all_ppi_fields` | `false` | 是否输出完整 PPI 证据字段和 Top 邻居 |
-| `include_neighbors` | `false` | 是否输出 `top_neighbors_json` |
-| `include_evidence_json` | `false` | 是否输出 D/T 证据 JSON |
-| `clean_output_dir` | `true` | 写出前清理输出目录中的旧普通文件 |
-| `ppi_output_csv` | 自动派生 | 纯 PPI 表路径 |
-| `output_csv` | 自动生成 | 最终融合表路径 |
-
+| 用例 | 状态 | 输出行数 | 说明 |
+| --- | --- | ---: | --- |
+| Case5 | `completion` | 47319 | HPO 数 6，映射组织 `brain=5, uterus=1` |
+| Case6 | `completion` | 47078 | HPO 数 2，映射组织 `brain=2` |

@@ -1,55 +1,28 @@
-# Path Inventory
+# 路径清单
 
-All paths below are relative to `pixi_ppi_score/` unless noted.
+除特别说明外，以下路径都相对 `pixi_ppi_score/`。
 
-## Project Paths
+## 项目文件
 
-| Purpose | Path | Notes |
+| 用途 | 路径 |
+| --- | --- |
+| 服务代码 | `app/` |
+| Pixi 配置 | `pixi.toml` |
+| Pixi 锁文件 | `pixi.lock` |
+| 依赖摘要 | `requirements.txt` |
+| 启动脚本 | `scripts/run_api.sh` |
+| curl 测试脚本 | `scripts/` |
+
+## 外部数据
+
+| 用途 | 默认路径 | 环境变量 |
 | --- | --- | --- |
-| Service code | `app/` | FastAPI app and scoring modules. |
-| Pixi manifest | `pixi.toml` | Dependency and task definition. |
-| Pixi lock file | `pixi.lock` | Resolved environment versions after `pixi install`. |
-| Dependency summary | `requirements.txt` | Plain dependency list. |
-| API launcher | `scripts/run_api.sh` | Sets relative defaults and starts Uvicorn. |
-| Health curl helper | `scripts/curl_health.sh` | Writes `tests/outputs/health_response.json`. |
-| Score curl helper | `scripts/curl_score.sh` | Writes score response and checks CSV output. |
+| 参考数据库目录 | `../../data` | `RARE_PPI_DATA_DIR` |
+| 缓存目录 | `../../data/cache` | `RARE_PPI_CACHE_DIR` |
+| 输出目录 | `output` | `RARE_PPI_OUTPUT_DIR` |
+| 上传目录 | `uploads` | `RARE_PPI_UPLOAD_DIR` |
 
-## Runtime Inputs
-
-| Purpose | Default path | Environment variable |
-| --- | --- | --- |
-| Reference database directory | `../../data` | `RARE_PPI_DATA_DIR` |
-| Cache directory | `../../data/cache` | `RARE_PPI_CACHE_DIR` |
-| Test score JSON request | `tests/inputs/score_request.json` | n/a |
-| Case5 clean-case JSON request | `tests/inputs/case5_clean_request.json` | n/a |
-| Case6 clean-case JSON request | `tests/inputs/case6_clean_request.json` | n/a |
-| Case5 HPO file | `tests/inputs/case5_hpo.txt` | n/a |
-| Case6 HPO file | `tests/inputs/case6_hpo.txt` | n/a |
-| Uploaded score candidate genes | `uploads/score_<id>/candidate_genes.txt` | `RARE_PPI_UPLOAD_DIR` |
-| Uploaded score HPO file | `uploads/score_<id>/hpo_ids.txt` | `RARE_PPI_UPLOAD_DIR` |
-| Uploaded clean-case inputs | `uploads/clean_case_<id>/inputs/` | `RARE_PPI_UPLOAD_DIR` |
-
-## Runtime Outputs
-
-| Purpose | Default path | Environment variable |
-| --- | --- | --- |
-| Score CSV output | `output/ppi_score_<id>.csv` | `RARE_PPI_OUTPUT_DIR` |
-| Clean-case final CSV | `output/clean_case_<id>/final_score.csv` | `RARE_PPI_OUTPUT_DIR` |
-| Clean-case PPI CSV | `output/clean_case_<id>/ppi_score.csv` | `RARE_PPI_OUTPUT_DIR` |
-| Upload-mode score CSV | `uploads/score_<id>/ppi_score.csv` | `RARE_PPI_UPLOAD_DIR` |
-| Upload-mode audit JSON | `uploads/score_<id>/audit.json` | `RARE_PPI_UPLOAD_DIR` |
-| curl health response | `tests/outputs/health_response.json` | n/a |
-| curl score response | `tests/outputs/score_response.json` | n/a |
-| curl score CSV | `tests/outputs/score_result.csv` | n/a |
-| Case5 clean-case final CSV | `tests/outputs/clean_cases/case5/case5_final_score.csv` | n/a |
-| Case5 clean-case PPI CSV | `tests/outputs/clean_cases/case5/case5_ppi_score.csv` | n/a |
-| Case6 clean-case final CSV | `tests/outputs/clean_cases/case6/case6_final_score.csv` | n/a |
-| Case6 clean-case PPI CSV | `tests/outputs/clean_cases/case6/case6_ppi_score.csv` | n/a |
-
-## External Data Files
-
-The current remote service was observed using `RARE_PPI_DATA_DIR=../../data`
-relative to this Pixi project. That directory must contain these files:
+`../../data` 需要包含：
 
 ```text
 9606.protein.info.v12.0.txt.gz
@@ -77,14 +50,30 @@ uberon.obo
 variant_summary.txt.gz
 ```
 
-For the previous shared output layout, set these explicitly:
+## 测试输入
 
-```bash
-export RARE_PPI_OUTPUT_DIR=../../output
-export RARE_PPI_UPLOAD_DIR=../../uploads
-```
+| 用途 | 路径 |
+| --- | --- |
+| 小型 score 请求 | `tests/inputs/score_request.json` |
+| Case5 clean-case 请求 | `tests/inputs/case5_clean_request.json` |
+| Case5 HPO | `tests/inputs/case5_hpo.txt` |
+| Case6 clean-case 请求 | `tests/inputs/case6_clean_request.json` |
+| Case6 HPO | `tests/inputs/case6_hpo.txt` |
 
-The Pixi refactor itself defaults to local `output/` and `uploads/` so generated
-artifacts stay under this directory. Runtime artifacts under `output/`,
-`uploads/`, and `tests/outputs/` are ignored by Git except for `.gitkeep`
-placeholder files.
+Case5/Case6 的大输入文件位于仓库外部，具体见
+`docs/CLEAN_CASE_TESTS.md`。
+
+## 运行输出
+
+| 用途 | 默认路径 |
+| --- | --- |
+| 小型 score 输出 | `tests/outputs/score_result.csv` |
+| Case5 final 输出 | `tests/outputs/clean_cases/case5/case5_final_score.csv` |
+| Case5 PPI 输出 | `tests/outputs/clean_cases/case5/case5_ppi_score.csv` |
+| Case6 final 输出 | `tests/outputs/clean_cases/case6/case6_final_score.csv` |
+| Case6 PPI 输出 | `tests/outputs/clean_cases/case6/case6_ppi_score.csv` |
+| 默认 API 输出 | `output/` |
+| 上传模式保存 | `uploads/` |
+
+`output/`、`uploads/`、`tests/outputs/` 下的运行产物默认被 Git 忽略，只保留
+`.gitkeep` 占位文件。

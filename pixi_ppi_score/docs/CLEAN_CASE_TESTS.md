@@ -1,31 +1,31 @@
-# Clean-case Test Inputs
+# Clean-case 测试说明
 
-Paths are relative to `pixi_ppi_score/`.
+以下路径均相对 `pixi_ppi_score/`。测试依赖仓库外部的大输入文件，因此在新机器上运行前需要先准备相同目录或修改请求 JSON。
 
 ## Case5
 
-Request:
+运行：
 
 ```bash
-RARE_PPI_PORT=9000 scripts/curl_clean_case.sh tests/inputs/case5_clean_request.json
+pixi run case5-clean
 ```
 
-Inputs:
+输入：
 
-| Purpose | Path |
+| 用途 | 路径 |
 | --- | --- |
-| Phenotype-gene CSV | `../../input/Case5_gene_phenotype_score.csv` |
+| phenotype-gene CSV | `../../input/Case5_gene_phenotype_score.csv` |
 | VEP CSV | `../../../pangjiangshuan/vep_runner/tmux_runs/26D01487024_580d86_fork16_hpo_20260612_110118/26D01487024_580d86.vep.csv` |
-| HPO file | `tests/inputs/case5_hpo.txt` |
+| HPO | `tests/inputs/case5_hpo.txt` |
 
-Outputs:
+输出：
 
-| Purpose | Path |
+| 用途 | 路径 |
 | --- | --- |
-| Final score CSV | `tests/outputs/clean_cases/case5/case5_final_score.csv` |
-| PPI score CSV | `tests/outputs/clean_cases/case5/case5_ppi_score.csv` |
+| final CSV | `tests/outputs/clean_cases/case5/case5_final_score.csv` |
+| PPI CSV | `tests/outputs/clean_cases/case5/case5_ppi_score.csv` |
 
-Latest validation:
+最近一次验证：
 
 ```text
 status=completion
@@ -38,29 +38,29 @@ mapped_tissue_counts={"brain":5,"uterus":1}
 
 ## Case6
 
-Request:
+运行：
 
 ```bash
-RARE_PPI_PORT=9000 scripts/curl_clean_case.sh tests/inputs/case6_clean_request.json
+pixi run case6-clean
 ```
 
-Inputs:
+输入：
 
-| Purpose | Path |
+| 用途 | 路径 |
 | --- | --- |
-| Phenotype-gene CSV | `../../input/Case6_gene_phenotype_score.csv` |
-| Supplied liftover VCF | `../../../changan/grch37_to_grch38_liftover/api_service/runs/25B06715455_89a308/output/output.grch38.vcf.gz` |
-| VEP CSV used by clean-case API | `../../../pangjiangshuan/vep_runner/tmux_runs/25B06715455_89a308_fork16_hpo_20260613_142102/25B06715455_89a308.vep.csv` |
-| HPO file | `tests/inputs/case6_hpo.txt` |
+| phenotype-gene CSV | `../../input/Case6_gene_phenotype_score.csv` |
+| clean-case 使用的 VEP CSV | `../../../pangjiangshuan/vep_runner/tmux_runs/25B06715455_89a308_fork16_hpo_20260613_142102/25B06715455_89a308.vep.csv` |
+| 原始 liftover VCF 记录 | `../../../changan/grch37_to_grch38_liftover/api_service/runs/25B06715455_89a308/output/output.grch38.vcf.gz` |
+| HPO | `tests/inputs/case6_hpo.txt` |
 
-Outputs:
+输出：
 
-| Purpose | Path |
+| 用途 | 路径 |
 | --- | --- |
-| Final score CSV | `tests/outputs/clean_cases/case6/case6_final_score.csv` |
-| PPI score CSV | `tests/outputs/clean_cases/case6/case6_ppi_score.csv` |
+| final CSV | `tests/outputs/clean_cases/case6/case6_final_score.csv` |
+| PPI CSV | `tests/outputs/clean_cases/case6/case6_ppi_score.csv` |
 
-Latest validation:
+最近一次验证：
 
 ```text
 status=completion
@@ -71,6 +71,4 @@ mapped_tissues=["brain"]
 mapped_tissue_counts={"brain":2}
 ```
 
-Note: the clean-case API consumes VEP CSV fields such as `gene_symbol`,
-`pathogenic_rank`, and `cadd_phred`. The supplied Case6 liftover VCF is recorded
-above, while the matching VEP CSV was used for this endpoint.
+说明：clean-case 接口读取 VEP CSV，不直接读取 VCF。Case6 用户提供的 VCF 已记录在上表，实际测试使用同病例对应的 VEP CSV。
