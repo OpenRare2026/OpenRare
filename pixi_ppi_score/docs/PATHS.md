@@ -21,6 +21,10 @@ All paths below are relative to `pixi_ppi_score/` unless noted.
 | Reference database directory | `../../data` | `RARE_PPI_DATA_DIR` |
 | Cache directory | `../../data/cache` | `RARE_PPI_CACHE_DIR` |
 | Test score JSON request | `tests/inputs/score_request.json` | n/a |
+| Case5 clean-case JSON request | `tests/inputs/case5_clean_request.json` | n/a |
+| Case6 clean-case JSON request | `tests/inputs/case6_clean_request.json` | n/a |
+| Case5 HPO file | `tests/inputs/case5_hpo.txt` | n/a |
+| Case6 HPO file | `tests/inputs/case6_hpo.txt` | n/a |
 | Uploaded score candidate genes | `uploads/score_<id>/candidate_genes.txt` | `RARE_PPI_UPLOAD_DIR` |
 | Uploaded score HPO file | `uploads/score_<id>/hpo_ids.txt` | `RARE_PPI_UPLOAD_DIR` |
 | Uploaded clean-case inputs | `uploads/clean_case_<id>/inputs/` | `RARE_PPI_UPLOAD_DIR` |
@@ -37,6 +41,10 @@ All paths below are relative to `pixi_ppi_score/` unless noted.
 | curl health response | `tests/outputs/health_response.json` | n/a |
 | curl score response | `tests/outputs/score_response.json` | n/a |
 | curl score CSV | `tests/outputs/score_result.csv` | n/a |
+| Case5 clean-case final CSV | `tests/outputs/clean_cases/case5/case5_final_score.csv` | n/a |
+| Case5 clean-case PPI CSV | `tests/outputs/clean_cases/case5/case5_ppi_score.csv` | n/a |
+| Case6 clean-case final CSV | `tests/outputs/clean_cases/case6/case6_final_score.csv` | n/a |
+| Case6 clean-case PPI CSV | `tests/outputs/clean_cases/case6/case6_ppi_score.csv` | n/a |
 
 ## External Data Files
 

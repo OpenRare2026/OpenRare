@@ -47,3 +47,10 @@ pixi run test-score
 `pixi run test-score` posts `tests/inputs/score_request.json` to `/score`, writes the
 response to `tests/outputs/score_response.json`, and verifies that the returned CSV
 exists.
+
+Clean-case examples are recorded in `docs/CLEAN_CASE_TESTS.md` and can be run with:
+
+```bash
+pixi run case5-clean
+pixi run case6-clean
+```
