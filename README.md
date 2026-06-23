@@ -67,7 +67,7 @@ clean-case 流程输入三类文件：
 
 最终表字段见 `docs/FINAL_SCORE_README.md`。
 
-## 运行 clean-case
+## 运行
 
 如果输入文件在调用端机器上，推荐用 `curl -F` 走文件上传接口：
 
