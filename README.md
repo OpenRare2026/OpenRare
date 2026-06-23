@@ -9,7 +9,6 @@ clean-case 测试。
 | 路径 | 说明 |
 | --- | --- |
 | `pixi_ppi_score/` | 推荐入口。Pixi 环境、FastAPI 服务、测试请求和文档都在这里。 |
-| `script1/` | 旧版脚本目录，保留用于追溯；新运行请优先使用 `pixi_ppi_score/`。 |
 | `docs/FINAL_SCORE_README.md` | `*_final_score.csv` 字段和排名规则说明。 |
 | `docs/PPI_SCORE.md` | PPI 评分逻辑的简要说明。 |
 

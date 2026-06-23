@@ -1,6 +1,6 @@
 # 依赖说明
 
-依赖来自旧版 `script1/requirements.txt` 和 `app/*.py` 的实际 import。
+依赖来自当前 `app/requirements.txt` 和 `app/*.py` 的实际 import。
 Pixi 配置文件为 `pixi.toml`，解析后的锁文件为 `pixi.lock`。
 
 ## 运行依赖
@@ -25,6 +25,6 @@ Pixi 配置文件为 `pixi.toml`，解析后的锁文件为 `pixi.lock`。
 | `pixi.toml` | 人维护的 Pixi 依赖和任务定义。 |
 | `pixi.lock` | Pixi 解析后的稳定环境版本。 |
 | `requirements.txt` | 便于人工查看的依赖摘要。 |
-| `app/requirements.txt` | 从旧 `script1` 同步来的原始依赖列表。 |
+| `app/requirements.txt` | 当前服务代码旁保留的原始依赖列表。 |
 
 大型参考数据不进入 Pixi 环境，也不提交到 GitHub。
