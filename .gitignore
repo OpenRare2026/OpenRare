@@ -22,3 +22,8 @@ cache/
 *.jsonl
 *.tmp
 *.manifest.json
+
+!pixi_ppi_score/output/
+!pixi_ppi_score/output/.gitkeep
+!pixi_ppi_score/uploads/
+!pixi_ppi_score/uploads/.gitkeep

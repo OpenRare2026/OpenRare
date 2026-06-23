@@ -1,0 +1,25 @@
+[workspace]
+name = "pixi-ppi-score"
+version = "0.1.0"
+description = "Pixi-packaged FastAPI service for OpenRare PPI scoring."
+authors = ["OpenRare2026"]
+channels = ["conda-forge"]
+platforms = ["linux-64"]
+
+[dependencies]
+python = ">=3.10,<3.12"
+numpy = "*"
+pandas = "*"
+networkx = "*"
+scipy = "*"
+pydantic = ">=2"
+fastapi = "*"
+uvicorn = "*"
+python-multipart = "*"
+owlready2 = "*"
+
+[tasks]
+serve = "bash scripts/run_api.sh"
+health = "bash scripts/curl_health.sh"
+test-score = "bash scripts/curl_score.sh"
+check-imports = "PYTHONPATH=app python -c \"import fastapi, pandas, networkx, scipy, owlready2; import api; print('imports ok')\""
