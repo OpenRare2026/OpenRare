@@ -157,8 +157,8 @@ pixi run dev-full
 | 服务 | 地址 |
 |---|---|
 | 前端界面 | http://localhost:8888 |
-| 后端 API | http://localhost:8000/api/health |
-| API 文档 (Swagger) | http://localhost:8000/docs |
+| 后端 API | http://localhost:18000/api/health |
+| API 文档 (Swagger) | http://localhost:18000/docs |
 
 ### 单独启动
 
@@ -176,26 +176,34 @@ pixi run start
 ### 配置环境变量
 
 ```bash
-# 后端配置
+# 后端配置 — 项目已包含 backend/.env（服务器部署配置）
+# 如需自定义，可基于 .env.example 修改：
 cp backend/.env.example backend/.env
 
-# 前端配置（一般无需修改，Vite 代理已配置）
+# 前端配置
 cp frontend/.env.example frontend/.env
 ```
+
+> **注意**： 已纳入版本控制，包含当前服务器（172.27.206.113/112）的外部服务地址。部署到新环境时需修改其中的 IP 地址。
 
 关键配置项：
 
 | 变量 | 说明 | 默认值 |
 |---|---|---|
 | `DATABASE_URL` | 数据库连接 | `sqlite:///./rare_disease_diagnosis.db` |
-| `API_PORT` | 后端端口 | `8000` |
+| `API_PORT` | 后端端口 | `18000` |
 | `CORS_ORIGINS` | 允许的前端来源 | `http://localhost:8888,...` |
 | `LLM_PROVIDER` | LLM 提供商 | `openai` |
 | `LLM_API_KEY` | LLM API 密钥 | — |
 | `LLM_MODEL` | LLM 模型名 | `gpt-4` |
 | `LLM_BASE_URL` | LLM API 地址 | `https://api.openai.com/v1` |
 | `VEP_ENABLED` | 是否启用 VEP 注释 | `true` |
-| `VEP_API_BASE_URL` | VEP 服务地址 | `http://127.0.0.1:8000` |
+| `VEP_API_BASE_URL` | VEP 服务地址 | `http://127.0.0.1:18000` |
+| `HPO_API_BASE_URL` | HPO 服务地址 | `http://127.0.0.1:9004` |
+| `PHENOTYPE_HPO_API_BASE_URL` | 表型-HPO 服务地址 | `http://127.0.0.1:7002` |
+| `PPI_SCORE_API_BASE_URL` | PPI 打分服务地址 | `http://127.0.0.1:9000` |
+| `REPORT_API_BASE_URL` | 报告服务地址 | `http://127.0.0.1:7000` |
+| `GFF3_ANNOTATION_PATH` | GFF3 注释文件路径 | `` (使用相对路径) |
 | `NCBI_EMAIL` | NCBI 邮箱（PubMed 检索需要） | — |
 | `NCBI_API_KEY` | NCBI API 密钥 | — |
 
@@ -211,29 +219,29 @@ cp frontend/.env.example frontend/.env
 
 ```bash
 # 健康检查
-curl http://localhost:8000/api/health
+curl http://localhost:18000/api/health
 
 # 上传 VCF 文件
-curl -X POST http://localhost:8000/api/variants/upload \
+curl -X POST http://localhost:18000/api/variants/upload \
   -F "file=@sample.vcf" \
   -F "patient_id=1"
 
 # 查询变异列表
-curl http://localhost:8000/api/variants/{vcf_file_id}
+curl http://localhost:18000/api/variants/{vcf_file_id}
 
 # ACMG 分析
-curl -X POST http://localhost:8000/api/acmg/{variant_id}/analyze
+curl -X POST http://localhost:18000/api/acmg/{variant_id}/analyze
 
 # HPO 表型提取
-curl -X POST http://localhost:8000/api/hpo/extract \
+curl -X POST http://localhost:18000/api/hpo/extract \
   -H "Content-Type: application/json" \
   -d '{"text": "患者表现为肌张力低下、发育迟缓"}'
 
 # PubMed 文献检索
-curl "http://localhost:8000/api/pubmed/search?query=BRCA1+rare+disease&max_results=10"
+curl "http://localhost:18000/api/pubmed/search?query=BRCA1+rare+disease&max_results=10"
 
 # 提交报告生成
-curl -X POST http://localhost:8000/api/report/submit \
+curl -X POST http://localhost:18000/api/report/submit \
   -H "Content-Type: application/json" \
   -d '{"patient_id": 1, "report_type": "clinical"}'
 ```
@@ -241,7 +249,7 @@ curl -X POST http://localhost:8000/api/report/submit \
 ### WebSocket 对话
 
 ```javascript
-const ws = new WebSocket('ws://localhost:8000/api/chat/ws/1');
+const ws = new WebSocket('ws://localhost:18000/api/chat/ws/1');
 ws.send(JSON.stringify({
   type: 'chat',
   content: '该患者的致病变异有哪些？',
@@ -305,8 +313,9 @@ pixi install
 pixi run -e frontend frontend-install
 
 # 4. 配置环境变量
+# 项目自带 backend/.env（含服务器配置），新环境需修改服务地址：
 cp backend/.env.example backend/.env
-# 编辑 backend/.env 填入 LLM_API_KEY 等配置
+# 编辑 backend/.env 填入实际服务地址和 LLM_API_KEY
 
 # 5. 启动
 pixi run dev-full
