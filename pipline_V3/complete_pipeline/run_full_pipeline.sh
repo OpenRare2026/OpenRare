@@ -2,6 +2,9 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck source=config/paths.sh
+source "${ROOT}/config/paths.sh"
+
 PHASING_SCRIPT="${ROOT}/modules/phasing_beagle_refsupport/scripts/run_beagle_refsupport_pipeline.sh"
 PREPROCESS_SCRIPT="${ROOT}/modules/vcf_preprocessing/run_vcf_preprocessing.sh"
 PSEUDOGENE_PY="${ROOT}/modules/pseudogene_annotation/scripts/annotate_pseudogene.py"
@@ -44,10 +47,10 @@ EOF
 INPUT_VCF=""
 OUT_DIR=""
 SAMPLE_ID="auto"
-REF_DIR="/mnt/workspace/changan/1kgp/beagle_pipeline_param/packages/CHN_ref"
-BEAGLE_JAR="/mnt/workspace/changan/1kgp/beagle.27Feb25.75f.jar"
+REF_DIR="${FULL_PIPELINE_REF_DIR}"
+BEAGLE_JAR="${FULL_PIPELINE_BEAGLE_JAR}"
 CHROMOSOMES="1-22"
-JAVA_BIN="/mnt/workspace/pangjiangshuan/vep_runner/envs/vep/lib/jvm/bin/java"
+JAVA_BIN="${JAVA_BIN:-java}"
 CCRE_BED="${ROOT}/modules/vcf_preprocessing/resources/regulatory/hg38/encode_screen_v4_grch38_ccre.slim.bed.gz"
 NCRNA_BED="${ROOT}/modules/vcf_preprocessing/resources/ncrna/hg38/gencode.v49.ncrna_gene.slim.bed.gz"
 FORK=1
@@ -91,6 +94,12 @@ done
 [[ -s "$INPUT_VCF" ]] || { echo "ERROR: input VCF not found: $INPUT_VCF" >&2; exit 1; }
 [[ -d "$REF_DIR" ]] || { echo "ERROR: ref dir not found: $REF_DIR" >&2; exit 1; }
 [[ -s "$BEAGLE_JAR" ]] || { echo "ERROR: Beagle jar not found: $BEAGLE_JAR" >&2; exit 1; }
+if [[ "$JAVA_BIN" != */* ]]; then
+  resolved_java="$(command -v "$JAVA_BIN" || true)"
+  if [[ -n "$resolved_java" ]]; then
+    JAVA_BIN="$resolved_java"
+  fi
+fi
 [[ -x "$JAVA_BIN" ]] || { echo "ERROR: Java executable not found: $JAVA_BIN" >&2; exit 1; }
 [[ -s "$CCRE_BED" ]] || { echo "ERROR: cCRE BED not found: $CCRE_BED" >&2; exit 1; }
 [[ -s "$NCRNA_BED" ]] || { echo "ERROR: ncRNA BED not found: $NCRNA_BED" >&2; exit 1; }

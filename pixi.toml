@@ -1,0 +1,42 @@
+[workspace]
+name = "openrare"
+version = "0.1.0"
+description = "OpenRare pipline_V3 with bioconda ensembl-vep"
+channels = ["conda-forge", "bioconda"]
+platforms = ["linux-64"]
+
+[dependencies]
+python = ">=3.11"
+ensembl-vep = "115.*"
+bcftools = "*"
+openjdk = ">=17"
+fastapi = "*"
+uvicorn = "*"
+pydantic = "*"
+numpy = "*"
+pandas = "*"
+duckdb = "*"
+
+[activation]
+scripts = ["scripts/load-env.sh"]
+
+[tasks]
+vep-dry-run = { cmd = [
+  "python",
+  "pipline_V3/modules/vep_runner/scripts/run_vep_to_csv.py",
+  "-i", "pipline_V3/test/input/P001.genotyper10000.vcf",
+  "-o", "tmp/openrare_vep_dryrun.csv",
+  "--dry-run",
+  "--hgvs",
+]}
+pipeline-test = { cmd = [
+  "bash", "-c",
+  "mkdir -p tmp && bash pipline_V3/complete_pipeline/run_full_pipeline.sh --input-vcf pipline_V3/test/input/P001.genotyper10000.vcf --out-dir tmp/openrare_p013_pixi_test --chromosomes 1 --fork 4 --keep-raw-vep yes --sample-id P001",
+]}
+api = { cwd = "pipline_V3", cmd = [
+  "bash", "-c",
+  "FULL_PIPELINE_API_HOST=${FULL_PIPELINE_API_HOST:-127.0.0.1} FULL_PIPELINE_API_PORT=${FULL_PIPELINE_API_PORT:-18901} exec bash complete_pipeline/start_full_pipeline_api.sh",
+]}
+api-test = { cmd = ["bash", "pipline_V3/test/run_api_integration_test.sh"] }
+vep-setup-plugins = { cmd = ["bash", "pipline_V3/modules/vep_runner/scripts/install_vep_plugins.sh"] }
+vep-verify-plugins = { cmd = ["bash", "pipline_V3/modules/vep_runner/scripts/verify_vep_plugins.sh"] }
