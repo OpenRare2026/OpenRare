@@ -131,7 +131,7 @@ dump.rdb
 
 # Pixi
 .pixi/
-*.lock
+
 .sisyphus/
 .opencode/
 *.db
