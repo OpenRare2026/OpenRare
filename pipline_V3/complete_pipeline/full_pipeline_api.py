@@ -6,6 +6,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 import threading
 import uuid
 from datetime import datetime, timezone
@@ -16,13 +17,18 @@ from fastapi import BackgroundTasks, FastAPI, File, Form, HTTPException, UploadF
 from pydantic import BaseModel, Field
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+from config.path_utils import full_pipeline_beagle_jar, full_pipeline_ref_dir
+
 RUN_SCRIPT = ROOT / "complete_pipeline" / "run_full_pipeline.sh"
 JOBS_DIR = Path(os.getenv("FULL_PIPELINE_API_JOBS_DIR", ROOT / "complete_pipeline" / "api_jobs"))
-DEFAULT_REF_DIR = Path(os.getenv("FULL_PIPELINE_REF_DIR", "/mnt/workspace/changan/1kgp/beagle_pipeline_param/packages/CHN_ref"))
-DEFAULT_BEAGLE_JAR = Path(os.getenv("FULL_PIPELINE_BEAGLE_JAR", "/mnt/workspace/changan/1kgp/beagle.27Feb25.75f.jar"))
+DEFAULT_REF_DIR = full_pipeline_ref_dir()
+DEFAULT_BEAGLE_JAR = full_pipeline_beagle_jar()
 DEFAULT_CCRE_BED = ROOT / "modules" / "vcf_preprocessing" / "resources" / "regulatory" / "hg38" / "encode_screen_v4_grch38_ccre.slim.bed.gz"
 DEFAULT_NCRNA_BED = ROOT / "modules" / "vcf_preprocessing" / "resources" / "ncrna" / "hg38" / "gencode.v49.ncrna_gene.slim.bed.gz"
 DEFAULT_PSEUDOGENE_SCRIPT = ROOT / "modules" / "pseudogene_annotation" / "scripts" / "annotate_pseudogene.py"
+DEFAULT_JAVA_BIN = os.getenv("JAVA_BIN", "java")
 
 JOBS_DIR.mkdir(parents=True, exist_ok=True)
 _LOCK = threading.Lock()
@@ -207,7 +213,7 @@ def health() -> dict:
             "chromosomes": "1-22",
             "ref_dir": str(DEFAULT_REF_DIR),
             "beagle_jar": str(DEFAULT_BEAGLE_JAR),
-            "java_bin": "/mnt/workspace/pangjiangshuan/vep_runner/envs/vep/lib/jvm/bin/java",
+            "java_bin": DEFAULT_JAVA_BIN,
             "chr_jobs": 1,
             "beagle_threads": 4,
             "java_heap_gb": 12,

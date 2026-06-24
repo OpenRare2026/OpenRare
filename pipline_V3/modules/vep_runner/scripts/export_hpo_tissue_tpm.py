@@ -23,12 +23,28 @@ import pandas as pd
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 RUNNER_DIR = os.path.abspath(os.path.join(SCRIPT_DIR, os.pardir))
+PIPELINE_V3_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, os.pardir, os.pardir, os.pardir))
+REPO_ROOT = os.path.abspath(os.path.join(PIPELINE_V3_ROOT, os.pardir))
 BUNDLED_DATA_DIR = os.path.join(RUNNER_DIR, "vep_data", "hpo_tpm")
-LEGACY_DATA_DIR = "/mnt/workspace/luqi/data"
-DEFAULT_DATA_DIR = os.environ.get(
-    "HPO_TPM_DATA_DIR",
-    BUNDLED_DATA_DIR if os.path.isdir(BUNDLED_DATA_DIR) else LEGACY_DATA_DIR,
-)
+
+
+def _default_data_dir() -> str:
+    env = os.environ.get("HPO_TPM_DATA_DIR")
+    if env:
+        path = env
+    elif os.path.isdir(BUNDLED_DATA_DIR):
+        path = BUNDLED_DATA_DIR
+    else:
+        raw_root = os.environ.get("OPENRARE_DATA_ROOT", "/path/to/vep_runner")
+        if not os.path.isabs(raw_root):
+            raw_root = os.path.join(REPO_ROOT, raw_root)
+        path = os.path.join(raw_root, "vep_data", "hpo_tpm")
+    if not os.path.isabs(path):
+        path = os.path.join(REPO_ROOT, path)
+    return path
+
+
+DEFAULT_DATA_DIR = _default_data_dir()
 TPM_OUTPUT_COLUMNS = ["基因", "组织类型", "GTEx gene-level TPM", "HPA nTPM"]
 
 

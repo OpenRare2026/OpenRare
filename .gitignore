@@ -1,0 +1,45 @@
+# Pixi / conda environments (keep pixi.lock committed)
+.pixi/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# API job outputs (default FULL_PIPELINE_API_JOBS_DIR)
+pipline_V3/complete_pipeline/api_jobs/
+
+# Local env overrides
+.env
+.env.*
+!.env.example
+!pipline_V3/config/paths.env.example
+
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Local temp / test outputs in repo
+tmp/
+
+# Jupyter
+.ipynb_checkpoints/

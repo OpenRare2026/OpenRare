@@ -8,24 +8,32 @@ import bisect
 import csv
 import gzip
 import json
+import os
 import re
+import sys
 from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 
-DEFAULT_GENCODE_GTF = Path(
-    "/mnt/workspace/xiongliwen/00.PublicData/Pseudogene/"
-    "GENCODE/release_49/gencode.v49.2wayconspseudos.gtf.gz"
+_PIPELINE_V3_ROOT = Path(__file__).resolve().parents[3]
+if str(_PIPELINE_V3_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PIPELINE_V3_ROOT))
+from config.path_utils import openrare_public_data_root
+
+
+def public_data_root() -> Path:
+    return openrare_public_data_root()
+
+
+DEFAULT_GENCODE_GTF = public_data_root() / (
+    "Pseudogene/GENCODE/release_49/gencode.v49.2wayconspseudos.gtf.gz"
 )
-DEFAULT_PSEUDOGENE_ORG = Path(
-    "/mnt/workspace/xiongliwen/00.PublicData/Pseudogene/"
-    "Pseudogene.org/Human90/Human90.txt"
+DEFAULT_PSEUDOGENE_ORG = public_data_root() / (
+    "Pseudogene/Pseudogene.org/Human90/Human90.txt"
 )
-DEFAULT_HGNC = Path(
-    "/mnt/workspace/xiongliwen/00.PublicData/phenotype_hpo_v1/hgnc_complete_set.txt"
-)
+DEFAULT_HGNC = public_data_root() / "phenotype_hpo_v1/hgnc_complete_set.txt"
 
 PSEUDOGENE_INFO_HEADERS = [
     '##INFO=<ID=is_pseudogene,Number=1,Type=String,Description="Pseudogene annotation result: Yes or No">',

@@ -7,6 +7,7 @@ import math
 import os
 import re
 import sqlite3
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -258,25 +259,55 @@ REGULATORY_LOG_SUFFIX = ".regulatory_annotation.log.json"
 REGULATORY_CCRE_BED_DEFAULT = "__VEP_RUNNER__/vep_data/regulatory/hg38/encode_screen_v4_grch38_ccre.slim.bed.gz"
 VEP_TMP_DIR_ENV = "VEP_RUNNER_TMPDIR"
 VEP_TMP_DIR_DEFAULT = "__VEP_RUNNER__/tmp"
+OPENRARE_DATA_ROOT_ENV = "OPENRARE_DATA_ROOT"
+PIPELINE_V3_ROOT = Path(__file__).resolve().parents[3]
+if str(PIPELINE_V3_ROOT) not in sys.path:
+    sys.path.insert(0, str(PIPELINE_V3_ROOT))
+from config.path_utils import openrare_data_root as resolve_openrare_data_root
+
 SQLITE_INSERT_BATCH_SIZE = 20000
 SQLITE_FETCH_BATCH_SIZE = 10000
+
+
+def openrare_data_root() -> str:
+    return str(resolve_openrare_data_root())
 
 
 def load_config(path: Path) -> dict:
     with path.open() as handle:
         config = json.load(handle)
     runner_dir = Path(__file__).resolve().parents[1]
-    return resolve_runner_tokens(config, str(runner_dir))
+    config = resolve_runner_tokens(config, str(runner_dir))
+    return finalize_vep_config(config)
 
 
 def resolve_runner_tokens(value, runner_dir: str):
+    data_root = openrare_data_root()
     if isinstance(value, str):
-        return value.replace("__VEP_RUNNER__", runner_dir)
+        resolved = value.replace("__VEP_RUNNER__", runner_dir)
+        resolved = resolved.replace("${OPENRARE_DATA_ROOT}", data_root)
+        if resolved.startswith("$OPENRARE_DATA_ROOT"):
+            resolved = resolved.replace("$OPENRARE_DATA_ROOT", data_root, 1)
+        return resolved
     if isinstance(value, list):
         return [resolve_runner_tokens(item, runner_dir) for item in value]
     if isinstance(value, dict):
         return {key: resolve_runner_tokens(item, runner_dir) for key, item in value.items()}
     return value
+
+
+def finalize_vep_config(config: dict) -> dict:
+    vep_bin = (config.get("vep") or "").strip()
+    if not vep_bin or vep_bin == "vep":
+        resolved = shutil.which("vep")
+        if not resolved:
+            raise FileNotFoundError(
+                "VEP executable not found on PATH. Install ensembl-vep (e.g. pixi) or set an absolute path in config['vep']."
+            )
+        config["vep"] = resolved
+    elif not Path(vep_bin).is_file():
+        raise FileNotFoundError(f"VEP executable not found: {vep_bin}")
+    return config
 
 
 def configured_tmp_dir(config: dict | None = None) -> Path:

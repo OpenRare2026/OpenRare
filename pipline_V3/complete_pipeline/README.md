@@ -17,6 +17,19 @@ API 服务：
 /mnt/workspace/wangzilu1/pipline_V3/complete_pipeline/start_full_pipeline_api.sh
 ```
 
+## Pixi 环境（推荐）
+
+仓库根目录提供 [`pixi.toml`](../../pixi.toml)，通过 bioconda `ensembl-vep`（115.x）与 bcftools、openjdk 等统一管理运行环境。详见 [`pipline_V3/README.md`](../README.md) 中的 Pixi 与环境变量说明。
+
+```bash
+cd /path/to/OpenRare
+pixi install
+pixi run bash pipline_V3/complete_pipeline/run_full_pipeline.sh \
+  --input-vcf /path/to/input.vcf \
+  --out-dir /path/to/output_dir \
+  --fork 4
+```
+
 ## 流程顺序
 
 1. `01_phasing`
@@ -84,14 +97,14 @@ bash /mnt/workspace/wangzilu1/pipline_V3/complete_pipeline/run_full_pipeline.sh 
 | `--hpo-id ID` | 是，可选 | 空 | 患者 HPO ID，例如 `HP:0001250`。支持逗号分隔多个 ID。用于 HPO → tissue → GTEx 表达加权，从而影响转录本选择。 |
 | `--sample-id ID` | 高级覆盖 | `auto` | 样本名。默认由 phasing 模块自动识别；特殊情况下可手动指定。 |
 | `--chromosomes SPEC` | 高级覆盖 | `1-22` | 要运行的染色体。示例：`22`、`1`、`1-22`、`1,3,5`。测试小 VCF 时常用 `1` 或 `22`。 |
-| `--ref-dir DIR` | 高级覆盖 | `/mnt/workspace/changan/1kgp/beagle_pipeline_param/packages/CHN_ref` | Beagle CHN reference panel 目录。 |
-| `--beagle-jar FILE` | 高级覆盖 | `/mnt/workspace/changan/1kgp/beagle.27Feb25.75f.jar` | Beagle jar 路径。 |
+| `--ref-dir DIR` | 高级覆盖 | `$FULL_PIPELINE_REF_DIR`（默认见主 README） | Beagle CHN reference panel 目录。 |
+| `--beagle-jar FILE` | 高级覆盖 | `$FULL_PIPELINE_BEAGLE_JAR`（默认见主 README） | Beagle jar 路径。 |
 | `--ccre-bed FILE` | 高级覆盖 | V3 内置 cCRE BED | ENCODE SCREEN cCRE slim BED.GZ。 |
 | `--ncrna-bed FILE` | 高级覆盖 | V3 内置 ncRNA BED | GENCODE ncRNA slim BED.GZ。 |
 | `--chr-jobs N` | 高级覆盖 | `1` | phasing 阶段染色体并发数。 |
 | `--beagle-threads N` | 高级覆盖 | `4` | 每个 Beagle 进程线程数。 |
 | `--java-heap-gb N` | 高级覆盖 | `12` | 每个 Beagle 进程 Java heap，单位 GB。 |
-| `--java-bin PATH` | 高级覆盖 | `/mnt/workspace/pangjiangshuan/vep_runner/envs/vep/lib/jvm/bin/java` | Beagle 使用的 Java 可执行文件。 |
+| `--java-bin PATH` | 高级覆盖 | `$JAVA_BIN`（默认 `java`，pixi 提供 openjdk） | Beagle 使用的 Java 可执行文件。 |
 | `--top-k-transcripts N` | 高级覆盖 | `5` | 每个 variant-gene 保留的转录本数量。 |
 | `--clinical-tissue NAME` | 高级覆盖 | 空 | 手动传入 GTEx tissue，用于转录本表达加权；通常优先使用 `--hpo-id`。 |
 | `--keep-raw-vep yes|no` | 高级覆盖 | `yes` | 是否保留 VEP 原始 TSV：`04_vep/raw_vep.tsv`。 |
