@@ -1,0 +1,122 @@
+# Rare Disease Genetic Diagnosis Analysis System - Pixi Manifest
+# https://pixi.prefix.dev
+
+[workspace]
+name = "rare-disease-diagnosis"
+channels = ["conda-forge", "bioconda"]
+platforms = ["linux-64"]
+
+# ─── Conda Dependencies (conda-first approach) ──────────────────────────────
+
+[dependencies]
+python = ">=3.12,<3.13"
+pip = "*"
+
+# Web Framework
+fastapi = ">=0.136"
+uvicorn = ">=0.48"
+python-multipart = ">=0.0.29"
+
+# API / Data Models
+pydantic = ">=2.13"
+
+# Database ORM
+sqlalchemy = ">=2.0"
+alembic = ">=1.18"
+
+# Task Queue & Cache
+redis-py = ">=7.4"
+
+# VCF Processing (from bioconda)
+pysam = ">=0.24"
+
+# Data Processing
+numpy = ">=2.4"
+pandas = ">=3.0"
+dask = ">=2026.3.0"
+pyarrow = ">=18"
+
+# Statistics & Genetics
+scikit-allel = ">=1.3"
+
+# Annotation
+annotated-doc = ">=0.0.4"
+
+# Environment Management
+python-dotenv = ">=1.2"
+
+# HTTP Client
+httpx = ">=0.28"
+aiohttp = ">=3.13"
+requests = ">=2.34"
+
+# Logging
+loguru = ">=0.7"
+
+# Configuration
+pyyaml = ">=6.0"
+
+# ─── PyPI-only Dependencies (not available on conda-forge/bioconda) ─────────
+
+[pypi-dependencies]
+neo4j = ">=6.2"
+
+# ─── Tasks ──────────────────────────────────────────────────────────────────
+
+[tasks]
+# Backend
+dev = { cmd = "uvicorn main:app --reload --host 0.0.0.0 --port 8000 &", cwd = "backend", default-environment = "dev" }
+start = { cmd = "uvicorn main:app --host 0.0.0.0 --port 8000", cwd = "backend" }
+frontend = { cmd = "npm run dev", cwd = "frontend", default-environment = "dev" }
+dev-full = { cmd = "bash -c 'cd backend && uvicorn main:app --reload --host 0.0.0.0 --port 8000 & cd frontend && npm run dev & wait'", default-environment = "dev" }
+# Database
+migrate = { cmd = "alembic upgrade head", cwd = "backend" }
+makemigration = { cmd = "alembic revision --autogenerate -m", cwd = "backend" }
+# Testing
+test = { cmd = "pytest tests/ -v", cwd = "backend" }
+test-cov = { cmd = "pytest tests/ -v --cov=. --cov-report=html", cwd = "backend" }
+# Linting
+lint = "ruff check backend/"
+format = "ruff format backend/"
+
+# ─── Features (frontend/dev/test environments) ─────────────────────────────
+
+[feature.frontend.dependencies]
+nodejs = ">=22"
+
+[feature.frontend.tasks]
+frontend-build = { cmd = "npm run build", cwd = "frontend" }
+frontend-install = { cmd = "npm install", cwd = "frontend" }
+
+[feature.dev.dependencies]
+ruff = "*"
+ipython = "*"
+pre-commit = "*"
+
+[feature.dev.tasks]
+lint = { cmd = "ruff check .", cwd = "backend" }
+format = { cmd = "ruff format .", cwd = "backend" }
+shell = "ipython"
+
+[feature.test.dependencies]
+pytest = "*"
+pytest-asyncio = "*"
+pytest-cov = "*"
+
+[feature.test.tasks]
+test = { cmd = "pytest tests/ -v", cwd = "backend" }
+test-cov = { cmd = "pytest tests/ -v --cov=. --cov-report=html", cwd = "backend" }
+
+# ─── Environments ───────────────────────────────────────────────────────────
+
+[environments]
+default = []
+dev = ["dev", "frontend"]
+frontend = ["frontend"]
+test = ["test"]
+
+# ─── Activation Scripts ─────────────────────────────────────────────────────
+
+[activation]
+scripts = []
+env = { PYTHONPATH = "." }
