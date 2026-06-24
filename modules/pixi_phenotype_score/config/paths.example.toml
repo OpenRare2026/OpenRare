@@ -1,0 +1,16 @@
+# Copy this file to config/paths.toml only when deployment-specific overrides
+# are required. Relative paths are resolved from the project root.
+
+[paths]
+runtime_root = "runtime"
+default_input_csv = "examples/test.P002.csv"
+default_hpo_file = "examples/hpo_test.txt"
+
+hpo_ontology = "external_data/hpo/hp.obo"
+hpo_annotations = "external_data/hpo/phenotype.hpoa"
+gene_disease_associations = "external_data/hpo/genes_to_disease.txt"
+hgnc_symbols = "external_data/hgnc/hgnc_complete_set.txt"
+mondo_ontology = "external_data/mondo/mondo-rare.obo"
+omim_database = "external_data/omim/omim_20250411.sqlite3"
+orphanet_packets = "external_data/orphanet/Orphapackets"
+orphanet_index = "external_data/indexes/orpha_gene_profiles.pkl"

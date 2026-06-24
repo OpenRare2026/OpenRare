@@ -1,0 +1,51 @@
+# Dependency inventory of the source HPO Conda environment.
+# This is an audit document; Pixi consumes pixi.toml and pixi.lock.
+
+[source_environment]
+name = "HPO phenotype_score"
+path_from_project_root = "../envs/phenotype_score"
+python = "3.12.13"
+captured_on = "2026-06-23"
+note = "The v3 environment is a clone of this environment."
+
+[runtime_direct]
+python = "3.12.13"
+pandas = "3.0.3"
+pyyaml = "6.0.3"
+fastapi = "0.136.3"
+uvicorn = "0.48.0"
+python-multipart = "0.0.29"
+
+[runtime_standard_library]
+modules = [
+  "argparse", "collections", "csv", "dataclasses", "datetime", "json",
+  "math", "pathlib", "pickle", "re", "shutil", "sqlite3", "subprocess",
+  "sys", "threading", "time", "tomllib", "typing", "uuid"
+]
+
+[source_environment_inventory]
+packages = [
+  "Mako==1.3.12", "MarkupSafe==3.0.3", "PyYAML==6.0.3",
+  "Pygments==2.20.0", "SQLAlchemy==2.0.50", "aiohappyeyeballs==2.6.2",
+  "aiohttp==3.13.5", "aiosignal==1.4.0", "alembic==1.18.4",
+  "annotated-doc==0.0.4", "annotated-types==0.7.0", "anyio==4.13.0",
+  "attrs==26.1.0", "certifi==2026.5.20", "charset-normalizer==3.4.7",
+  "click==8.4.1", "cloudpickle==3.1.2", "dask==2026.3.0",
+  "fastapi==0.136.3", "frozenlist==1.8.0", "fsspec==2026.4.0",
+  "greenlet==3.5.1", "h11==0.16.0", "httpcore==1.0.9",
+  "httpx==0.28.1", "idna==3.16", "iniconfig==2.3.0", "locket==1.0.0",
+  "loguru==0.7.3", "multidict==6.7.1", "numpy==2.4.6",
+  "packaging==26.2", "pandas==3.0.3", "partd==1.4.2", "pip==26.1.1",
+  "pluggy==1.6.0", "propcache==0.5.2", "pydantic==2.13.4",
+  "pydantic_core==2.46.4", "pysam==0.24.0", "pytest==9.0.3",
+  "pytest-asyncio==1.4.0", "python-dateutil==2.9.0.post0",
+  "python-dotenv==1.2.2", "python-multipart==0.0.29", "redis==7.4.0",
+  "requests==2.34.2", "scikit-allel==1.3.13", "setuptools==82.0.1",
+  "six==1.17.0", "starlette==1.1.0", "toolz==1.1.0",
+  "typing-inspection==0.4.2", "typing_extensions==4.15.0",
+  "urllib3==2.7.0", "uvicorn==0.48.0", "websockets==16.0",
+  "wheel==0.47.0", "yarl==1.24.2"
+]
+
+[selection]
+excluded_reason = "Packages not imported by this service are excluded from pixi.toml. Transitive dependencies are resolved and locked by Pixi."
