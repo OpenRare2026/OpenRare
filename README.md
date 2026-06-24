@@ -23,7 +23,12 @@ pixi run pipeline-test    # 或 pixi run api
 | `vep-setup-plugins` / `vep-verify-plugins` | VEP 插件安装与校验 |
 
 也可仅在 pipeline 子目录内开发：`cd modules/pipeline && pixi install && pixi run pipeline-test`。
+PPI 模块可独立运行：`cd modules/pixi_ppi_score && pixi install && pixi run serve`。
 
 ## Pipeline 模块
 
 主流程代码位于 [`modules/pipeline/`](modules/pipeline/README.md)。详见 [modules/pipeline/README.md](modules/pipeline/README.md)。
+
+## PPI 评分模块
+
+PPI 评分服务位于 [`modules/pixi_ppi_score/`](modules/pixi_ppi_score/README.md)，支持 phenotype-gene CSV、VEP CSV 和 HPO 输入，输出 PPI 评分表与融合后的 final score。

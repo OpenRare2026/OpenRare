@@ -1,0 +1,7 @@
+output/*
+uploads/*
+tests/outputs/*
+!.gitkeep
+!output/.gitkeep
+.pixi/
+.pixi-bin/
