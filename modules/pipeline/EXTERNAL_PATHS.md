@@ -24,6 +24,8 @@
 | `FULL_PIPELINE_API_JOBS_DIR` | `complete_pipeline/api_jobs` | API 任务目录（相对模块根） |
 | `FULL_PIPELINE_API_HOST` | `127.0.0.1` | API 监听地址 |
 | `FULL_PIPELINE_API_PORT` | `18901` | API 端口（pixi task） |
+| `LIFTOVER_JAR` | 见 `.env.example` | GRCh37→GRCh38 liftover JAR |
+| `LIFTOVER_CONFIG` | 见 `.env.example` | liftover TOML（chain、GRCh38 参考、picard 路径） |
 | `OPENRARE_API_TEST_VCF` | 无 | API 集成测试输入 VCF（可选） |
 
 解析逻辑：
@@ -49,6 +51,7 @@ cp .env.example .env
 |----------|------|
 | `scripts/run_full_pipeline.sh` | 全流程 CLI 入口 |
 | `scripts/start_full_pipeline_api.sh` | API 启动脚本 |
+| `modules/vcf_preprocessing/liftover_grch37/scripts/run_liftover_vcf.py` | GRCh37→GRCh38 liftover |
 | `complete_pipeline/full_pipeline_api.py` | FastAPI 服务 |
 | `modules/vep_runner/config/vep_runner_config.json` | VEP 配置（`${OPENRARE_DATA_ROOT}` 占位符） |
 | `modules/vcf_preprocessing/resources/regulatory/hg38/encode_screen_v4_grch38_ccre.slim.bed.gz` | cCRE BED |
@@ -63,6 +66,7 @@ cp .env.example .env
 | 步骤 | 相对路径 | 说明 |
 |------|----------|------|
 | 输入 | `00_input/<basename>.vcf.gz` | 规范化后的输入 |
+| 00b | `00_liftover/output/output.grch38.norm.vcf.gz` | GRCh37 输入经 liftover 后的 GRCh38 VCF（可选） |
 | 01 | `01_phasing/*.original_sites.beagle_phase_merged.refsupport.vcf.gz` | Phasing 结果 |
 | 02 | `02_vcf_preprocessing/preprocessed.regulatory.vcf.gz` | VAF + cCRE + ncRNA |
 | 03 | `03_pseudogene_annotation/preprocessed.pseudogene_annotated.vcf.gz` | 假基因注释（进 VEP） |
