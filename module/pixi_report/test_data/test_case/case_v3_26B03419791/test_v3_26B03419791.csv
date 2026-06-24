@@ -1,0 +1,9 @@
+,家系关系,样本编号,临床信息,raghpo,raghpo-returns,37 to 38,gz to vcf,宽表,基因与疾病,ppi,报告,,
+单人,先证者,26B03419791,目前患儿重度矮小，轻微漏斗胸，肋外翻，右脚内翻，现爬楼梯困难，不能双脚跳，查血提示低磷，低碳酸氢根。,"HP:0003510
+HP:0000887
+HP:0003551
+HP:0002148
+HP:0000767
+HP:0025802
+HP:5200134
+HP:0032066",,,,/mnt/workspace/lixinhang/code/search_agent/test_data/test_case/case_v3_26B03419791/vep_output.with_info.ranked_large.top10000.csv,,,,

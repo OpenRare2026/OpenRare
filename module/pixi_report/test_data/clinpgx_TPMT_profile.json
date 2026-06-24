@@ -1,0 +1,335 @@
+{
+  "gene_symbol": "TPMT",
+  "gene_meta": {
+    "symbol": "TPMT",
+    "accession_id": "PA356",
+    "name": "thiopurine S-methyltransferase",
+    "is_vip": true,
+    "has_cpic_guideline": true,
+    "has_variant_annotation": true,
+    "clinpgx_url": "https://www.clinpgx.org/gene/PA356"
+  },
+  "data_version": "Created on 06/05/2026 at 01:43:34 PDT.",
+  "include_low_evidence": false,
+  "drug_count": 4,
+  "drugs": [
+    {
+      "drug_name": "azathioprine",
+      "priority": "P0",
+      "guideline_sources": [
+        "CPIC",
+        "DPWG",
+        "RNPGx"
+      ],
+      "guideline_summary": "Testing for TPMT genotype and phenotype is recommended for patients who are receiving azathioprine as an immunosuppressant. A dose reduction should be considered for patients with intermediate TPMT activity, while a greater dose reduction or selection of an alternate drug should be considered for patients with low TPMT activity.",
+      "evidence_levels": [
+        "1A",
+        "3"
+      ],
+      "effect_types": [
+        "Dosage",
+        "Metabolism/PK",
+        "Toxicity"
+      ],
+      "allele_effects": [
+        {
+          "allele": "*1/*1",
+          "effect": "Patients with the TPMT *1/*1 genotype and heart transplantation who are treated with azathioprine may have a decreased, but not absent, risk of severe rejection as compared to patients with the TPMT *1/*2 or *1/*3A or *1/*3C genotype. Other genetic and clinical factors may also impact the risk for organ rejection.",
+          "allele_function": null
+        },
+        {
+          "allele": "*1/*2",
+          "effect": "Patients with the TPMT *1/*2 genotype and heart transplantation who are treated with azathioprine may have an increased risk of severe rejection as compared to patients with the TPMT *1/*1 genotype. Other genetic and clinical factors may also impact the risk for organ rejection.",
+          "allele_function": null
+        },
+        {
+          "allele": "*1/*3A",
+          "effect": "Patients with the TPMT *1/*3A genotype and heart transplantation who are treated with azathioprine may have an increased risk of severe rejection as compared to patients with the TPMT *1/*1 genotype. Other genetic and clinical factors may also impact the risk for organ rejection.",
+          "allele_function": null
+        },
+        {
+          "allele": "*1/*3C",
+          "effect": "Patients with the TPMT *1/*3C genotype and heart transplantation who are treated with azathioprine may have an increased risk of severe rejection as compared to patients with the TPMT *1/*1 genotype. Other genetic and clinical factors may also impact the risk for organ rejection.",
+          "allele_function": null
+        },
+        {
+          "allele": "*1",
+          "effect": "Patients carrying the *1 allele in combination with another normal function allele may have decreased likelihood of dose reduction when treated with azathioprine as compared to patients with one or two no function alleles. Other genetic and clinical factors may also influence azathioprine dosage.",
+          "allele_function": "Normal function"
+        },
+        {
+          "allele": "*2",
+          "effect": "Patients with the *2 allele, in combination with a normal function allele or a no function allele, may have an increased likelihood of dose reduction when treated with azathioprine as compared to patients with two normal function alleles. Other genetic and clinical factors may also influence azathioprine dosage.",
+          "allele_function": "No function"
+        },
+        {
+          "allele": "*3A",
+          "effect": "Patients with the *3A allele, in combination with a normal function allele or a no function allele, may have an increased likelihood of dose reduction when treated with azathioprine as compared to patients with two normal function alleles. Other genetic and clinical factors may also influence azathioprine dosage.",
+          "allele_function": "No function"
+        },
+        {
+          "allele": "*3B",
+          "effect": "Patients with the *3B allele, in combination with a normal function allele or a no function allele, may have an increased likelihood of dose reduction when treated with azathioprine as compared to patients with two normal function alleles. Other genetic and clinical factors may also influence azathioprine dosage.",
+          "allele_function": "No function"
+        },
+        {
+          "allele": "*3C",
+          "effect": "Patients with the *3C allele, in combination with a normal function allele or a no function allele, may have an increased likelihood of dose reduction when treated with azathioprine as compared to patients with two normal function alleles. However, conflicting evidence has been reported. Other genetic and clinical factors may also influence azathioprine dosage.",
+          "allele_function": "No function"
+        },
+        {
+          "allele": "*1",
+          "effect": "The TPMT*1 allele has been assigned as a normal function allele by CPIC. Patients with two copies of the *1 allele may have increased metabolism of azathioprine as compared to patients with two no function alleles or a no function allele in combination with a normal function allele. This annotation only covers the pharmacokinetic relationship between TPMT and azathioprine and does not include evidence about clinical outcomes. Other genetic and clinical factors may also influence azathioprine metabolism.",
+          "allele_function": "Normal function"
+        }
+      ],
+      "pathways": [],
+      "clinpgx_urls": [
+        "https://www.clinpgx.org/clinicalAnnotation/1183680699",
+        "https://www.clinpgx.org/clinicalAnnotation/1451237240",
+        "https://www.clinpgx.org/clinicalAnnotation/1451237326",
+        "https://www.clinpgx.org/clinicalAnnotation/1451751313"
+      ]
+    },
+    {
+      "drug_name": "mercaptopurine",
+      "priority": "P0",
+      "guideline_sources": [
+        "CPIC",
+        "DPWG",
+        "RNPGx"
+      ],
+      "guideline_summary": "Select an alternative drug or reduce the initial dose of mercaptopurine for patients that are TPMT poor metabolizers and reduce initial dose for patients that are TPMT intermediate metabolizers.",
+      "evidence_levels": [
+        "1A",
+        "3"
+      ],
+      "effect_types": [
+        "Dosage",
+        "Dosage;Toxicity",
+        "Metabolism/PK",
+        "Other",
+        "Toxicity"
+      ],
+      "allele_effects": [
+        {
+          "allele": "AA",
+          "effect": "No patients with the AA genotype were available for analysis, but patients with the AG genotype may have increased TPMT activity toward mercaptopurine as compared to patients with the GG genotype. Other genetic and clinical factors may also influence TPMT activity.",
+          "allele_function": null
+        },
+        {
+          "allele": "AG",
+          "effect": "Patients with the AG genotype may have increased TPMT activity toward mercaptopurine as compared to patients with the GG genotype. Other genetic and clinical factors may also influence TPMT activity.",
+          "allele_function": null
+        },
+        {
+          "allele": "GG",
+          "effect": "Patients with the GG genotype may have decreased TPMT activity toward mercaptopurine as compared to patients with the AG genotype. Other genetic and clinical factors may also influence TPMT activity.",
+          "allele_function": null
+        },
+        {
+          "allele": "AA",
+          "effect": "Patients with the AA genotype may have increased TPMT activity toward mercaptopurine as compared to patients with the AT genotype. Other genetic and clinical factors may also influence TPMT activity.",
+          "allele_function": null
+        },
+        {
+          "allele": "AT",
+          "effect": "Patients with the AT genotype may have decreased TPMT activity toward mercaptopurine as compared to patients with the AA genotype. Other genetic and clinical factors may also influence TPMT activity.",
+          "allele_function": null
+        },
+        {
+          "allele": "TT",
+          "effect": "No patients with the TT genotype were available for analysis, but patients with the AT genotype may have decreased TPMT activity toward mercaptopurine as compared to patients with the AA genotype. Other genetic and clinical factors may also influence TPMT activity.",
+          "allele_function": null
+        },
+        {
+          "allele": "*1",
+          "effect": "Patients with two copies of the TPMT*1 allele may have increased metabolism of mercaptopurine as compared to patients with an uncertain function allele in combination with a normal function or no function allele. This annotation only covers the pharmacokinetic relationship between TPMT and mercaptopurine and does not include evidence about clinical outcomes. Other genetic and clinical factors may also influence mercaptopurine metabolism.",
+          "allele_function": "Normal function"
+        },
+        {
+          "allele": "*21",
+          "effect": "Patients with one copy of the TPMT*21 allele in combination with a normal function allele may have decreased metabolism of mercaptopurine as compared to patients with two normal function alleles. Note that this allele has been assigned as an uncertain function allele by CPIC. This annotation only covers the pharmacokinetic relationship between TPMT and mercaptopurine and does not include evidence about clinical outcomes. Other genetic and clinical factors may also influence mercaptopurine metabolism.",
+          "allele_function": "No function"
+        },
+        {
+          "allele": "*24",
+          "effect": "Patients with one copy of the TPMT*24 allele in combination with a normal function allele may have decreased metabolism of mercaptopurine as compared to patients with two normal function alleles. Note that this allele has been assigned as an uncertain function allele by CPIC. This annotation only covers the pharmacokinetic relationship between TPMT and mercaptopurine and does not include evidence about clinical outcomes. Other genetic and clinical factors may also influence mercaptopurine metabolism.",
+          "allele_function": "Uncertain function"
+        },
+        {
+          "allele": "*25",
+          "effect": "Patients with one copy of the TPMT*25 allele in combination with a normal function allele may have decreased metabolism of mercaptopurine as compared to patients with two normal function alleles. Note that this allele has been assigned as an uncertain function allele by CPIC. This annotation only covers the pharmacokinetic relationship between TPMT and mercaptopurine and does not include evidence about clinical outcomes. Other genetic and clinical factors may also influence mercaptopurine metabolism.",
+          "allele_function": "No function"
+        }
+      ],
+      "pathways": [],
+      "clinpgx_urls": [
+        "https://www.clinpgx.org/clinicalAnnotation/1184648909",
+        "https://www.clinpgx.org/clinicalAnnotation/1184653758",
+        "https://www.clinpgx.org/clinicalAnnotation/1445594176",
+        "https://www.clinpgx.org/clinicalAnnotation/1448100361",
+        "https://www.clinpgx.org/clinicalAnnotation/1448100370",
+        "https://www.clinpgx.org/clinicalAnnotation/1448100382",
+        "https://www.clinpgx.org/clinicalAnnotation/1451237200",
+        "https://www.clinpgx.org/clinicalAnnotation/1451748840",
+        "https://www.clinpgx.org/clinicalAnnotation/1451748948",
+        "https://www.clinpgx.org/clinicalAnnotation/1451751260"
+      ]
+    },
+    {
+      "drug_name": "thioguanine",
+      "priority": "P0",
+      "guideline_sources": [
+        "CPIC",
+        "DPWG"
+      ],
+      "guideline_summary": "The CPIC dosing guideline recommends considering adjusting the starting dose for TPMT or NUDT15 intermediate metabolizers if the protocol dose is considered as high, but otherwise dose reduction may not be necessary. Compound TMPT/NUDT15 intermediate metabolizers require further dose reduction compared to single gene intermediate metabolizers. For TPMT and/or NUDT15 poor metabolizers, drastic dose reduction is required to mitigate the risk of thioguanine-induced myelosuppression.",
+      "evidence_levels": [
+        "1A",
+        "3"
+      ],
+      "effect_types": [
+        "Dosage",
+        "Metabolism/PK",
+        "Toxicity"
+      ],
+      "allele_effects": [
+        {
+          "allele": "*1",
+          "effect": "Patients with two copies of the TPMT*1 allele may have increased metabolism of thioguanine as compared to patients with two uncertain function or unknown function alleles or an uncertain function or unknown function in combination with a normal function allele. This annotation only covers the pharmacokinetic relationship between TPMT and thioguanine and does not include evidence about clinical outcomes. Other genetic and clinical factors may also influence thioguanine metabolism.",
+          "allele_function": "Normal function"
+        },
+        {
+          "allele": "*19",
+          "effect": "Patients with two copies of the TPMT*19 allele or one copy of the *19 allele in combination with a normal function allele may have decreased metabolism of thioguanine as compared to patients with two normal function alleles. Note that this allele has been assigned as an uncertain function allele by CPIC. This annotation only covers the pharmacokinetic relationship between TPMT and thioguanine and does not include evidence about clinical outcomes. Other genetic and clinical factors may also influence thioguanine metabolism.",
+          "allele_function": "Uncertain function"
+        },
+        {
+          "allele": "*20",
+          "effect": "Patients with two copies of the TPMT*20 allele or one copy of the *20 allele in combination with a normal function allele may have decreased metabolism of thioguanine as compared to patients with two normal function alleles. Note that this allele has been assigned as an uncertain function allele by CPIC. This annotation only covers the pharmacokinetic relationship between TPMT and thioguanine and does not include evidence about clinical outcomes. Other genetic and clinical factors may also influence thioguanine metabolism.",
+          "allele_function": "No function"
+        },
+        {
+          "allele": "*21",
+          "effect": "Patients with two copies of the TPMT*21 allele or one copy of the *21 allele in combination with a normal function allele may have decreased metabolism of thioguanine as compared to patients with two normal function alleles. Note that this allele has been assigned as an uncertain function allele by CPIC. This annotation only covers the pharmacokinetic relationship between TPMT and thioguanine and does not include evidence about clinical outcomes. Other genetic and clinical factors may also influence thioguanine metabolism.",
+          "allele_function": "No function"
+        },
+        {
+          "allele": "*22",
+          "effect": "Patients with two copies of the TPMT*22 allele or one copy of the *22 allele in combination with a normal function allele may have decreased metabolism of thioguanine as compared to patients with two normal function alleles. Note that this allele has been assigned as an uncertain function allele by CPIC. This annotation only covers the pharmacokinetic relationship between TPMT and thioguanine and does not include evidence about clinical outcomes. Other genetic and clinical factors may also influence thioguanine metabolism.",
+          "allele_function": "No function"
+        },
+        {
+          "allele": "*30",
+          "effect": "Patients with two copies of the TPMT*30 allele or one copy of the *30 allele in combination with a normal function allele may have decreased metabolism of thioguanine as compared to patients with two normal function alleles. Note that this allele has been assigned as an unknown function allele by CPIC. This annotation only covers the pharmacokinetic relationship between TPMT and thioguanine and does not include evidence about clinical outcomes. Other genetic and clinical factors may also influence thioguanine metabolism.",
+          "allele_function": "Uncertain function"
+        },
+        {
+          "allele": "*32",
+          "effect": "Patients with two copies of the TPMT*32 allele or one copy of the *32 allele in combination with a normal function allele may have decreased metabolism of thioguanine as compared to patients with two normal function alleles. Note that this allele has been assigned as an uncertain function allele by CPIC. This annotation only covers the pharmacokinetic relationship between TPMT and thioguanine and does not include evidence about clinical outcomes. Other genetic and clinical factors may also influence thioguanine metabolism.",
+          "allele_function": "Uncertain function"
+        },
+        {
+          "allele": "*33",
+          "effect": "Patients with two copies of the TPMT*33 allele or one copy of the *33 allele in combination with a normal function allele may have decreased metabolism of thioguanine as compared to patients with two normal function alleles. Note that this allele has been assigned as an uncertain function allele by CPIC. This annotation only covers the pharmacokinetic relationship between TPMT and thioguanine and does not include evidence about clinical outcomes. Other genetic and clinical factors may also influence thioguanine metabolism.",
+          "allele_function": "No function"
+        },
+        {
+          "allele": "*34",
+          "effect": "Patients with two copies of the TPMT*34 allele or one copy of the *34 allele in combination with a normal function allele may have decreased metabolism of thioguanine as compared to patients with two normal function alleles. Note that this allele has been assigned as an uncertain function allele by CPIC. This annotation only covers the pharmacokinetic relationship between TPMT and thioguanine and does not include evidence about clinical outcomes. Other genetic and clinical factors may also influence thioguanine metabolism.",
+          "allele_function": "No function"
+        },
+        {
+          "allele": "*1",
+          "effect": "Patients with two copies of the TPMT*1 allele may be at a decreased risk of experiencing adverse events when treated with thioguanine as compared to patients with one uncertain function allele in combination with a normal function allele. Other genetic and clinical factors may also influence risk of experiencing adverse events when treated with thioguanine.",
+          "allele_function": "Normal function"
+        }
+      ],
+      "pathways": [],
+      "clinpgx_urls": [
+        "https://www.clinpgx.org/clinicalAnnotation/1184746746",
+        "https://www.clinpgx.org/clinicalAnnotation/1449157113",
+        "https://www.clinpgx.org/clinicalAnnotation/1451748900",
+        "https://www.clinpgx.org/clinicalAnnotation/1451748940",
+        "https://www.clinpgx.org/clinicalAnnotation/1451749040",
+        "https://www.clinpgx.org/clinicalAnnotation/1451749620"
+      ]
+    },
+    {
+      "drug_name": "cisplatin",
+      "priority": "P0",
+      "guideline_sources": [
+        "CPNDS"
+      ],
+      "guideline_summary": "The Canadian Pharmacogenomics Network for Drug Safety (CPNDS) clinical recommendation group has published guidelines for the use of pharmacogenetic testing for TPMT gene variants when prescribing cisplatin in pediatric cancer patients. They recommend testing for the TPMT alleles *2, *3A, *3B or *3C in all pediatric cancer patients due to the association of these alleles with an increased risk of cisplatin-induced ototoxicity.",
+      "evidence_levels": [
+        "3"
+      ],
+      "effect_types": [
+        "Efficacy",
+        "Toxicity"
+      ],
+      "allele_effects": [
+        {
+          "allele": "CC",
+          "effect": "Patients with the rs1142345 CC genotype and cancer who are treated with cisplatin may have an increased risk for ototoxicity as compared to patients with the TT genotype. However, conflicting evidence has been reported. Other genetic and clinical factors may also influence a patient's risk for hearing loss with cisplatin treatment.",
+          "allele_function": null
+        },
+        {
+          "allele": "CT",
+          "effect": "Patients with the rs1142345 CT genotype and cancer who are treated with cisplatin may have an increased risk for ototoxicity as compared to patients with the TT genotype. However, conflicting evidence has been reported. Other genetic and clinical factors may also influence a patient's risk for hearing loss with cisplatin treatment.",
+          "allele_function": null
+        },
+        {
+          "allele": "TT",
+          "effect": "Patients with the rs1142345 TT genotype and cancer who are treated with cisplatin may have a decreased, but not absent, risk for hearing loss as compared to patients with the TC or CC genotype. However, conflicting evidence has been reported. Other genetic and clinical factors may also influence a patient's risk for hearing loss with cisplatin treatment.",
+          "allele_function": null
+        },
+        {
+          "allele": "AA",
+          "effect": "Children with the AA genotype and cancer may have a lower, but not absent, risk for hearing loss with cisplatin treatment compared to children with the TT genotype. However, multiple studies have found no association between this SNP and risk of cisplatin-induced ototoxicity. Other genetic and clinical factors may also influence a patient's risk for hearing loss with cisplatin treatment.",
+          "allele_function": null
+        },
+        {
+          "allele": "AT",
+          "effect": "Children with the AT genotype and cancer may have an increased risk for hearing loss with cisplatin treatment compared to children with the AA genotype. However, multiple studies have found no association between this SNP and risk of cisplatin-induced ototoxicity. Other genetic and clinical factors may also influence a patient's risk for hearing loss with cisplatin treatment.",
+          "allele_function": null
+        },
+        {
+          "allele": "TT",
+          "effect": "Children with the TT genotype and cancer may have an increased risk for hearing loss with cisplatin treatment compared to children with the AA genotype. However, multiple studies have found no association between this SNP and risk of cisplatin-induced ototoxicity. Other genetic and clinical factors may also influence a patient's risk for hearing loss with cisplatin treatment.",
+          "allele_function": null
+        },
+        {
+          "allele": "CC",
+          "effect": "Children with the CC genotype and cancer who are treated with cisplatin may have a decreased, but not absent, risk for hearing loss as compared to children with the CT or TT genotype. However, multiple studies have found no association between this SNP and risk of cisplatin-induced ototoxicity. Other genetic and clinical factors may also influence a patient's risk for hearing loss with cisplatin treatment.",
+          "allele_function": null
+        },
+        {
+          "allele": "CT",
+          "effect": "Children with the CT genotype and cancer who are treated with cisplatin may have an increased risk for hearing loss as compared to children with the CC genotype. However, multiple studies have found no association between this SNP and risk of cisplatin-induced ototoxicity. Other genetic and clinical factors may also influence a patient's risk for hearing loss with cisplatin treatment.",
+          "allele_function": null
+        },
+        {
+          "allele": "TT",
+          "effect": "Children with the TT genotype and cancer who are treated with cisplatin may have an increased risk for hearing loss as compared to children with the CC genotype. However, multiple studies have found no association between this SNP and risk of cisplatin-induced ototoxicity. Other genetic and clinical factors may also influence a patient's risk for hearing loss with cisplatin treatment.",
+          "allele_function": null
+        },
+        {
+          "allele": "CC",
+          "effect": "Patients with the CC genotype were not studied. Patients with the CT genotype and ovarian cancer who are treated with chemotherapy involving cisplatin and cyclophosphamide may have reduced progression-free survival as compared to patients with the TT genotype. Other genetic and clinical factors may also influence a patient's response to chemotherapy.",
+          "allele_function": null
+        }
+      ],
+      "pathways": [],
+      "clinpgx_urls": [
+        "https://www.clinpgx.org/clinicalAnnotation/1184348718",
+        "https://www.clinpgx.org/clinicalAnnotation/1448616179",
+        "https://www.clinpgx.org/clinicalAnnotation/655386585",
+        "https://www.clinpgx.org/clinicalAnnotation/655386593",
+        "https://www.clinpgx.org/clinicalAnnotation/655386597"
+      ]
+    }
+  ]
+}

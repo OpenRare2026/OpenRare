@@ -1,0 +1,4 @@
+,家系关系,样本编号,临床信息,raghpo,raghpo-returns,37 to 38,gz to vcf,宽表,基因与疾病,ppi,报告,
+单人,先证者,25B06715455,脑白质病，关注遗传性脑白质病，脑小血管病，排除遗传性脑血管病,"【空】
+HP:0002352 脑白质病变/Leukoencephalopathy；
+HP:0002500 异常脑白质形态/Abnormal cerebral white matter morphology","{""job_id"":""f715cbf5-3e87-41c9-938e-92a2999115ea"",""status"":""completed"",""results"":[]}",@172.27.206.113/mnt/workspace/changan/grch37_to_grch38_liftover/api_service/runs/25B06715455_89a308/output/output.grch38.vcf.gz,"""/mnt/workspace/siwei/vcf_data/25B06715455_89a308.vcf""",/mnt/workspace/lixinhang/code/search_agent/test_data/test_case/testcase.csv,,,,

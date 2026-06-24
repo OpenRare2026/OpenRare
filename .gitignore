@@ -9,13 +9,17 @@ wheels/
 # Virtual environments
 .venv
 .pixi
-# test
-test_data/
+
+# pixi_report test artifacts
+module/pixi_report/.test_*
+# test (repo root only; module/pixi_report has its own test_data rules)
+/test_data/
 # Local PharmGKB download (large zips; copy or download into data/pharmGKB)
-data/pharmGKB/
+/data/pharmGKB/
 # Environment
 .env
-data/
+# repo-root data only; module/pixi_report/data/ uses module/.gitignore
+/data/
 docs/
 .docs/
 tools/bin/
