@@ -1,0 +1,9 @@
+numpy
+pandas
+networkx
+scipy
+pydantic>=2
+fastapi
+uvicorn[standard]
+python-multipart
+owlready2
