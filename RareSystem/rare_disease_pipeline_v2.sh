@@ -7,13 +7,13 @@
 # set -e
 
 # ==================== 配置 ====================
-HPO_RAG_URL="http://172.27.206.112:9002"
+HPO_RAG_URL="http://localhost:9002"
 # VEP_URL="http://172.27.206.113:8000"
-VEP_URL="http://172.27.206.121:8000"
-PHENOTYPE_URL="http://172.27.206.113:7002"
-PPI_URL="http://172.27.206.113:9000"
-REPORT_URL="http://172.27.206.112:7000"
-LIFTOVER_URL="http://172.27.206.113:2850"
+VEP_URL="http://localhost:8000"
+PHENOTYPE_URL="http://localhost:7002"
+PPI_URL="http://localhost:9000"
+REPORT_URL="http://localhost:7000"
+LIFTOVER_URL="http://localhost:2850"
 
 POLL_INTERVAL=60
 MAX_WAIT=21600 # 6小时 = 21600秒
@@ -21,7 +21,7 @@ MAX_WAIT=21600 # 6小时 = 21600秒
 CURL_TIMEOUT=30
 CONNECT_TIMEOUT=10
 
-PYTHON="/mnt/workspace/hujie/miniconda3/envs/py312/bin/python3"
+PYTHON="python3"
 
 
 LIFTOVER_POLL_INTERVAL=60 # 考虑到坐标转换耗时较长，设定每 1 分钟（60秒）轮询一次

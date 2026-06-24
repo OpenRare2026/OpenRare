@@ -46,8 +46,8 @@ class GeneLookupService:
         possible_paths = [
             # Relative to backend directory
             os.path.join(os.path.dirname(__file__), '..', 'reference', 'gencode.v48.annotation.gff3'),
-            # Absolute path
-            '/mnt/zzb_new/Public/DataSet/human_genome_assemblies/preprocess/reference/gencode.v48.annotation.gff3',
+            # Via environment variable
+            os.environ.get('GFF3_ANNOTATION_PATH', ''),
         ]
         
         for path in possible_paths:

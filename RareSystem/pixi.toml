@@ -65,10 +65,10 @@ neo4j = ">=6.2"
 
 [tasks]
 # Backend
-dev = { cmd = "uvicorn main:app --reload --host 0.0.0.0 --port 8000", cwd = "backend", default-environment = "dev" }
-start = { cmd = "uvicorn main:app --host 0.0.0.0 --port 8000", cwd = "backend" }
+dev = { cmd = "uvicorn main:app --reload --host 0.0.0.0 --port 18000", cwd = "backend", default-environment = "dev" }
+start = { cmd = "uvicorn main:app --host 0.0.0.0 --port 18000", cwd = "backend" }
 frontend = { cmd = "npx vite --host 0.0.0.0 --port 8888", cwd = "frontend", default-environment = "dev" }
-dev-full = { cmd = "bash -c 'cd backend && uvicorn main:app --reload --host 0.0.0.0 --port 8000 & cd frontend && npx vite --host 0.0.0.0 --port 8888 & wait'", default-environment = "dev" }
+dev-full = { cmd = "bash -c 'cd backend && uvicorn main:app --reload --host 0.0.0.0 --port 18000 & cd frontend && npx vite --host 0.0.0.0 --port 8888 & wait'", default-environment = "dev" }
 # Database
 migrate = { cmd = "alembic upgrade head", cwd = "backend" }
 makemigration = { cmd = "alembic revision --autogenerate -m", cwd = "backend" }
