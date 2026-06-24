@@ -1,3 +1,7 @@
+# Standalone manifest for modules/pipeline.
+# Monorepo default: install & run from repo root (../pixi.toml).
+#   cd OpenRare && pixi install && pixi run pipeline-test
+
 [workspace]
 name = "openrare-pipeline"
 version = "0.1.0"
