@@ -2,14 +2,14 @@
 
 启动服务（在仓库根目录）::
 
-    uv sync
+    pixi install
     cp .env.example .env   # 配置 LLM / Open Targets MCP 等
 
-    uv run uvicorn api.main:app --host 0.0.0.0 --port 8800
+    pixi run api
 
 或::
 
-    uv run python -m api.main
+    pixi run python -m api.main
 
 接口：
     GET  /health              健康检查
@@ -43,7 +43,7 @@ app = FastAPI(
     version="0.1.0",
     description=(
         "从宽表 + phenotype.csv + hpo_terms.txt 流式生成基因组变异分析报告。"
-        " 启动：`uv run uvicorn api.main:app --host 0.0.0.0 --port 8800`"
+        " 启动：`pixi run api`"
     ),
 )
 

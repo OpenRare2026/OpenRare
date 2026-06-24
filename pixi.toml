@@ -1,0 +1,22 @@
+[workspace]
+name = "search-agent"
+version = "0.1.0"
+description = "Gene research agent with Open Targets, local ClinPGx, and literature search"
+channels = ["conda-forge"]
+platforms = ["linux-64"]
+
+[dependencies]
+python = ">=3.11,<3.13"
+
+[pypi-dependencies]
+search-agent = { path = ".", editable = true, extras = ["export"] }
+
+[feature.dev.pypi-dependencies]
+httpx = ">=0.27"
+
+[environments]
+default = { features = ["dev"], solve-group = "default" }
+
+[tasks]
+api = "uvicorn api.main:app --host 0.0.0.0 --port 8800"
+health = "python -c \"import httpx; r=httpx.get('http://127.0.0.1:8800/health', timeout=5); print(r.status_code, r.text)\""

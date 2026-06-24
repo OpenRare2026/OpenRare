@@ -6,16 +6,34 @@
 
 ---
 
+## 环境（Pixi）
+
+本项目使用 [Pixi](https://pixi.sh/) 管理 Python 与依赖（`pixi.toml` + `pixi.lock`）。
+
+```bash
+# 安装 pixi（任选其一）
+# curl -fsSL https://pixi.sh/install.sh | bash
+# conda install -c conda-forge pixi
+
+pixi install          # 创建/更新 .pixi 环境
+pixi shell            # 进入环境（可选）
+pixi run <task>       # 在环境中运行任务，如 pixi run api
+```
+
+`pyproject.toml` 仍保留包元数据；Pixi 通过可编辑安装 `search-agent` 拉取其中依赖。
+
+---
+
 ## 快速开始：生成报告
 
 仓库自带最小示例 `examples/demo_case/`（manifest + 宽表），在仓库根目录执行：
 
 ```bash
-uv sync
+pixi install
 cp .env.example .env   # 配置 LLM_API_KEY、OPEN_TARGETS_MCP_URL 等
 
 # 完整报告：脚本预取 + Agent 叙事（默认）
-uv run python scripts/generate_final_report.py \
+pixi run python scripts/generate_final_report.py \
   --manifest examples/demo_case/manifest.csv \
   --output-dir examples/demo_case/output_agent \
   --top-n 4
@@ -24,7 +42,7 @@ uv run python scripts/generate_final_report.py \
 无需 LLM、仅验证脚本与模板时，加上 `--no-agent` 并输出到 `output/`：
 
 ```bash
-uv run python scripts/generate_final_report.py \
+pixi run python scripts/generate_final_report.py \
   --manifest examples/demo_case/manifest.csv \
   --output-dir examples/demo_case/output \
   --top-n 4 \
@@ -67,14 +85,14 @@ uv run python scripts/generate_final_report.py \
 ### 启动
 
 ```bash
-uv sync
+pixi install
 cp .env.example .env   # 与 CLI 相同：LLM_API_KEY、OPEN_TARGETS_MCP_URL 等
 
 # 方式一（推荐）
-uv run uvicorn api.main:app --host 0.0.0.0 --port 8800
+pixi run api
 
 # 方式二
-uv run python -m api.main
+pixi run python -m api.main
 ```
 
 启动后访问 [http://127.0.0.1:8800/docs](http://127.0.0.1:8800/docs) 查看交互式 API 文档。
@@ -208,11 +226,11 @@ manifest.csv + 宽表 CSV
 
 ## 前置依赖
 
-### 1. Python 3.11+ 与 [uv](https://docs.astral.sh/uv/)
+### 1. Python 3.11+ 与 [Pixi](https://pixi.sh/)
 
 ```bash
 cd search_agent
-uv sync
+pixi install
 ```
 
 ### 2. LLM API（启用 Agent 时需要）
@@ -264,8 +282,8 @@ docker run -d \
 用于交互式基因/药物/疾病调研，输出 JSON 研究报告（**不是** `report.md`）：
 
 ```bash
-uv run python main.py "CYP2D6 影响哪些药物，有什么 PGx 证据"
-uv run python main.py "TPMT pharmacogenomics" --format json -o report.json
+pixi run python main.py "CYP2D6 影响哪些药物，有什么 PGx 证据"
+pixi run python main.py "TPMT pharmacogenomics" --format json -o report.json
 ```
 
 调用链见 `agent/factory.py`、`main.py`。
@@ -276,8 +294,10 @@ uv run python main.py "TPMT pharmacogenomics" --format json -o report.json
 
 ```
 search_agent/
+├── pixi.toml                      # Pixi 环境与任务（api、依赖）
+├── pixi.lock                      # 锁定依赖版本（建议提交）
 ├── api/                           # FastAPI 报告服务（SSE + MD 下载）
-│   └── main.py                    # 启动：uv run uvicorn api.main:app --port 8800
+│   └── main.py                    # 启动：pixi run api
 ├── examples/
 │   └── demo_case/                 # 内置 manifest + 宽表 + 样例输出
 │       ├── output_agent/          # 默认：含 Agent 的预生成报告
