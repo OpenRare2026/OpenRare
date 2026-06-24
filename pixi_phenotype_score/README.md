@@ -49,7 +49,7 @@ pixi run test
 
 ## 外部数据库
 
-数据库与派生索引统一放在 `external_data/`，但不提交到 GitHub：
+模块依赖数据库与派生索引统一放在 `external_data/`：
 
 ```text
 external_data/
@@ -91,7 +91,7 @@ pixi run python src/phenotype_hpo_score.py \
 
 ### 启动
 
-新服务固定使用 7773，避免影响原 7003 服务：
+新服务固定使用 7773：
 
 ```bash
 pixi run serve
