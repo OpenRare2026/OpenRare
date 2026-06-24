@@ -18,9 +18,7 @@ import pandas as pd
 import dataio
 from dataio import available_engines, iter_chunks
 
-from rare_sort import default_registry, needed_columns, theta_keys, FeatureBundle, apply_theta
-from rare_sort._util import variant_key, to_int
-from rare_sort.scorer import rank_units
+from _core import default_registry, needed_columns, theta_keys, FeatureBundle, apply_theta, rank_units, variant_key, to_int
 
 
 # ponytail: tuned theta from P12 v2 (LLMProposer, 2026-06-18)
