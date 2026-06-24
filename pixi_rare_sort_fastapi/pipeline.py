@@ -6,6 +6,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 import tempfile
 import time
@@ -33,7 +34,8 @@ P12_V2_THETA = {
 }
 
 
-def run(input_path: str, output_csv: str | None = None, chunksize: int = 250_000):
+def run(input_path: str, output_csv: str | None = None, chunksize: int = 250_000,
+        gene_score_csv: str | None = None, ppi_score_csv: str | None = None):
     t0 = time.time()
     reg = default_registry()
     theta = P12_V2_THETA
@@ -138,12 +140,37 @@ def run(input_path: str, output_csv: str | None = None, chunksize: int = 250_000
 
     con.execute(f"CREATE OR REPLACE TABLE scores AS SELECT * FROM read_parquet('{lookup_path}')")
 
+    # ── optional gene-level score tables ──
+    pathogenic_expr = "s.evolve_score"
+    extra_joins = ""
+    extra_cols = ""
+
+    if gene_score_csv and os.path.exists(gene_score_csv):
+        gs_src = f"read_csv_auto('{gene_score_csv.replace(chr(39), chr(39)+chr(39))}', all_varchar=true)"
+        con.execute(f"CREATE OR REPLACE TABLE gene_scores AS SELECT gene_symbol, CAST(gene_score AS DOUBLE) AS gene_score FROM {gs_src}")
+        extra_joins += "\n        LEFT JOIN gene_scores gs ON src.gene_symbol = gs.gene_symbol"
+        pathogenic_expr = f"s.evolve_score * SQRT(COALESCE(gs.gene_score, 0))"
+        extra_cols += ", gs.gene_score"
+        print("[pass 2] gene_score table loaded", flush=True)
+
+    if ppi_score_csv and os.path.exists(ppi_score_csv):
+        ppi_src = f"read_csv_auto('{ppi_score_csv.replace(chr(39), chr(39)+chr(39))}', all_varchar=true)"
+        con.execute(f"CREATE OR REPLACE TABLE ppi_scores AS SELECT gene, CAST(ppi_final AS DOUBLE) AS ppi_final FROM {ppi_src}")
+        extra_joins += "\n        LEFT JOIN ppi_scores ppi ON src.gene_symbol = ppi.gene"
+        pathogenic_expr = f"({pathogenic_expr}) * SQRT(COALESCE(ppi.ppi_final, 0))"
+        extra_cols += ", ppi.ppi_final"
+        print("[pass 2] ppi_score table loaded", flush=True)
+
+    has_pathogenic = bool(gene_score_csv or ppi_score_csv)
+
     q = f"""
     COPY (
-        SELECT src.*, s.evolve_score, s.evolve_rank
+        SELECT src.*, s.evolve_score, s.evolve_rank{extra_cols},
+               {pathogenic_expr} AS pathogenic_score,
+               ROW_NUMBER() OVER (ORDER BY {pathogenic_expr} DESC NULLS LAST) AS pathogenic_rank
         FROM (SELECT {proj_with_key} FROM {src} {where}) src
-        LEFT JOIN scores s ON src._vkey = s._vkey
-        ORDER BY s.evolve_score DESC NULLS LAST
+        LEFT JOIN scores s ON src._vkey = s._vkey{extra_joins}
+        ORDER BY pathogenic_score DESC NULLS LAST
     ) TO '{output_csv}' (HEADER, DELIMITER ',');
     """
     print(f"[pass 2] executing SQL sort+join+export ...", flush=True)
@@ -153,9 +180,14 @@ def run(input_path: str, output_csv: str | None = None, chunksize: int = 250_000
     total_time = time.time() - t0
     print(f"[pipeline] done: {output_csv} ({total_time:.0f}s = {total_time/60:.1f} min)", flush=True)
 
-    verify = pd.read_csv(output_csv, nrows=5, usecols=["evolve_score", "evolve_rank"])
-    print(f"  top scores: {list(verify['evolve_score'])}", flush=True)
-    print(f"  top ranks : {list(verify['evolve_rank'])}", flush=True)
+    verify_cols = ["evolve_score", "evolve_rank"]
+    if has_pathogenic:
+        verify_cols += ["pathogenic_score", "pathogenic_rank"]
+    if gene_score_csv and os.path.exists(gene_score_csv):
+        verify_cols.append("gene_score")
+    verify = pd.read_csv(output_csv, nrows=5, usecols=verify_cols)
+    for c in verify_cols:
+        print(f"  top {c}: {list(verify[c])}", flush=True)
 
     return output_csv
 
@@ -166,8 +198,10 @@ def main():
     ap.add_argument("--output", "-o", default=None, help="output CSV path")
     ap.add_argument("--chunksize", type=int, default=250_000,
                     help="rows per chunk (default 250k)")
+    ap.add_argument("--gene-score", default=None, help="gene_phenotype_score.csv path")
+    ap.add_argument("--ppi-score", default=None, help="ppi_score.csv path")
     args = ap.parse_args()
-    run(args.input_path, args.output, args.chunksize)
+    run(args.input_path, args.output, args.chunksize, args.gene_score, args.ppi_score)
 
 
 if __name__ == "__main__":
