@@ -66,6 +66,20 @@ def full_pipeline_beagle_jar() -> Path:
     return resolve_pipeline_path(raw)
 
 
+DEFAULT_LIFTOVER_JAR = "/path/to/grch37_to_grch38_liftover/liftover_runner/target/liftover-runner.jar"
+DEFAULT_LIFTOVER_CONFIG = "/path/to/grch37_to_grch38_liftover/config/liftover_config.toml"
+
+
+def liftover_jar_path() -> Path:
+    raw = os.environ.get("LIFTOVER_JAR", DEFAULT_LIFTOVER_JAR)
+    return resolve_pipeline_path(raw)
+
+
+def liftover_config_path() -> Path:
+    raw = os.environ.get("LIFTOVER_CONFIG", DEFAULT_LIFTOVER_CONFIG)
+    return resolve_pipeline_path(raw)
+
+
 def expand_openrare_tokens(value: str, data_root: str | Path | None = None) -> str:
     root = Path(data_root) if data_root else openrare_data_root()
     resolved = value.replace("${OPENRARE_DATA_ROOT}", str(root))

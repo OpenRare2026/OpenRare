@@ -7,6 +7,7 @@ source "${ROOT}/config/paths.sh"
 
 PHASING_SCRIPT="${ROOT}/modules/phasing_beagle_refsupport/scripts/run_beagle_refsupport_pipeline.sh"
 PREPROCESS_SCRIPT="${ROOT}/modules/vcf_preprocessing/run_vcf_preprocessing.sh"
+LIFTOVER_PY="${OPENRARE_LIFTOVER_SCRIPT}"
 PSEUDOGENE_PY="${ROOT}/modules/pseudogene_annotation/scripts/annotate_pseudogene.py"
 VEP_SCRIPT="${ROOT}/modules/vep_runner/scripts/run_vep_to_csv.py"
 INFO_TO_CSV_SCRIPT="${ROOT}/modules/vcf_info_to_csv/scripts/add_vcf_info_to_vep_csv.py"
@@ -40,6 +41,7 @@ Advanced optional overrides, usually not needed:
   --top-k-transcripts N     VEP transcript selection count, default: 5
   --clinical-tissue NAME    Optional clinical tissue for VEP runner
   --keep-raw-vep yes|no     Keep raw VEP TSV, default: yes
+  --input-assembly SPEC     Input assembly: auto, GRCh37, or GRCh38 (default: auto)
   --dry-run                 Print commands only
 EOF
 }
@@ -61,6 +63,7 @@ TOP_K_TRANSCRIPTS=5
 HPO_ID=""
 CLINICAL_TISSUE=""
 KEEP_RAW_VEP=yes
+INPUT_ASSEMBLY="auto"
 DRY_RUN=no
 
 while [[ $# -gt 0 ]]; do
@@ -82,6 +85,7 @@ while [[ $# -gt 0 ]]; do
     --hpo-id) HPO_ID="${2:?}"; shift 2 ;;
     --clinical-tissue) CLINICAL_TISSUE="${2:?}"; shift 2 ;;
     --keep-raw-vep) KEEP_RAW_VEP="${2:?}"; shift 2 ;;
+    --input-assembly) INPUT_ASSEMBLY="${2:?}"; shift 2 ;;
     --dry-run) DRY_RUN=yes; shift ;;
     --help|-h) usage; exit 0 ;;
     *) echo "ERROR: unknown argument: $1" >&2; usage >&2; exit 2 ;;
@@ -107,8 +111,15 @@ fi
 [[ -s "$PSEUDOGENE_PY" ]] || { echo "ERROR: pseudogene script not found: $PSEUDOGENE_PY" >&2; exit 1; }
 [[ -s "$INFO_TO_CSV_SCRIPT" ]] || { echo "ERROR: INFO-to-CSV script not found: $INFO_TO_CSV_SCRIPT" >&2; exit 1; }
 [[ -s "$SORT_CSV_SCRIPT" ]] || { echo "ERROR: result sorting script not found: $SORT_CSV_SCRIPT" >&2; exit 1; }
+case "$INPUT_ASSEMBLY" in
+  auto|GRCh37|GRCh38) ;;
+  *)
+    echo "ERROR: --input-assembly must be auto, GRCh37, or GRCh38: $INPUT_ASSEMBLY" >&2
+    exit 2
+    ;;
+esac
 
-mkdir -p "$OUT_DIR"/{00_input,01_phasing,02_vcf_preprocessing,03_pseudogene_annotation,04_vep,05_vcf_info_to_csv,06_result_sorting,logs}
+mkdir -p "$OUT_DIR"/{00_input,00_liftover,01_phasing,02_vcf_preprocessing,03_pseudogene_annotation,04_vep,05_vcf_info_to_csv,06_result_sorting,logs}
 LOG="${OUT_DIR}/logs/full_pipeline.log"
 SUMMARY="${OUT_DIR}/full_pipeline.outputs.tsv"
 exec > >(tee -a "$LOG") 2>&1
@@ -163,6 +174,53 @@ normalize_input_vcf() {
 }
 
 normalize_input_vcf "$INPUT_VCF"
+
+resolved_assembly="$INPUT_ASSEMBLY"
+liftover_vcf=""
+liftover_manifest=""
+if [[ "$resolved_assembly" == auto ]]; then
+  if [[ "$DRY_RUN" == yes ]]; then
+    resolved_assembly="GRCh38"
+    echo "[liftover] dry-run: assuming GRCh38 (auto-detect skipped)"
+  else
+    resolved_assembly="$(python3 "$LIFTOVER_PY" --input "$PIPELINE_INPUT_VCF" --detect-only)"
+    echo "[liftover] auto-detected assembly: ${resolved_assembly}"
+  fi
+fi
+
+if [[ "$resolved_assembly" == GRCh37 ]]; then
+  liftover_dir="${OUT_DIR}/00_liftover"
+  liftover_manifest="${liftover_dir}/liftover.manifest.json"
+  [[ -s "$LIFTOVER_PY" ]] || { echo "ERROR: liftover script not found: $LIFTOVER_PY" >&2; exit 1; }
+  [[ -s "$LIFTOVER_JAR" ]] || { echo "ERROR: LIFTOVER_JAR not found: $LIFTOVER_JAR" >&2; exit 1; }
+  [[ -s "$LIFTOVER_CONFIG" ]] || { echo "ERROR: LIFTOVER_CONFIG not found: $LIFTOVER_CONFIG" >&2; exit 1; }
+  if [[ "$DRY_RUN" == yes ]]; then
+    run_cmd python3 "$LIFTOVER_PY" \
+      --input "$PIPELINE_INPUT_VCF" \
+      --out-dir "$liftover_dir" \
+      --normalize true \
+      --force true \
+      --log-json "$liftover_manifest"
+    liftover_vcf="${liftover_dir}/output/output.grch38.norm.vcf.gz"
+  else
+    mapfile -t liftover_lines < <(
+      python3 "$LIFTOVER_PY" \
+        --input "$PIPELINE_INPUT_VCF" \
+        --out-dir "$liftover_dir" \
+        --normalize true \
+        --force true \
+        --log-json "$liftover_manifest"
+    )
+    liftover_vcf="${liftover_lines[-1]}"
+    [[ -s "$liftover_vcf" ]] || { echo "ERROR: liftover output missing: $liftover_vcf" >&2; exit 1; }
+  fi
+  PIPELINE_INPUT_VCF="$liftover_vcf"
+  echo "[liftover] using GRCh38 VCF: $PIPELINE_INPUT_VCF"
+elif [[ "$resolved_assembly" == GRCh38 ]]; then
+  echo "[liftover] skipped (input assembly GRCh38)"
+else
+  echo "[liftover] skipped (assembly=${resolved_assembly}; expected GRCh37 to liftover)"
+fi
 
 sample_arg=()
 if [[ "$SAMPLE_ID" != auto ]]; then
@@ -264,6 +322,11 @@ run_cmd python3 "$SORT_CSV_SCRIPT" \
   printf 'step\tpath\n'
   printf 'original_input_vcf\t%s\n' "$INPUT_VCF"
   printf 'input_vcf_gz\t%s\n' "$PIPELINE_INPUT_VCF"
+  if [[ -n "$liftover_vcf" ]]; then
+    printf 'liftover_vcf\t%s\n' "$liftover_vcf"
+    printf 'liftover_manifest\t%s\n' "$liftover_manifest"
+  fi
+  printf 'input_assembly\t%s\n' "$resolved_assembly"
   printf 'phased_vcf\t%s\n' "$phased_vcf"
   printf 'preprocessed_vcf\t%s\n' "$preprocessed_vcf"
   printf 'pseudogene_annotated_vcf\t%s\n' "$pseudo_vcf"

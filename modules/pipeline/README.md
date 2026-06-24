@@ -261,6 +261,7 @@ modules/pipeline/complete_pipeline/api_jobs/<job_id>/
 | `--ref-dir DIR` | 否 | `$FULL_PIPELINE_REF_DIR` | Beagle 参考 panel |
 | `--beagle-jar FILE` | 否 | `$FULL_PIPELINE_BEAGLE_JAR` | Beagle JAR |
 | `--java-bin PATH` | 否 | `$JAVA_BIN` | Java 可执行文件 |
+| `--input-assembly SPEC` | 否 | `auto` | `auto` / `GRCh37` / `GRCh38`；GRCh37 时在 phasing 前 liftover |
 | `--keep-raw-vep yes\|no` | 否 | `yes` | 保留 `04_vep/raw_vep.tsv` |
 | `--dry-run` | 否 | 关闭 | 只打印命令 |
 
@@ -275,6 +276,7 @@ pixi run bash scripts/run_full_pipeline.sh --help
 | 步骤 | 目录 | 功能 | 主输出 |
 |------|------|------|--------|
 | 00 | `00_input/` | 输入 VCF 规范化（bgzip + 索引） | `*.vcf.gz` |
+| 00b | `00_liftover/` | GRCh37→GRCh38 liftover（`--input-assembly` 触发） | `output.grch38.norm.vcf.gz` |
 | 01 | `01_phasing/` | Beagle + CHN 参考 phasing/ref-support | `*.refsupport.vcf.gz` |
 | 02 | `02_vcf_preprocessing/` | VAF、cCRE、ncRNA 注释 | `preprocessed.regulatory.vcf.gz` |
 | 03 | `03_pseudogene_annotation/` | 假基因 INFO 注释 | `preprocessed.pseudogene_annotated.vcf.gz` |

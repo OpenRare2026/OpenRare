@@ -41,6 +41,10 @@ class RunRequest(BaseModel):
     output_dir: Optional[str] = Field(None, description="Output directory; default is api_jobs/<job_id>/output")
     fork: int = Field(1, description="VEP fork count, default: 1")
     hpo_id: str = Field("", description="Optional patient HPO ID(s), e.g. HP:0001250 or comma-separated IDs")
+    input_assembly: Optional[str] = Field(
+        None,
+        description="Input VCF assembly: auto, GRCh37, or GRCh38; GRCh37 triggers liftover before phasing",
+    )
 
     # Advanced overrides. Leave unset for the curated V3 defaults in run_full_pipeline.sh.
     sample_id: Optional[str] = Field(None, description="Advanced override: Sample ID, or auto")
@@ -156,6 +160,7 @@ def build_command(req: RunRequest, output_dir: Path) -> list[str]:
         cmd.extend([name, str(value)])
 
     add_option("--hpo-id", req.hpo_id)
+    add_option("--input-assembly", req.input_assembly)
     add_option("--sample-id", req.sample_id)
     add_option("--chromosomes", req.chromosomes)
     add_option("--ref-dir", resolve_path(req.ref_dir) if req.ref_dir else None)
@@ -270,6 +275,7 @@ def submit_upload(
     output_dir: Optional[str] = Form(None),
     fork: int = Form(1),
     hpo_id: str = Form(""),
+    input_assembly: Optional[str] = Form(None),
     hpo_file: UploadFile | None = File(None, description="Optional TXT file containing HPO IDs; one per line or separated by comma/space/semicolon"),
     sample_id: Optional[str] = Form(None),
     chromosomes: Optional[str] = Form(None),
@@ -297,6 +303,7 @@ def submit_upload(
         output_dir=output_dir,
         fork=fork,
         hpo_id=merged_hpo_id,
+        input_assembly=input_assembly,
         sample_id=sample_id,
         chromosomes=chromosomes,
         ref_dir=ref_dir,
