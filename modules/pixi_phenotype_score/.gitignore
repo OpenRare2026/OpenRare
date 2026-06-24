@@ -1,0 +1,8 @@
+.pixi/
+config/paths.toml
+external_data/
+runtime/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.DS_Store
