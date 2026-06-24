@@ -3,7 +3,5 @@ uploads/*
 tests/outputs/*
 !.gitkeep
 !output/.gitkeep
-!uploads/.gitkeep
-!tests/outputs/.gitkeep
 .pixi/
 .pixi-bin/

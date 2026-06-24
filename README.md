@@ -1,16 +1,16 @@
 # OpenRare PPI 评分服务
 
 本仓库提供罕见病候选基因的 PPI 网络评分服务。当前推荐使用
-`pixi_ppi_score/`，它已经用 Pixi 固定运行环境，并通过 Case5、Case6
-clean-case 测试。
+`pixi_ppi_score/`，它已经用 Pixi 固定运行环境，并支持 clean-case
+文件上传和服务器路径两种调用方式。
 
 ## 目录说明
 
 | 路径 | 说明 |
 | --- | --- |
-| `pixi_ppi_score/` | 推荐入口。Pixi 环境、FastAPI 服务、测试请求和文档都在这里。 |
-| `docs/FINAL_SCORE_README.md` | `*_final_score.csv` 字段和排名规则说明。 |
-| `docs/PPI_SCORE.md` | PPI 评分逻辑的简要说明。 |
+| `pixi_ppi_score/` | 推荐入口。Pixi 环境、FastAPI 服务、脚本和文档都在这里。 |
+| `pixi_ppi_score/docs/FINAL_SCORE_README.md` | `*_final_score.csv` 字段和排名规则说明。 |
+| `pixi_ppi_score/docs/PPI_SCORE.md` | PPI 评分逻辑的简要说明。 |
 
 大型数据库、VEP 文件、上传文件和结果 CSV 不提交到 GitHub。
 
@@ -65,7 +65,7 @@ clean-case 流程输入三类文件：
 | `*_ppi_score.csv` | 纯 PPI 网络评分表。 |
 | `*_final_score.csv` | phenotype、VEP 和 PPI 融合后的最终候选基因排序表。 |
 
-最终表字段见 `docs/FINAL_SCORE_README.md`。
+最终表字段见 `pixi_ppi_score/docs/FINAL_SCORE_README.md`。
 
 ## 运行
 
@@ -112,16 +112,6 @@ curl -X POST http://127.0.0.1:9000/score/clean-case \
   }'
 ```
 
-也可以使用已保存的测试请求：
-
-```bash
-cd pixi_ppi_score
-pixi run case5-clean
-pixi run case6-clean
-```
-
-测试数据说明见 `pixi_ppi_score/docs/CLEAN_CASE_TESTS.md`。
-
 ## 常用 Pixi 命令
 
 ```bash
@@ -129,9 +119,9 @@ cd pixi_ppi_score
 pixi install
 pixi run serve
 pixi run health
-pixi run test-score
-pixi run case5-clean
-pixi run case6-clean
+pixi run clean-case-upload -- gene_phenotype_score.csv case.vep.csv hpo_ids.txt case_name
+pixi run clean-case -- clean_case_request.json
+pixi run check-imports
 ```
 
 更多路径说明见 `pixi_ppi_score/docs/PATHS.md`。
@@ -140,12 +130,3 @@ pixi run case6-clean
 
 Pixi 环境锁定在 `pixi_ppi_score/pixi.lock`。其中 `pandas` 固定为
 `>=2.3,<3`，避免 Pandas 3.x 在大 VEP CSV 分块读取时触发解析问题。
-
-## 当前验证
-
-已在服务器上完成：
-
-| 用例 | 状态 | 输出行数 | 说明 |
-| --- | --- | ---: | --- |
-| Case5 | `completion` | 47319 | HPO 数 6，映射组织 `brain=5, uterus=1` |
-| Case6 | `completion` | 47078 | HPO 数 2，映射组织 `brain=2` |

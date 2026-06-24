@@ -50,32 +50,23 @@ uberon.obo
 variant_summary.txt.gz
 ```
 
-## 测试输入
+## 输入文件
 
-| 用途 | 路径 |
+| 用途 | 说明 |
 | --- | --- |
-| 小型 score 请求 | `tests/inputs/score_request.json` |
-| Case5 clean-case 请求 | `tests/inputs/case5_clean_request.json` |
-| Case5 HPO | `tests/inputs/case5_hpo.txt` |
-| Case6 clean-case 请求 | `tests/inputs/case6_clean_request.json` |
-| Case6 HPO | `tests/inputs/case6_hpo.txt` |
-
-Case5/Case6 的大输入文件位于仓库外部，具体见
-`docs/CLEAN_CASE_TESTS.md`。
+| phenotype-gene CSV | 通过 `curl -F phenotype_gene_csv=@...` 上传，或在 JSON 请求中填写服务器相对路径。 |
+| VEP CSV | 通过 `curl -F vep_output_csv=@...` 上传，或在 JSON 请求中填写服务器相对路径。 |
+| HPO 列表 | 通过 `curl -F hpo_file=@...` 上传，也可以用表单字段或 JSON 字段 `hpo_ids`。 |
 
 ## 运行输出
 
 | 用途 | 默认路径 |
 | --- | --- |
-| 小型 score 输出 | `tests/outputs/score_result.csv` |
-| Case5 final 输出 | `tests/outputs/clean_cases/case5/case5_final_score.csv` |
-| Case5 PPI 输出 | `tests/outputs/clean_cases/case5/case5_ppi_score.csv` |
-| Case6 final 输出 | `tests/outputs/clean_cases/case6/case6_final_score.csv` |
-| Case6 PPI 输出 | `tests/outputs/clean_cases/case6/case6_ppi_score.csv` |
 | 上传脚本输出 | `tests/outputs/upload_cases/<case_name>/` |
 | 上传脚本响应 | `tests/outputs/upload_responses/<case_name>_response.json` |
+| 路径型 clean-case 输出 | JSON 请求中的 `output_csv` 和 `ppi_output_csv` |
 | 默认 API 输出 | `output/` |
 | 上传模式保存 | `uploads/` |
 
-`output/`、`uploads/`、`tests/outputs/` 下的运行产物默认被 Git 忽略，只保留
-`.gitkeep` 占位文件。
+`output/`、`uploads/`、`tests/outputs/` 下的运行产物默认被 Git 忽略。
+当前只保留 `output/.gitkeep` 作为默认输出目录占位文件。

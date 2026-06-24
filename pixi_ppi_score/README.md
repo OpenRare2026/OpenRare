@@ -32,10 +32,9 @@ pixi run serve
 | --- | --- |
 | `pixi run serve` | 启动 FastAPI 服务。 |
 | `pixi run health` | 调用 `/health`，确认数据文件齐全。 |
-| `pixi run test-score` | 运行一个小型 `/score` 测试。 |
+| `pixi run score -- <request.json>` | 使用 JSON 参数运行基础 `/score` 接口。 |
 | `pixi run clean-case-upload -- <phenotype.csv> <vep.csv> <hpo.txt>` | multipart 上传文件版 clean-case。 |
-| `pixi run case5-clean` | 使用 Case5 示例输入运行 clean-case。 |
-| `pixi run case6-clean` | 使用 Case6 示例输入运行 clean-case。 |
+| `pixi run clean-case -- <request.json>` | 使用 JSON 路径参数运行 clean-case。 |
 | `pixi run check-imports` | 检查主要依赖和 API 模块可导入。 |
 
 ## 目录结构
@@ -44,9 +43,8 @@ pixi run serve
 | --- | --- |
 | `app/` | FastAPI 和 PPI 评分代码。 |
 | `scripts/` | 启动和 curl 测试脚本。 |
-| `tests/inputs/` | 小型测试请求、Case5/Case6 HPO 和请求 JSON。 |
-| `tests/outputs/` | 本地测试输出目录，运行产物被 Git 忽略。 |
-| `docs/` | 依赖、路径和 clean-case 测试说明。 |
+| `tests/outputs/` | 本地运行输出目录，运行时自动创建，产物被 Git 忽略。 |
+| `docs/` | 依赖、路径、输出字段和 PPI 评分说明。 |
 | `output/` | 默认 API 输出目录，运行产物被 Git 忽略。 |
 | `uploads/` | 默认上传保存目录，运行产物被 Git 忽略。 |
 
@@ -103,7 +101,7 @@ pixi run clean-case-upload -- gene_phenotype_score.csv case.vep.csv
 | `*_ppi_score.csv` | 纯 PPI 网络评分。 |
 | `*_final_score.csv` | phenotype、VEP、PPI 融合后的最终排序。 |
 
-字段解释见仓库根目录 `docs/FINAL_SCORE_README.md`。
+字段解释见 `docs/FINAL_SCORE_README.md`。
 
 ## 文档
 
@@ -111,4 +109,5 @@ pixi run clean-case-upload -- gene_phenotype_score.csv case.vep.csv
 | --- | --- |
 | `docs/DEPENDENCIES.md` | Pixi 依赖来源和版本约束。 |
 | `docs/PATHS.md` | 外部数据、输入、输出、中间目录路径。 |
-| `docs/CLEAN_CASE_TESTS.md` | Case5/Case6 测试输入和验证结果。 |
+| `docs/FINAL_SCORE_README.md` | `*_final_score.csv` 字段和排名规则说明。 |
+| `docs/PPI_SCORE.md` | PPI 评分逻辑的简要说明。 |

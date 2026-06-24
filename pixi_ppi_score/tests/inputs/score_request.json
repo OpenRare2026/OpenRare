@@ -1,6 +1,0 @@
-{
-  "data_dir": "../../data",
-  "candidate_genes": ["ABCA4", "USH2A", "CEP290"],
-  "hpo_ids": ["HP:0000488", "HP:0000505"],
-  "output_csv": "tests/outputs/score_result.csv"
-}

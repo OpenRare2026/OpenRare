@@ -4,7 +4,7 @@ set -euo pipefail
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$PROJECT_DIR"
 
-REQUEST_JSON="${1:?usage: scripts/curl_clean_case.sh tests/inputs/case5_clean_request.json}"
+REQUEST_JSON="${1:?usage: scripts/curl_clean_case.sh clean_case_request.json}"
 PORT="${RARE_PPI_PORT:-9000}"
 BASE_URL="${RARE_PPI_BASE_URL:-http://127.0.0.1:${PORT}}"
 case_name="$(basename "$REQUEST_JSON" _clean_request.json)"
