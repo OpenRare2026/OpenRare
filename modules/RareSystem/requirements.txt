@@ -1,0 +1,54 @@
+# Rare Disease Genetic Diagnosis Analysis System - Backend Dependencies
+# Python 3.12+ required
+# Generated from: /mnt/workspace/hujie/miniconda3/envs/py312
+
+# Web Framework
+fastapi==0.136.3
+uvicorn==0.48.0
+python-multipart==0.0.29
+
+# API Documentation
+pydantic==2.13.4
+
+# Database ORM
+sqlalchemy==2.0.50
+alembic==1.18.4
+
+# Task Queue & Cache
+redis==7.4.0
+
+# VCF Processing
+pysam==0.24.0
+
+# Data Processing
+numpy==2.4.6
+pandas==3.0.3
+dask==2026.3.0
+pyarrow==18.1.0
+
+# Statistics & Genetics
+scikit-allel==1.3.13
+
+# Graph Database
+neo4j==6.2.0
+
+# Environment Management
+python-dotenv==1.2.2
+
+# HTTP Client
+httpx==0.28.1
+aiohttp==3.13.5
+requests==2.34.2
+
+# Logging & Monitoring
+loguru==0.7.3
+
+# Configuration
+pyyaml==6.0.3
+
+# Testing
+pytest==9.0.3
+pytest-asyncio==1.4.0
+
+# Annotation
+annotated-doc==0.0.4
