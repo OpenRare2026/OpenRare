@@ -1,0 +1,74 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rare-disease-app
+    ports:
+      - "8181:8181"
+    environment:
+      - DATABASE_URL=sqlite:////app/data/rare_disease_diagnosis.db
+      - LOG_LEVEL=INFO
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+      # Uncomment to use PostgreSQL instead of SQLite
+      # - DATABASE_URL=postgresql://postgres:password@db:5432/rare_disease_db
+      # LLM Configuration (optional - configure your LLM provider)
+      # - LLM_PROVIDER=openai
+      # - LLM_API_KEY=your-api-key
+      # - LLM_MODEL=gpt-4
+      # - LLM_BASE_URL=https://api.openai.com/v1
+      # NCBI PubMed API (optional - for literature search)
+      # - NCBI_EMAIL=your-email@example.com
+      # - NCBI_API_KEY=your-ncbi-api-key
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8181/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # PostgreSQL Database (optional - uncomment to use)
+  # db:
+  #   image: postgres:15-alpine
+  #   container_name: rare-disease-db
+  #   environment:
+  #     - POSTGRES_USER=postgres
+  #     - POSTGRES_PASSWORD=password
+  #     - POSTGRES_DB=rare_disease_db
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   ports:
+  #     - "5432:5432"
+  #   restart: unless-stopped
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U postgres"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+
+  # Redis for Celery (optional - for async tasks)
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: rare-disease-redis
+  #   ports:
+  #     - "6379:6379"
+  #   restart: unless-stopped
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+
+# Volumes
+# volumes:
+#   postgres_data:
+
+# Networks
+networks:
+  default:
+    name: rare-disease-network
