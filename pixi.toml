@@ -17,7 +17,7 @@ name = "openrare"
 version = "0.1.0"
 description = "OpenRare monorepo for rare-disease genomic analysis modules"
 channels = ["conda-forge", "bioconda"]
-platforms = ["linux-64"]
+platforms = ["linux-64", "osx-arm64"]
 
 [dependencies]
 # Shared runtime (pipeline module today; extend when adding modules)
@@ -42,6 +42,7 @@ scripts = ["scripts/load-env.sh"]
 # ---------------------------------------------------------------------------
 
 [tasks]
+doctor = "python -m doctor.main"
 pipeline-vep-dry-run = { cwd = "modules/pipeline", cmd = [
   "python",
   "modules/vep_runner/scripts/run_vep_to_csv.py",
