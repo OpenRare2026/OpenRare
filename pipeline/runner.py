@@ -19,21 +19,37 @@ import httpx
 
 # ── Module URL config (mirrors gateway/src/gateway/main.py MODULES) ──
 
-MODULE_PORTS = {
-    "RAG-HPO":          8010,
-    "pipeline":         18901,
-    "phenotype_score":  7773,
-    "ppi_score":        9000,
-    "rare_sort":        5010,
-    "report":           8800,
+# ── Local config ──────────────────────────────────────────────────────
+
+_LOCAL = {
+    "RAG-HPO":          ("127.0.0.1", 8010),
+    "pipeline":         ("127.0.0.1", 18901),
+    "phenotype_score":  ("127.0.0.1", 7773),
+    "ppi_score":        ("127.0.0.1", 9000),
+    "rare_sort":        ("127.0.0.1", 5010),
+    "report":           ("127.0.0.1", 8800),
 }
 
-HOST = "127.0.0.1"
+# ponytail: remote targets. Switch back to _LOCAL after testing.
+_REMOTE = {
+    "RAG-HPO":          ("172.27.206.112", 9003),
+    "pipeline":         ("172.27.206.113", 18901),
+    "phenotype_score":  ("172.27.206.112", 7003),
+    "ppi_score":        ("172.27.206.113", 9000),
+    "rare_sort":        ("172.27.206.113", 5002),
+    "report":           ("172.27.206.112", 8800),
+}
 
-# When the gateway is running, route through it.
-# Otherwise talk to modules directly on their ports.
-GATEWAY_URL = "http://127.0.0.1:8100"
+_active_targets = _LOCAL
+
+GATEWAY_HOST = "127.0.0.1"
+GATEWAY_PORT = 8100
 _use_gateway: bool | None = None
+
+
+def set_remote(enabled: bool = True) -> None:
+    global _active_targets
+    _active_targets = _REMOTE if enabled else _LOCAL
 
 
 async def _check_gateway() -> bool:
@@ -41,7 +57,7 @@ async def _check_gateway() -> bool:
     if _use_gateway is None:
         try:
             async with httpx.AsyncClient() as c:
-                r = await c.get(f"{GATEWAY_URL}/health", timeout=2.0)
+                r = await c.get(f"http://{GATEWAY_HOST}:{GATEWAY_PORT}/health", timeout=2.0)
                 _use_gateway = r.status_code == 200
         except Exception:
             _use_gateway = False
@@ -49,8 +65,8 @@ async def _check_gateway() -> bool:
 
 
 def module_url(name: str, path: str = "") -> str:
-    """Build URL for a module. Path should start with /."""
-    return f"http://{HOST}:{MODULE_PORTS[name]}{path}"
+    host, port = _active_targets[name]
+    return f"http://{host}:{port}{path}"
 
 
 async def module_request(
@@ -62,7 +78,7 @@ async def module_request(
 ) -> httpx.Response:
     """Send a request to a module, optionally through the gateway."""
     if await _check_gateway():
-        url = f"{GATEWAY_URL}/m/{name}{path}"
+        url = f"http://{GATEWAY_HOST}:{GATEWAY_PORT}/m/{name}{path}"
     else:
         url = module_url(name, path)
     async with httpx.AsyncClient(timeout=timeout) as client:
