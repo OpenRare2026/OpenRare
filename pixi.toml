@@ -106,6 +106,7 @@ gateway = { path = "gateway", editable = true }
 
 [feature.gateway.tasks]
 up = "python -m gateway.main"
+pipeline-full = "python -m pipeline.main"
 
 [environments]
 gateway = { features = ["gateway"], no-default-feature = true }
