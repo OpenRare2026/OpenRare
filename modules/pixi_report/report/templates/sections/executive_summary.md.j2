@@ -1,0 +1,35 @@
+## 2. 分析摘要（Executive Summary）
+
+### 2.1 Top 基因快速列表
+
+本次分析从排序宽表中提取 **Top {{ ctx.top_n }} 基因**，共涉及 {{ ctx.gene_cards | length }} 个基因、{{ ctx.summary.top_genes | sum(attribute='variant_count') }} 个关键变异位点。
+
+| 排名 | 基因 | 变异数 | 最高排序名次 | ClinVar | 主要关联表型 | 主要关联通路 |
+|------|------|--------|--------------|---------|--------------|--------------|
+{% for item in ctx.summary.top_genes %}
+| {{ item.rank }} | **{{ item.gene }}** | {{ item.variant_count }} | #{{ item.best_pathogenic_rank }} | {{ item.top_clinvar or "-" }} | {{ item.main_associated_phenotype or "-" }} | {{ item.main_pathway or "-" }} |
+{% endfor %}
+
+### 2.2 关键发现提示
+
+{% set advice = ctx.narrative.clinical_advice %}
+{% if advice and advice.key_findings %}
+{% for item in advice.key_findings %}
+- {{ item }}
+{% endfor %}
+{% else %}
+{% for item in fallback_key_findings(ctx) %}
+- {{ item }}
+{% endfor %}
+{% endif %}
+{% for card in ctx.gene_cards if card.drug_recommendations %}
+- **{{ card.gene_symbol }} 用药候选（严格筛选）**：{% for drug in card.drug_recommendations %}{{ drug.drug_name }}（{{ drug.evidence_level }}，{{ drug.indication }}）{% if not loop.last %}；{% endif %}{% endfor %} — 需临床专家复核，不得视为最终处方。
+{% endfor %}
+
+### 2.3 排序得分白盒展示（示例）
+
+以 {{ ctx.gene_cards[0].gene_symbol }} 为例，排序得分构成如下：
+
+```
+{{ parse_evidence_tree(ctx.gene_cards[0].evidence_summary) }}
+```

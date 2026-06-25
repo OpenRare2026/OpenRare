@@ -1,0 +1,263 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ClinicalSingleGeneGeneticTestingReport",
+  "description": "Structured report output per T/SZGIA 4-2018 (临床单基因遗传病基因检测报告规范)",
+  "type": "object",
+  "required": [
+    "standard",
+    "report_meta",
+    "testing_institution",
+    "subject",
+    "referring",
+    "sample",
+    "test",
+    "results",
+    "conclusion",
+    "interpretation",
+    "recommendations",
+    "references",
+    "method_limitations",
+    "signatures"
+  ],
+  "properties": {
+    "standard": {
+      "type": "object",
+      "properties": {
+        "code": { "const": "T/SZGIA 4-2018" },
+        "name": { "const": "临床单基因遗传病基因检测报告规范" },
+        "name_en": {
+          "const": "Genetic testing reporting standards for clinical single-gene genetic diseases"
+        }
+      }
+    },
+    "report_meta": {
+      "type": "object",
+      "required": ["report_id", "report_date", "report_version"],
+      "properties": {
+        "report_id": { "type": "string" },
+        "report_date": { "type": "string", "format": "date" },
+        "report_version": { "type": "string", "default": "1.0" },
+        "language": { "type": "string", "enum": ["zh", "en", "zh-en"], "default": "zh" }
+      }
+    },
+    "testing_institution": {
+      "type": "object",
+      "description": "Section 1: 检测机构的信息和联系方式",
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string" },
+        "address": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" },
+        "website": { "type": "string" },
+        "lab_license": { "type": "string" }
+      }
+    },
+    "subject": {
+      "type": "object",
+      "description": "Section 2: 受检者的基本信息",
+      "required": ["clinical_indication"],
+      "properties": {
+        "name": { "type": "string" },
+        "sex": { "type": "string", "enum": ["男", "女", "未知", "M", "F", "Unknown"] },
+        "date_of_birth": { "type": "string", "format": "date" },
+        "age": { "type": "string" },
+        "medical_record_id": { "type": "string" },
+        "clinical_indication": { "type": "string" },
+        "symptoms": { "type": "array", "items": { "type": "string" } },
+        "age_of_onset": { "type": "string" },
+        "provisional_diagnosis": { "type": "string" },
+        "family_history": { "type": "string" },
+        "consanguinity": { "type": "boolean" },
+        "lab_findings": { "type": "string" },
+        "imaging_pathology": { "type": "string" }
+      }
+    },
+    "referring": {
+      "type": "object",
+      "description": "Section 3: 送检机构及医师的信息",
+      "properties": {
+        "institution": { "type": "string" },
+        "department": { "type": "string" },
+        "physician_name": { "type": "string" },
+        "physician_contact": { "type": "string" }
+      }
+    },
+    "sample": {
+      "type": "object",
+      "description": "Sections 4-5: 样本类型与日期",
+      "required": ["sample_type", "receipt_date"],
+      "properties": {
+        "sample_type": {
+          "type": "string",
+          "enum": [
+            "外周血",
+            "DNA",
+            "干血片",
+            "唾液",
+            "组织",
+            "other"
+          ]
+        },
+        "sample_type_other": { "type": "string" },
+        "collection_date": { "type": "string", "format": "date" },
+        "receipt_date": { "type": "string", "format": "date" }
+      }
+    },
+    "test": {
+      "type": "object",
+      "description": "Section 6: 检测项目及检测方法",
+      "required": ["test_name", "method_summary"],
+      "properties": {
+        "test_name": { "type": "string" },
+        "test_code": { "type": "string" },
+        "method_summary": { "type": "string" },
+        "genes_tested": { "type": "array", "items": { "type": "string" } },
+        "sequencing_platform": { "type": "string" },
+        "reference_genome": { "type": "string", "default": "GRCh37/hg19 or GRCh38/hg38" }
+      }
+    },
+    "results": {
+      "type": "object",
+      "description": "Section 7: 检测结果",
+      "required": ["primary_variants"],
+      "properties": {
+        "primary_variants": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/variant" },
+          "description": "与临床指征相关的变异"
+        },
+        "secondary_findings": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/variant" },
+          "description": "经知情同意的意外发现（临床可干预）"
+        }
+      }
+    },
+    "conclusion": {
+      "type": "string",
+      "description": "Section 8: 检测结论"
+    },
+    "interpretation": {
+      "type": "string",
+      "description": "Section 9: 结果解释"
+    },
+    "recommendations": {
+      "type": "array",
+      "description": "Section 10: 建议",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "references": {
+      "type": "array",
+      "description": "Section 11: 参考文献",
+      "items": {
+        "type": "object",
+        "required": ["citation"],
+        "properties": {
+          "pmid": { "type": "string" },
+          "doi": { "type": "string" },
+          "citation": { "type": "string" }
+        }
+      }
+    },
+    "method_limitations": {
+      "type": "object",
+      "description": "Section 12: 检测方法说明和局限性",
+      "required": ["method_description", "limitations"],
+      "properties": {
+        "method_description": { "type": "string" },
+        "analytical_validation": {
+          "type": "object",
+          "properties": {
+            "snv_sensitivity": { "type": "string" },
+            "snv_specificity": { "type": "string" },
+            "cnv_detectable": { "type": "boolean" }
+          }
+        },
+        "limitations": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1
+        }
+      }
+    },
+    "signatures": {
+      "type": "object",
+      "description": "Section 13: 签名及签章",
+      "properties": {
+        "author": { "type": "string" },
+        "reviewer": { "type": "string" },
+        "approver": { "type": "string" },
+        "seal_required": { "type": "boolean", "default": true }
+      }
+    },
+    "appendix": {
+      "type": "object",
+      "description": "附录：补充信息",
+      "properties": {
+        "gene_disease_background": { "type": "string" },
+        "qc_metrics": {
+          "type": "object",
+          "properties": {
+            "mean_coverage": { "type": "string" },
+            "percent_bases_above_20x": { "type": "string" }
+          }
+        },
+        "unreported_vus": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/variant" }
+        }
+      }
+    },
+    "report_markdown": {
+      "type": "string",
+      "description": "Human-readable Markdown rendering of the full report"
+    }
+  },
+  "definitions": {
+    "variant": {
+      "type": "object",
+      "required": ["gene", "transcript", "hgvs_c", "classification", "report_in_conclusion"],
+      "properties": {
+        "gene": { "type": "string", "description": "HGNC gene symbol" },
+        "transcript": { "type": "string", "description": "e.g. NM_000492.4" },
+        "hgvs_c": { "type": "string", "description": "c. notation" },
+        "hgvs_p": { "type": "string", "description": "p. notation" },
+        "genotype": {
+          "type": "string",
+          "enum": ["het", "hom", "hemi", "mosaic", "unknown"]
+        },
+        "inheritance_origin": {
+          "type": "string",
+          "enum": ["de_novo", "maternal", "paternal", "inherited", "unknown"]
+        },
+        "allele_frequency": {
+          "type": "object",
+          "properties": {
+            "gnomad": { "type": "string" },
+            "internal": { "type": "string" }
+          }
+        },
+        "classification": {
+          "type": "string",
+          "enum": [
+            "Pathogenic",
+            "Likely pathogenic",
+            "VUS",
+            "Likely benign",
+            "Benign"
+          ]
+        },
+        "acmg_evidence": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "ACMG codes e.g. PS1, PM2, PP3"
+        },
+        "clinvar_id": { "type": "string" },
+        "report_in_conclusion": { "type": "boolean" },
+        "phenotype_correlation": { "type": "string" }
+      }
+    }
+  }
+}

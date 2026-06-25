@@ -1,0 +1,138 @@
+# 基因组变异分析报告
+
+> **报告版本**：{{ ctx.report_version }}  
+> **生成日期**：{{ ctx.meta.report_date }}  
+> **分析基础**：基于样本 {{ ctx.meta.sample_id }} 的排序宽表 {{ ctx.meta.wide_table_path }}
+
+---
+
+{% include "sections/header.md.j2" %}
+
+---
+
+{% include "sections/executive_summary.md.j2" %}
+
+---
+
+## 3. 基因详细分析（Gene Cards）
+
+{% for card in ctx.gene_cards %}
+{% include "sections/gene_card_script.md.j2" %}
+{% if not loop.last %}
+
+---
+
+{% endif %}
+{% endfor %}
+
+---
+
+{% include "sections/methodology.md.j2" %}
+
+---
+
+{% include "sections/disclaimer.md.j2" %}
+
+---
+
+## 6. 阴性结果说明
+
+本次分析基于排序宽表 Top {{ ctx.top_n }} 基因生成报告。以下情况未在本报告中展开讨论：
+
+| 项目 | 说明 |
+|------|------|
+| 未进入 Top {{ ctx.top_n }} 的基因 | 宽表共注释 {{ ctx.summary.total_genes }} 个基因，其中 {{ ctx.summary.genes_outside_top_n }} 个未纳入本报告 Top 列表；可应要求扩展分析 |
+| 总变异位点数 | 去重后共 {{ ctx.summary.total_variants }} 个变异位点 |
+| 拷贝数变异（CNV） | 当前输入为 SNV/Indel 排序宽表，未包含 CNV 信息 |
+| 融合基因 | 未纳入本次 SNV/Indel 宽表分析范围 |
+| 非编码区 / 深度内含子变异 | 默认过滤阈值以外区域未重点解读 |
+
+---
+
+## 7. 临床建议摘要（遗传咨询师视角）
+
+{% set advice = ctx.narrative.clinical_advice %}
+{% if clinical_advice_is_usable(advice) %}
+### 7.1 立即建议
+
+{% for item in advice.immediate_recommendations %}
+{{ loop.index }}. {{ item }}
+{% endfor %}
+
+### 7.2 动态监测
+
+{% for item in advice.monitoring %}
+{{ loop.index }}. {{ item }}
+{% endfor %}
+
+### 7.3 患者/家属沟通要点
+
+{% for item in advice.communication_points %}
+- {{ item }}
+{% endfor %}
+
+{% if ctx.gene_cards | selectattr('drug_recommendations') | list %}
+### 7.4 严格筛选用药与试验团队（摘要）
+
+{% for card in ctx.gene_cards if card.drug_recommendations %}
+**{{ card.gene_symbol }}**
+{% for drug in card.drug_recommendations %}
+- {{ drug.drug_name }}：{{ drug.indication }}（{{ drug.clinical_stage }}，证据 {{ drug.evidence_level }}）
+{% endfor %}
+{% if card.trial_teams %}
+{% for team in card.trial_teams[:3] %}
+- 试验 {{ team.registration_number }}（{{ team.source }}）：{{ team.drug_name }} — {{ team.sponsor or team.principal_investigator or "团队信息见基因卡片" }}
+{% endfor %}
+{% endif %}
+
+{% endfor %}
+{% endif %}
+{% else %}
+{% set fallback = fallback_clinical_advice(ctx) %}
+### 7.1 立即建议
+
+{% for item in fallback.immediate_recommendations %}
+{{ loop.index }}. {{ item }}
+{% endfor %}
+
+### 7.2 动态监测
+
+{% for item in fallback.monitoring %}
+{{ loop.index }}. {{ item }}
+{% endfor %}
+
+### 7.3 患者/家属沟通要点
+
+{% for item in fallback.communication_points %}
+- {{ item }}
+{% endfor %}
+
+{% if ctx.gene_cards | selectattr('drug_recommendations') | list %}
+### 7.4 严格筛选用药与试验团队（摘要）
+
+{% for card in ctx.gene_cards if card.drug_recommendations %}
+**{{ card.gene_symbol }}**
+{% for drug in card.drug_recommendations %}
+- {{ drug.drug_name }}：{{ drug.indication }}（{{ drug.clinical_stage }}，证据 {{ drug.evidence_level }}）
+{% endfor %}
+{% if card.trial_teams %}
+{% for team in card.trial_teams[:3] %}
+- 试验 {{ team.registration_number }}（{{ team.source }}）：{{ team.drug_name }} — {{ team.sponsor or team.principal_investigator or "团队信息见基因卡片" }}
+{% endfor %}
+{% endif %}
+
+{% endfor %}
+{% endif %}
+{% endif %}
+
+---
+
+## 8. 报告输出元信息（ReportOutput）
+
+```json
+{{ render_report_output_block(ctx, output_path) }}
+```
+
+---
+
+*报告结束。变异注释数值以排序宽表为准；叙事性解读需经临床遗传学专家复核。*
