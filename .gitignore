@@ -6,3 +6,8 @@ modules/pipeline/complete_pipeline/api_jobs/
 modules/pipeline/.env
 modules/pipeline/.env.*
 !modules/pipeline/.env.example
+
+.env
+.env.*
+!.env.example
+.cursor/
