@@ -242,7 +242,7 @@ async def step_vep(artifacts: dict) -> dict:
 
         # Build multipart form
         files = {"input_vcf": open(part_vcf, "rb")}
-        form_data = {"hgvs": "true", "fork": "16" if hpo_ids else "8"}
+        form_data = {"hgvs": "true", "fork": "16" if hpo_ids else "8", "chromosomes": artifacts.get("chromosomes", "1-22")}
         if hpo_ids:
             form_data["hpo_id"] = ",".join(hpo_ids)
             form_data["top_n_hpo_tissues"] = "3"
@@ -594,6 +594,7 @@ async def run_pipeline(
     vcf_path: str,
     symptom_text: str,
     output_dir: str | None = None,
+    chromosomes: str = "1-22",
 ) -> dict:
     """Run the full 6-step pipeline. Returns the artifacts dict with all outputs."""
     if output_dir is None:
@@ -612,6 +613,7 @@ async def run_pipeline(
         "vcf_path": vcf_path,
         "symptom_text": symptom_text,
         "output_dir": output_dir,
+        "chromosomes": chromosomes,
     }
 
     for step_name, step_fn, required in PIPELINE_STEPS:
