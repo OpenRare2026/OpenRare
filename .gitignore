@@ -1,0 +1,8 @@
+# Git ignore patterns for OpenRare repo root
+.pixi/
+modules/pipeline/.pixi/
+modules/pipeline/tmp/
+modules/pipeline/complete_pipeline/api_jobs/
+modules/pipeline/.env
+modules/pipeline/.env.*
+!modules/pipeline/.env.example
