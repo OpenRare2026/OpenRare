@@ -62,7 +62,20 @@ def run_check():
     else:
         results.append(CheckResult(name="prompts", status="error", message=f"missing: {prompts}"))
 
-    # ── D. Python ──
+    # ── D. Vector DB files (built via pixi run build-db) ──
+    meta_path = os.environ.get("RAG_HPO_META_PATH", f"{_MODULE_DIR}/src/data/hpo_meta.json")
+    vec_path = os.environ.get("RAG_HPO_VEC_PATH", f"{_MODULE_DIR}/src/data/hpo_embedded.npz")
+    for name, path in [("vector_db_meta", meta_path), ("vector_db_emb", vec_path)]:
+        if Path(path).exists():
+            results.append(CheckResult(name=name, status="ok", message=path))
+        else:
+            results.append(CheckResult(
+                name=name,
+                status="error",
+                message=f"missing: {path} — run 'pixi run build-db' first"
+            ))
+
+    # ── E. Python ──
     pyver = f"{sys.version_info.major}.{sys.version_info.minor}"
     if sys.version_info >= (3, 10):
         results.append(CheckResult(name="python", status="ok", message=f"Python {pyver}"))

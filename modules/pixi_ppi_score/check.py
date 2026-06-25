@@ -49,14 +49,36 @@ def run_check():
     # ── C. Data directory check ──
     data_dir = os.environ.get("RARE_PPI_DATA_DIR", "../../../data")
     p = Path(data_dir)
-    if p.exists():
-        results.append(CheckResult(name="ppi_data_path", status="ok", message=str(p.resolve())))
-    else:
+    if not p.exists():
         results.append(CheckResult(
             name="ppi_data_path",
             status="error",
             message=f"data dir not found: {data_dir} (set RARE_PPI_DATA_DIR)"
         ))
+    else:
+        results.append(CheckResult(name="ppi_data_path", status="ok", message=str(p.resolve())))
+        # Critical data files (verified on 113: /mnt/workspace/luqi/data/)
+        critical_files = [
+            "hgnc_complete_set.txt",
+            "hp.obo",
+            "mim2gene.txt",
+            "genemap2.txt",
+        ]
+        missing = [f for f in critical_files if not (p / f).exists()]
+        if missing:
+            results.append(CheckResult(
+                name="ppi_data_files",
+                status="error",
+                message=f"missing {len(missing)}/{len(critical_files)}: {', '.join(missing)}"
+            ))
+        else:
+            results.append(CheckResult(
+                name="ppi_data_files",
+                status="ok",
+                message=f"all {len(critical_files)} core files present"
+            ))
+
+    # ── D. Port conflict check (production uses 9000) ──
 
     # ── D. Python ──
     pyver = f"{sys.version_info.major}.{sys.version_info.minor}"

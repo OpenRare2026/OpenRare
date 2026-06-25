@@ -46,8 +46,8 @@ def run_check():
 
     # ── C. Path existence checks (when env vars are set) ──
     env_path_checks = [
-        ("vep_data_dir", "OPENRARE_DATA_ROOT"),
-        ("public_data_dir", "OPENRARE_PUBLIC_DATA_ROOT"),
+        ("vep_data_root", "OPENRARE_DATA_ROOT"),
+        ("public_data_root", "OPENRARE_PUBLIC_DATA_ROOT"),
         ("phasing_ref_dir", "FULL_PIPELINE_REF_DIR"),
         ("beagle_jar_file", "FULL_PIPELINE_BEAGLE_JAR"),
     ]
@@ -60,7 +60,25 @@ def run_check():
             else:
                 results.append(CheckResult(name=name, status="error", message=f"path not found: {val}"))
 
-    # ── D. Python version ──
+    # ── D. Critical resource checks (when OPENRARE_DATA_ROOT is set) ──
+    data_root = os.environ.get("OPENRARE_DATA_ROOT", "")
+    if data_root:
+        critical = [
+            ("vep_cache", f"{data_root}/vep_cache"),
+            ("fasta", f"{data_root}/vep_data/reference/GRCh38.p14.genome.fa"),
+            ("genos_evee_db", os.environ.get("FULL_PIPELINE_GENOS_EVEE_DB", "")),
+            ("vep_config", f"{data_root}/../modules/vep_runner/config/vep_runner_config.json"),
+        ]
+        for name, path in critical:
+            if not path:
+                continue
+            p = Path(path)
+            if p.exists():
+                results.append(CheckResult(name=name, status="ok", message=str(p)))
+            else:
+                results.append(CheckResult(name=name, status="error", message=f"missing: {path}"))
+
+    # ── E. Python version ──
     pyver = f"{sys.version_info.major}.{sys.version_info.minor}"
     if sys.version_info >= (3, 11):
         results.append(CheckResult(name="python", status="ok", message=f"Python {pyver}"))
