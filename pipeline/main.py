@@ -29,6 +29,7 @@ Examples:
     parser.add_argument("-t", "--text", required=True, dest="symptom_text", help="Patient symptom description")
     parser.add_argument("-o", "--output", dest="output_dir", default=None, help="Output directory")
     parser.add_argument("--remote", action="store_true", help="Use remote services on 112/113")
+    parser.add_argument("--chromosomes", default="1-22", help="Chromosomes to process (default: 1-22)")
     args = parser.parse_args()
 
     if not Path(args.vcf_path).exists():
@@ -44,6 +45,7 @@ Examples:
             vcf_path=args.vcf_path,
             symptom_text=args.symptom_text,
             output_dir=args.output_dir,
+            chromosomes=args.chromosomes,
         ))
     except KeyboardInterrupt:
         print("\nPipeline interrupted by user.", file=sys.stderr)
