@@ -1,6 +1,18 @@
 # OpenRare
 
-罕见病变异注释与排序 monorepo。
+<img src="./OpenRare.png" alt="OpenRare Logo">
+
+## OpenRare Rare Disease Agent
+
+**An Explainable AI System for Rare Disease Variant Prioritization**
+
+Rare Disease Agent 是一个面向罕见病诊断场景的开源基因分析系统。
+
+我们的目标不是替代临床医生进行诊断，而是帮助医生在海量基因变异中更高效地发现最有可能解释患者表型的候选致病变异，并提供可追溯、可解释、可审计的证据链。
+
+系统融合患者临床表现、基因测序数据、生物医学知识库以及 AI Agent 技术，构建从症状理解、变异注释、致病性排序到报告生成的完整分析流程。
+
+---
 
 ## 环境（Pixi）
 
