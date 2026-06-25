@@ -37,6 +37,8 @@ OPENRARE_DATA_ROOT="$(openrare_resolve_path "$OPENRARE_DATA_ROOT")"
 OPENRARE_PUBLIC_DATA_ROOT="$(openrare_resolve_path "$OPENRARE_PUBLIC_DATA_ROOT")"
 FULL_PIPELINE_REF_DIR="$(openrare_resolve_path "$FULL_PIPELINE_REF_DIR")"
 FULL_PIPELINE_BEAGLE_JAR="$(openrare_resolve_path "$FULL_PIPELINE_BEAGLE_JAR")"
+: "${FULL_PIPELINE_GENOS_EVEE_DB:=resource/genos_evee/genos_evee.cpra.tsv.gz}"
+FULL_PIPELINE_GENOS_EVEE_DB="$(openrare_resolve_path "$FULL_PIPELINE_GENOS_EVEE_DB")"
 
 : "${LIFTOVER_JAR:=/path/to/grch37_to_grch38_liftover/liftover_runner/target/liftover-runner.jar}"
 : "${LIFTOVER_CONFIG:=/path/to/grch37_to_grch38_liftover/config/liftover_config.toml}"

@@ -66,6 +66,14 @@ def full_pipeline_beagle_jar() -> Path:
     return resolve_pipeline_path(raw)
 
 
+DEFAULT_GENOS_EVEE_DB = "resource/genos_evee/genos_evee.cpra.tsv.gz"
+
+
+def full_pipeline_genos_evee_db() -> Path:
+    raw = os.environ.get("FULL_PIPELINE_GENOS_EVEE_DB", DEFAULT_GENOS_EVEE_DB)
+    return resolve_pipeline_path(raw)
+
+
 DEFAULT_LIFTOVER_JAR = "/path/to/grch37_to_grch38_liftover/liftover_runner/target/liftover-runner.jar"
 DEFAULT_LIFTOVER_CONFIG = "/path/to/grch37_to_grch38_liftover/config/liftover_config.toml"
 

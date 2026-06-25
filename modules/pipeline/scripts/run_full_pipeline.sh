@@ -11,7 +11,8 @@ LIFTOVER_PY="${OPENRARE_LIFTOVER_SCRIPT}"
 PSEUDOGENE_PY="${ROOT}/modules/pseudogene_annotation/scripts/annotate_pseudogene.py"
 VEP_SCRIPT="${ROOT}/modules/vep_runner/scripts/run_vep_to_csv.py"
 INFO_TO_CSV_SCRIPT="${ROOT}/modules/vcf_info_to_csv/scripts/add_vcf_info_to_vep_csv.py"
-SORT_CSV_SCRIPT="${ROOT}/modules/result_sorting/scripts/sort_vep_csv.py"
+GENOS_EVEE_SCRIPT="${ROOT}/modules/genos_evee_annotation/scripts/add_genos_evee_to_csv.py"
+# SORT_CSV_SCRIPT="${ROOT}/modules/result_sorting/scripts/sort_vep_csv.py"
 VEP_CONFIG="${ROOT}/modules/vep_runner/config/vep_runner_config.json"
 
 usage() {
@@ -40,6 +41,7 @@ Advanced optional overrides, usually not needed:
   --java-bin PATH           Java executable for Beagle
   --top-k-transcripts N     VEP transcript selection count, default: 5
   --clinical-tissue NAME    Optional clinical tissue for VEP runner
+  --genos-evee-db FILE      Indexed GENOS-EVEE CPRA TSV.GZ; default: resource/genos_evee/genos_evee.cpra.tsv.gz
   --keep-raw-vep yes|no     Keep raw VEP TSV, default: yes
   --input-assembly SPEC     Input assembly: auto, GRCh37, or GRCh38 (default: auto)
   --dry-run                 Print commands only
@@ -62,6 +64,7 @@ JAVA_HEAP_GB=12
 TOP_K_TRANSCRIPTS=5
 HPO_ID=""
 CLINICAL_TISSUE=""
+GENOS_EVEE_DB="${FULL_PIPELINE_GENOS_EVEE_DB}"
 KEEP_RAW_VEP=yes
 INPUT_ASSEMBLY="auto"
 DRY_RUN=no
@@ -84,6 +87,7 @@ while [[ $# -gt 0 ]]; do
     --top-k-transcripts) TOP_K_TRANSCRIPTS="${2:?}"; shift 2 ;;
     --hpo-id) HPO_ID="${2:?}"; shift 2 ;;
     --clinical-tissue) CLINICAL_TISSUE="${2:?}"; shift 2 ;;
+    --genos-evee-db) GENOS_EVEE_DB="${2:?}"; shift 2 ;;
     --keep-raw-vep) KEEP_RAW_VEP="${2:?}"; shift 2 ;;
     --input-assembly) INPUT_ASSEMBLY="${2:?}"; shift 2 ;;
     --dry-run) DRY_RUN=yes; shift ;;
@@ -110,7 +114,7 @@ fi
 [[ -s "$VEP_CONFIG" ]] || { echo "ERROR: VEP config not found: $VEP_CONFIG" >&2; exit 1; }
 [[ -s "$PSEUDOGENE_PY" ]] || { echo "ERROR: pseudogene script not found: $PSEUDOGENE_PY" >&2; exit 1; }
 [[ -s "$INFO_TO_CSV_SCRIPT" ]] || { echo "ERROR: INFO-to-CSV script not found: $INFO_TO_CSV_SCRIPT" >&2; exit 1; }
-[[ -s "$SORT_CSV_SCRIPT" ]] || { echo "ERROR: result sorting script not found: $SORT_CSV_SCRIPT" >&2; exit 1; }
+[[ -s "$GENOS_EVEE_SCRIPT" ]] || { echo "ERROR: GENOS-EVEE annotation script not found: $GENOS_EVEE_SCRIPT" >&2; exit 1; }
 case "$INPUT_ASSEMBLY" in
   auto|GRCh37|GRCh38) ;;
   *)
@@ -119,7 +123,7 @@ case "$INPUT_ASSEMBLY" in
     ;;
 esac
 
-mkdir -p "$OUT_DIR"/{00_input,00_liftover,01_phasing,02_vcf_preprocessing,03_pseudogene_annotation,04_vep,05_vcf_info_to_csv,06_result_sorting,logs}
+mkdir -p "$OUT_DIR"/{00_input,00_liftover,01_phasing,02_vcf_preprocessing,03_pseudogene_annotation,04_vep,05_vcf_info_to_csv,06_genos_evee_annotation,logs}
 LOG="${OUT_DIR}/logs/full_pipeline.log"
 SUMMARY="${OUT_DIR}/full_pipeline.outputs.tsv"
 exec > >(tee -a "$LOG") 2>&1
@@ -293,8 +297,10 @@ vep_log="${OUT_DIR}/04_vep/vep.log"
 raw_vep="${OUT_DIR}/04_vep/raw_vep.tsv"
 vep_info_csv="${OUT_DIR}/05_vcf_info_to_csv/vep_output.with_info.csv"
 vep_info_log="${OUT_DIR}/05_vcf_info_to_csv/vcf_info_to_csv.log.json"
-vep_csv="${OUT_DIR}/06_result_sorting/vep_output.sorted.csv"
-vep_sort_log="${OUT_DIR}/06_result_sorting/result_sorting.log.json"
+vep_evee_csv="${OUT_DIR}/06_genos_evee_annotation/vep_output.with_genos_evee.csv"
+vep_evee_log="${OUT_DIR}/06_genos_evee_annotation/genos_evee_annotation.log.json"
+# Final sorting is intentionally disabled. The GENOS-EVEE wide table is the final CSV.
+vep_csv="$vep_evee_csv"
 vep_cmd=(python3 "$VEP_SCRIPT" -i "$pseudo_vcf" -o "$vep_base_csv" --config "$VEP_CONFIG" --format vcf --hgvs --fork "$FORK" --top-k-transcripts "$TOP_K_TRANSCRIPTS" --no-pseudogene-annotation --no-regulatory-annotation --no-vcf-info-to-csv --no-pathogenic-ranking --log "$vep_log")
 if [[ "$KEEP_RAW_VEP" == yes ]]; then
   vep_cmd+=(--keep-vep "$raw_vep")
@@ -307,16 +313,33 @@ if [[ -n "$CLINICAL_TISSUE" ]]; then
 fi
 run_cmd "${vep_cmd[@]}"
 
-run_cmd python3 "$INFO_TO_CSV_SCRIPT" \
+info_to_csv_cmd=(python3 "$INFO_TO_CSV_SCRIPT" \
   --input-csv "$vep_base_csv" \
   --input-vcf "$pseudo_vcf" \
   --output-csv "$vep_info_csv" \
-  --log-json "$vep_info_log"
+  --log-json "$vep_info_log")
+if [[ "$SAMPLE_ID" != auto ]]; then
+  info_to_csv_cmd+=(--sample-name "$SAMPLE_ID")
+fi
+run_cmd "${info_to_csv_cmd[@]}"
 
-run_cmd python3 "$SORT_CSV_SCRIPT" \
+genos_evee_cmd=(python3 "$GENOS_EVEE_SCRIPT" \
   --input-csv "$vep_info_csv" \
-  --output-csv "$vep_csv" \
-  --log-json "$vep_sort_log"
+  --output-csv "$vep_evee_csv" \
+  --log-json "$vep_evee_log")
+if [[ -s "$GENOS_EVEE_DB" ]]; then
+  [[ -s "${GENOS_EVEE_DB}.tbi" ]] || { echo "ERROR: GENOS-EVEE database index not found: ${GENOS_EVEE_DB}.tbi" >&2; exit 1; }
+  genos_evee_cmd+=(--database "$GENOS_EVEE_DB")
+else
+  echo "WARNING: GENOS-EVEE database not found; GENOS-EVEE column will be filled with '-': $GENOS_EVEE_DB"
+fi
+run_cmd "${genos_evee_cmd[@]}"
+
+# Final sorting step disabled:
+# run_cmd python3 "$SORT_CSV_SCRIPT" \
+#   --input-csv "$vep_evee_csv" \
+#   --output-csv "${OUT_DIR}/07_result_sorting/vep_output.sorted.csv" \
+#   --log-json "${OUT_DIR}/07_result_sorting/result_sorting.log.json"
 
 {
   printf 'step\tpath\n'
@@ -332,10 +355,12 @@ run_cmd python3 "$SORT_CSV_SCRIPT" \
   printf 'pseudogene_annotated_vcf\t%s\n' "$pseudo_vcf"
   printf 'vep_base_csv\t%s\n' "$vep_base_csv"
   printf 'vep_info_csv\t%s\n' "$vep_info_csv"
+  printf 'genos_evee_database\t%s\n' "$GENOS_EVEE_DB"
+  printf 'vep_genos_evee_csv\t%s\n' "$vep_evee_csv"
   printf 'vep_csv\t%s\n' "$vep_csv"
   printf 'vep_log\t%s\n' "$vep_log"
   printf 'vcf_info_to_csv_log\t%s\n' "$vep_info_log"
-  printf 'result_sorting_log\t%s\n' "$vep_sort_log"
+  printf 'genos_evee_annotation_log\t%s\n' "$vep_evee_log"
   printf 'full_log\t%s\n' "$LOG"
 } > "$SUMMARY"
 cat "$SUMMARY"
