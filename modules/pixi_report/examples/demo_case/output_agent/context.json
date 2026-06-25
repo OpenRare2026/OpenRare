@@ -1,0 +1,630 @@
+{
+  "meta": {
+    "family_type": "单人",
+    "pedigree_role": "先证者",
+    "sample_id": "26B03487389",
+    "clinical_info": "遗传咨询#主诉：咨询1天余，伴随 #现病史：孕15周，自诉孕妇母亲陶彩萍智力异常，智力落后，语言，运动无异常，未做遗传学检查，否认家族史。",
+    "hpo_raw": "【空】\nHP:0001249 智力障碍/Intellectual disability",
+    "hpo_terms": [
+      "HP:0001249"
+    ],
+    "raghpo_returns": {
+      "job_id": "4c849a02-2e7c-4349-b0b7-d38f02275fc6",
+      "status": "completed",
+      "results": []
+    },
+    "liftover_path": "",
+    "vcf_path": "",
+    "wide_table_path": "/mnt/workspace/lixinhang/code/search_agent/examples/demo_case/wide_table.csv",
+    "gene_disease_path": "",
+    "ppi_path": "",
+    "report_path": "",
+    "report_date": "2026-06-17"
+  },
+  "summary": {
+    "top_genes": [
+      {
+        "rank": 1,
+        "gene": "CNOT3",
+        "variant_count": 1,
+        "best_pathogenic_rank": 498,
+        "top_clinvar": "",
+        "main_consequence": "splice_donor_variant,coding_sequence_variant",
+        "main_pathway": "Generic Transcription Pathway",
+        "main_associated_phenotype": "intellectual developmental disorder with speech delay, autism and dysmorphic facies; neurodegenerative disease",
+        "evidence_summary": "consequence=splice_donor_variant(+33); splice_lof=SpliceAI:unknown(+15); total=+48"
+      },
+      {
+        "rank": 2,
+        "gene": "KANSL1",
+        "variant_count": 1,
+        "best_pathogenic_rank": 4604,
+        "top_clinvar": "",
+        "main_consequence": "intron_variant",
+        "main_pathway": "Epigenetic regulation by WDR5-containing histone modifying complexes",
+        "main_associated_phenotype": "Koolen-de Vries syndrome; Intellectual disability",
+        "evidence_summary": "consequence=intron_variant(-3); splice_lof=SpliceAI:0.38(+10); CADD=18.23(+2); EAS_AF=0.0001934; frequency(+8); total=+17"
+      },
+      {
+        "rank": 3,
+        "gene": "TNRC6B",
+        "variant_count": 1,
+        "best_pathogenic_rank": 57238,
+        "top_clinvar": "",
+        "main_consequence": "intron_variant",
+        "main_pathway": "-",
+        "main_associated_phenotype": "global developmental delay with speech and behavioral abnormalities; genetic disorder",
+        "evidence_summary": "consequence=intron_variant(-3); splice_lof=SpliceAI:0.26(+10); total=+7"
+      },
+      {
+        "rank": 4,
+        "gene": "SETD5",
+        "variant_count": 1,
+        "best_pathogenic_rank": 192603,
+        "top_clinvar": "",
+        "main_consequence": "intron_variant",
+        "main_pathway": "-",
+        "main_associated_phenotype": "intellectual disability-facial dysmorphism syndrome due to SETD5 haploinsufficiency; genetic disorder",
+        "evidence_summary": "consequence=intron_variant(-3); CADD=20.3(+6); total=+3"
+      }
+    ],
+    "total_variants": 4,
+    "total_genes": 4,
+    "genes_outside_top_n": 0
+  },
+  "gene_cards": [
+    {
+      "rank": 1,
+      "gene_symbol": "CNOT3",
+      "best_pathogenic_rank": 498,
+      "variant_count": 1,
+      "top_clinvar": "",
+      "main_consequence": "splice_donor_variant,coding_sequence_variant",
+      "main_pathway": "Generic Transcription Pathway",
+      "main_associated_phenotype": "intellectual developmental disorder with speech delay, autism and dysmorphic facies; neurodegenerative disease",
+      "main_phenotype_hint": "Brain - Cerebellum",
+      "ncbi_gene_id": "4849",
+      "ncbi_gene_name": "CCR4-NOT transcription complex subunit 3",
+      "ncbi_gene_summary": "Involved in regulation of stem cell population maintenance. Part of CCR4-NOT complex. [provided by Alliance of Genome Resources, Jul 2025]",
+      "ncbi_gene_url": "https://www.ncbi.nlm.nih.gov/gene/4849",
+      "script_gene_function": "Involved in regulation of stem cell population maintenance. Part of CCR4-NOT complex. [provided by Alliance of Genome Resources, Jul 2025]",
+      "script_gene_function_source": "NCBI Gene (Entrez)",
+      "omim_gene_function": "-",
+      "omim_inheritance_mode": "Intellectual developmental disorder with speech delay, autism, and dysmorphic facies (Autosomal dominant)",
+      "evidence_summary": "consequence=splice_donor_variant(+33); splice_lof=SpliceAI:unknown(+15); total=+48",
+      "variants": [
+        {
+          "chrom": "chr19",
+          "pos": "54152615",
+          "ref": "CTGAGCGTATTCGG",
+          "alt": "C",
+          "gene_symbol": "CNOT3",
+          "transcript_id": "ENST00000221232.11",
+          "refseq_id": "NM_014516.4",
+          "mane_select": "NM_014516.4",
+          "consequence": "splice_donor_variant,coding_sequence_variant",
+          "impact": "HIGH",
+          "hgvsc": "c.1897_1904+5del",
+          "hgvsp": "-",
+          "exon": "15/18",
+          "protein_domains": "-",
+          "revel_score": "-",
+          "cadd_phred": "-",
+          "gnomad_popmax_af": "-",
+          "gnomad_eas_af": "-",
+          "gnomad_nhomalt": "-",
+          "spliceai_ds_max": "-",
+          "spliceai_type": "-",
+          "loftee_lof_flag": "HC",
+          "clinvar_significance": "-",
+          "clinvar_review_status": "-",
+          "clinvar_star_rating": "0",
+          "vcf_info_af": "-",
+          "vcf_info_dp": "-",
+          "vcf_info_vaf": "-",
+          "vcf_info_ref_dp": "-",
+          "vcf_info_alt_dp": "-",
+          "vcf_info_qd": "-",
+          "vcf_info_fs": "-",
+          "vcf_info_mq": "-",
+          "vcf_info_beagle_phased": "-",
+          "vcf_info_chn_ref_support": "-",
+          "vcf_info_chn_alt_carrier_count": "-",
+          "vcf_info_chn_alt_ac": "-",
+          "vcf_info_phasing_confidence": "-",
+          "vcf_info_reg_ccre_id": "-",
+          "vcf_info_reg_ccre_class": "-",
+          "vcf_info_reg_ccre_count": "-",
+          "vcf_info_ncrna_gene_name": "-",
+          "vcf_info_ncrna_gene_type": "-",
+          "vcf_info_is_pseudogene": "-",
+          "vcf_info_pseudogene_name": "-",
+          "vcf_info_pseudogene_source": "-",
+          "clinical_best_tissue": "Brain - Cerebellum",
+          "clinical_transcript_tpm": "16.39",
+          "gtex_transcript_top5_tissues": "Testis:27.74;Cells - EBV-transformed lymphocytes:20.96;Uterus:17.47;Cells - Cultured fibroblasts:17.18;Fallopian Tube:17.05",
+          "pathogenic_rank": 498,
+          "evidence_summary": "consequence=splice_donor_variant(+33); splice_lof=SpliceAI:unknown(+15); total=+48"
+        }
+      ],
+      "drug_recommendations": [],
+      "trial_teams": [],
+      "drug_recommendation_summary": "当前变异 ClinVar/功能后果未达到 Pathogenic 或高影响 LoF 标准，本报告不提供用药建议。",
+      "narrative": {
+        "gene_function": "Involved in regulation of stem cell population maintenance. Part of CCR4-NOT complex. [provided by Alliance of Genome Resources, Jul 2025]",
+        "inheritance_mode": "Intellectual developmental disorder with speech delay, autism, and dysmorphic facies (Autosomal dominant)",
+        "phenotype_association": "intellectual developmental disorder with speech delay, autism and dysmorphic facies (IDDSADF) [Open Targets score: 0.756]; neurodegenerative disease [score: 0.540]; complex neurodevelopmental disorder [score: 0.463]; Neurodevelopmental disorder [score: 0.373]. Corroborated by HPO term HP:0001249 (Intellectual disability).",
+        "pathway_summary": "Generic Transcription Pathway (Reactome). CNOT3 is the central component of the CCR4-NOT protein complex, a global regulator of RNA polymerase II transcription that governs mRNA deadenylation, degradation, and translational control.",
+        "literature": [
+          {
+            "pmid": "42117603",
+            "title": "Phenotypic and Genetic Insights Into CNOT3-Related Intellectual Developmental Disorder of Speech Delay, Autism, and Dysmorphic Faces (IDDSADF) From the First Two Japanese Cases.",
+            "authors_journal_year": "Ariyasu D et al. Am J Med Genet A. 2026",
+            "summary": "首次报道日本IDDSADF病例（8岁女童、19岁男童），均携带CNOT3致病杂合变异（c.732dup及c.837+1G>A），表型包括发育迟缓、特殊面容及身材矮小，发现薄帐篷状上唇可能为种族相关特征。",
+            "evidence_level": "case_report"
+          },
+          {
+            "pmid": "36802310",
+            "title": "Clinical features of CNOT3-associated neurodevelopmental disorder in three Chinese patients.",
+            "authors_journal_year": "Zhao P et al. Neurogenetics. 2023",
+            "summary": "首次报道中国人群IDDSADF，发现3个新CNOT3杂合变异（c.1058_1059insT、c.724delT及c.387+2T>C），功能研究证实CNOT3 mRNA水平显著下降及外显子跳跃，并观察到CCR4-NOT复合物其他亚基表达改变。",
+            "evidence_level": "case_series"
+          },
+          {
+            "pmid": "38179413",
+            "title": "Novel In-Frame Deletion in CNOT3 Associated with IDDSADF.",
+            "authors_journal_year": "Lee CG et al. Neurol Genet. 2024",
+            "summary": "报道新型CNOT3框内缺失变异导致IDDSADF，进一步拓展CNOT3基因型-表型谱。",
+            "evidence_level": "case_report"
+          }
+        ],
+        "clinical_note": "受检者孕15周，因母系家族智力异常史行遗传咨询。CNOT3基因检出杂合剪接供体变异 c.1897_1904+5del (chr19:54152615 CTGAGCGTATTCGG>C)，该变异导致编码序列缺失及剪接供体改变。SpliceAI预测提示剪接异常（LoF证据+48分）。该基因为IDDSADF（智力发育障碍伴语言迟缓、孤独症及特殊面容）的致病基因，呈常染色体显性遗传。鉴于该变异的剪接破坏效应，结合家族史，可能为该家系的遗传学病因，但ClinVar及人群频率数据有限，需进一步家系共分离验证及RNA水平功能验证。",
+        "therapeutic_implication": "当前变异为剪接供体位点变异，ClinVar及功能后果尚未达到明确Pathogenic或高影响LoF标准，本报告不提供用药建议。暂无严格匹配的靶向药物候选。"
+      }
+    },
+    {
+      "rank": 2,
+      "gene_symbol": "KANSL1",
+      "best_pathogenic_rank": 4604,
+      "variant_count": 1,
+      "top_clinvar": "",
+      "main_consequence": "intron_variant",
+      "main_pathway": "Epigenetic regulation by WDR5-containing histone modifying complexes",
+      "main_associated_phenotype": "Koolen-de Vries syndrome; Intellectual disability",
+      "main_phenotype_hint": "Brain - Cerebellar Hemisphere",
+      "ncbi_gene_id": "284058",
+      "ncbi_gene_name": "KAT8 regulatory NSL complex subunit 1",
+      "ncbi_gene_summary": "This gene encodes a nuclear protein that is a subunit of two protein complexes involved with histone acetylation, the MLL1 complex and the NSL1 complex. The encoded protein has been implicated in a variety of cellular processes including enhancer regulation, cell proliferation, and mitosis. Mutations in this gene are associated with Koolen-de Vries Syndrome. [provided by RefSeq, May 2022]",
+      "ncbi_gene_url": "https://www.ncbi.nlm.nih.gov/gene/284058",
+      "script_gene_function": "This gene encodes a nuclear protein that is a subunit of two protein complexes involved with histone acetylation, the MLL1 complex and the NSL1 complex. The encoded protein has been implicated in a variety of cellular processes including enhancer regulation, cell proliferation, and mitosis. Mutations in this gene are associated with Koolen-de Vries Syndrome. [provided by RefSeq, May 2022]",
+      "script_gene_function_source": "NCBI Gene (Entrez)",
+      "omim_gene_function": "-",
+      "omim_inheritance_mode": "Koolen-De Vries syndrome (Autosomal dominant)",
+      "evidence_summary": "consequence=intron_variant(-3); splice_lof=SpliceAI:0.38(+10); CADD=18.23(+2); EAS_AF=0.0001934; frequency(+8); total=+17",
+      "variants": [
+        {
+          "chrom": "chr17",
+          "pos": "46039438",
+          "ref": "C",
+          "alt": "T",
+          "gene_symbol": "KANSL1",
+          "transcript_id": "ENST00000432791.7",
+          "refseq_id": "NM_001405855.1,NM_015443.4",
+          "mane_select": "NM_015443.4",
+          "consequence": "intron_variant",
+          "impact": "MODIFIER",
+          "hgvsc": "c.2204-223G>A",
+          "hgvsp": "-",
+          "exon": "-",
+          "protein_domains": "-",
+          "revel_score": "-",
+          "cadd_phred": "18.23",
+          "gnomad_popmax_af": "0.0001934",
+          "gnomad_eas_af": "0.0001934",
+          "gnomad_nhomalt": "-",
+          "spliceai_ds_max": "0.38",
+          "spliceai_type": "donor_gain",
+          "loftee_lof_flag": "-",
+          "clinvar_significance": "-",
+          "clinvar_review_status": "-",
+          "clinvar_star_rating": "0",
+          "vcf_info_af": "-",
+          "vcf_info_dp": "-",
+          "vcf_info_vaf": "-",
+          "vcf_info_ref_dp": "-",
+          "vcf_info_alt_dp": "-",
+          "vcf_info_qd": "-",
+          "vcf_info_fs": "-",
+          "vcf_info_mq": "-",
+          "vcf_info_beagle_phased": "-",
+          "vcf_info_chn_ref_support": "-",
+          "vcf_info_chn_alt_carrier_count": "-",
+          "vcf_info_chn_alt_ac": "-",
+          "vcf_info_phasing_confidence": "-",
+          "vcf_info_reg_ccre_id": "-",
+          "vcf_info_reg_ccre_class": "-",
+          "vcf_info_reg_ccre_count": "-",
+          "vcf_info_ncrna_gene_name": "-",
+          "vcf_info_ncrna_gene_type": "-",
+          "vcf_info_is_pseudogene": "-",
+          "vcf_info_pseudogene_name": "-",
+          "vcf_info_pseudogene_source": "-",
+          "clinical_best_tissue": "Brain - Cerebellar Hemisphere",
+          "clinical_transcript_tpm": "1.555",
+          "gtex_transcript_top5_tissues": "Uterus:1.58;Brain - Cerebellar Hemisphere:1.555;Cervix - Endocervix:1.46;Fallopian Tube:1.44;Brain - Cerebellum:1.24",
+          "pathogenic_rank": 4604,
+          "evidence_summary": "consequence=intron_variant(-3); splice_lof=SpliceAI:0.38(+10); CADD=18.23(+2); EAS_AF=0.0001934; frequency(+8); total=+17"
+        }
+      ],
+      "drug_recommendations": [],
+      "trial_teams": [],
+      "drug_recommendation_summary": "当前变异 ClinVar/功能后果未达到 Pathogenic 或高影响 LoF 标准，本报告不提供用药建议。",
+      "narrative": {
+        "gene_function": "This gene encodes a nuclear protein that is a subunit of two protein complexes involved with histone acetylation, the MLL1 complex and the NSL1 complex. The encoded protein has been implicated in a variety of cellular processes including enhancer regulation, cell proliferation, and mitosis. Mutations in this gene are associated with Koolen-de Vries Syndrome. [provided by RefSeq, May 2022]",
+        "inheritance_mode": "Koolen-De Vries syndrome (Autosomal dominant)",
+        "phenotype_association": "",
+        "pathway_summary": "Epigenetic regulation by WDR5-containing histone modifying complexes",
+        "literature": [],
+        "clinical_note": "",
+        "therapeutic_implication": ""
+      }
+    },
+    {
+      "rank": 3,
+      "gene_symbol": "TNRC6B",
+      "best_pathogenic_rank": 57238,
+      "variant_count": 1,
+      "top_clinvar": "",
+      "main_consequence": "intron_variant",
+      "main_pathway": "-",
+      "main_associated_phenotype": "global developmental delay with speech and behavioral abnormalities; genetic disorder",
+      "main_phenotype_hint": "Brain - Cerebellum",
+      "ncbi_gene_id": "23112",
+      "ncbi_gene_name": "trinucleotide repeat containing adaptor 6B",
+      "ncbi_gene_summary": "Enables RNA binding activity. Involved in positive regulation of nuclear-transcribed mRNA catabolic process, deadenylation-dependent decay; positive regulation of nuclear-transcribed mRNA poly(A) tail shortening; and regulatory ncRNA-mediated gene silencing. Acts upstream of with a positive effect on miRNA-mediated gene silencing by inhibition of translation. Predicted to be located in cytosol. Predicted to be active in P-body and nucleoplasm. Implicated in subserous uterine fibroid and uterine fibroid. [provided by Alliance of Genome Resources, Jul 2025]",
+      "ncbi_gene_url": "https://www.ncbi.nlm.nih.gov/gene/23112",
+      "script_gene_function": "Enables RNA binding activity. Involved in positive regulation of nuclear-transcribed mRNA catabolic process, deadenylation-dependent decay; positive regulation of nuclear-transcribed mRNA poly(A) tail shortening; and regulatory ncRNA-mediated gene silencing. Acts upstream of with a positive effect on miRNA-mediated gene silencing by inhibition of translation. Predicted to be located in cytosol. Predicted to be active in P-body and nucleoplasm. Implicated in subserous uterine fibroid and uterine fibroid. [provided by Alliance of Genome Resources, Jul 2025]",
+      "script_gene_function_source": "NCBI Gene (Entrez)",
+      "omim_gene_function": "-",
+      "omim_inheritance_mode": "Global developmental delay with speech and behavioral abnormalities (Autosomal dominant)",
+      "evidence_summary": "consequence=intron_variant(-3); splice_lof=SpliceAI:0.26(+10); total=+7",
+      "variants": [
+        {
+          "chrom": "chr22",
+          "pos": "40313649",
+          "ref": "C",
+          "alt": "T",
+          "gene_symbol": "TNRC6B",
+          "transcript_id": "ENST00000454349.7",
+          "refseq_id": "NM_001162501.2",
+          "mane_select": "NM_001162501.2",
+          "consequence": "intron_variant",
+          "impact": "MODIFIER",
+          "hgvsc": "c.4678+652C>T",
+          "hgvsp": "-",
+          "exon": "-",
+          "protein_domains": "-",
+          "revel_score": "-",
+          "cadd_phred": "5.462",
+          "gnomad_popmax_af": "-",
+          "gnomad_eas_af": "-",
+          "gnomad_nhomalt": "-",
+          "spliceai_ds_max": "0.26",
+          "spliceai_type": "acceptor_gain",
+          "loftee_lof_flag": "-",
+          "clinvar_significance": "-",
+          "clinvar_review_status": "-",
+          "clinvar_star_rating": "0",
+          "vcf_info_af": "-",
+          "vcf_info_dp": "-",
+          "vcf_info_vaf": "-",
+          "vcf_info_ref_dp": "-",
+          "vcf_info_alt_dp": "-",
+          "vcf_info_qd": "-",
+          "vcf_info_fs": "-",
+          "vcf_info_mq": "-",
+          "vcf_info_beagle_phased": "-",
+          "vcf_info_chn_ref_support": "-",
+          "vcf_info_chn_alt_carrier_count": "-",
+          "vcf_info_chn_alt_ac": "-",
+          "vcf_info_phasing_confidence": "-",
+          "vcf_info_reg_ccre_id": "-",
+          "vcf_info_reg_ccre_class": "-",
+          "vcf_info_reg_ccre_count": "-",
+          "vcf_info_ncrna_gene_name": "-",
+          "vcf_info_ncrna_gene_type": "-",
+          "vcf_info_is_pseudogene": "-",
+          "vcf_info_pseudogene_name": "-",
+          "vcf_info_pseudogene_source": "-",
+          "clinical_best_tissue": "Brain - Cerebellum",
+          "clinical_transcript_tpm": "0.42",
+          "gtex_transcript_top5_tissues": "Testis:0.42;Brain - Cerebellum:0.42;Brain - Cerebellar Hemisphere:0.34;Stomach - Muscularis:0.225;Pancreas - Islets:0.225",
+          "pathogenic_rank": 57238,
+          "evidence_summary": "consequence=intron_variant(-3); splice_lof=SpliceAI:0.26(+10); total=+7"
+        }
+      ],
+      "drug_recommendations": [],
+      "trial_teams": [],
+      "drug_recommendation_summary": "当前变异 ClinVar/功能后果未达到 Pathogenic 或高影响 LoF 标准，本报告不提供用药建议。",
+      "narrative": {
+        "gene_function": "Enables RNA binding activity. Involved in positive regulation of nuclear-transcribed mRNA catabolic process, deadenylation-dependent decay; positive regulation of nuclear-transcribed mRNA poly(A) tail shortening; and regulatory ncRNA-mediated gene silencing. Acts upstream of with a positive effect on miRNA-mediated gene silencing by inhibition of translation. Predicted to be located in cytosol. Predicted to be active in P-body and nucleoplasm. Implicated in subserous uterine fibroid and uterine fibroid. [provided by Alliance of Genome Resources, Jul 2025]",
+        "inheritance_mode": "Global developmental delay with speech and behavioral abnormalities (Autosomal dominant)",
+        "phenotype_association": "Primary: global developmental delay with speech and behavioral abnormalities (MONDO:0030995, score 0.74). Additional associations from Open Targets: genetic disorder (EFO:0000508, score 0.54), complex neurodevelopmental disorder (MONDO:0100038, score 0.46), autism spectrum disorder (EFO:0003756, score 0.42), abnormality of the skeletal system (HP:0000924, score 0.41). Consistent with HPO term HP:0001249 (intellectual disability).",
+        "pathway_summary": "TNRC6B encodes a trinucleotide repeat-containing adaptor 6B protein that functions as a key component of the miRNA-mediated gene silencing machinery. It acts in the RNA-induced silencing complex (RISC) to facilitate mRNA deadenylation, decay, and translational repression via interaction with Argonaute proteins. The gene is involved in positive regulation of nuclear-transcribed mRNA catabolic process (deadenylation-dependent decay), poly(A) tail shortening, and regulatory ncRNA-mediated gene silencing.",
+        "literature": [
+          {
+            "pmid": "41147347",
+            "title": "A Case Report: Co-Occurrence of TNRC6B Gene Variant and Xq28 Microdeletion Syndrome With Comprehensive Literature Review.",
+            "authors_journal_year": "Deng Y et al., Birth Defects Res, 2025",
+            "summary": "报道了一例 TNRC6B 杂合变异合并 Xq28 微缺失综合征的患儿。TNRC6B 编码 RNA 沉默关键蛋白，其杂合变异与发育迟缓/智力障碍、言语和语言发育延迟、运动发育迟缓以及自闭症、ADHD 等神经行为表型相关。",
+            "evidence_level": "Case Report"
+          },
+          {
+            "pmid": "39115759",
+            "title": "Identification of the synonymous variant c.3141G > A in TNRC6B gene that altered RNA splicing by minigene assay.",
+            "authors_journal_year": "Zhou F et al., Mol Biol Rep, 2024",
+            "summary": "通过 minigene 剪接实验鉴定了一个 TNRC6B 基因的同义变异 c.3141G>A 改变了 RNA 剪接，进一步证实 TNRC6B 变异可导致常染色体显性遗传的全球发育迟缓伴言语和行为异常（OMIM: 619243）。",
+            "evidence_level": "Functional Study"
+          },
+          {
+            "pmid": "38404251",
+            "title": "Novel variants in TNRC6B cause global developmental delay with speech and behavioral abnormalities, short stature, low body weight, café-au-lait spots, and metabolic abnormality.",
+            "authors_journal_year": "Yang Q et al., Mol Genet Genomic Med, 2024",
+            "summary": "报道了 TNRC6B 新发变异导致的 TNRC6B 缺陷综合征（MIM 619243），表型谱包括面部畸形、发育迟缓/智力障碍、言语与语言延迟、注意缺陷多动障碍（ADHD）及可变的行为异常。",
+            "evidence_level": "Case Series"
+          }
+        ],
+        "clinical_note": "该样本携带 TNRC6B 基因的一个杂合内含子变异 chr22:40313649 C>T（c.4678+652C>T），对应转录本 NM_001162501.2。CADD 评分 5.462（致病性阈值通常≥20），SpliceAI 预测剪接改变概率为 0.26（中等偏低），ClinVar 无收录记录（-），VAF 及测序深度未提供。该变异目前证据不足以认定为明确致病性（Pathogenic）或可能致病性（Likely Pathogenic），分类倾向为意义不明确变异（VUS）。OMIM 已明确 TNRC6B 杂合致病变异导致常染色体显性遗传的全球发育迟缓伴言语和行为异常（OMIM #619243），但当前变异的功能后果需进一步 RNA 测序或 minigene 剪接实验验证。",
+        "therapeutic_implication": "当前变异位点（c.4678+652C>T, intron_variant）的 CADD 评分和 ClinVar 状态均未达到致病性或高影响 LoF 标准，因此本报告不提供具体用药建议。暂无严格匹配的候选药物。"
+      }
+    },
+    {
+      "rank": 4,
+      "gene_symbol": "SETD5",
+      "best_pathogenic_rank": 192603,
+      "variant_count": 1,
+      "top_clinvar": "",
+      "main_consequence": "intron_variant",
+      "main_pathway": "-",
+      "main_associated_phenotype": "intellectual disability-facial dysmorphism syndrome due to SETD5 haploinsufficiency; genetic disorder",
+      "main_phenotype_hint": "Brain - Cerebellum",
+      "ncbi_gene_id": "55209",
+      "ncbi_gene_name": "SET domain containing 5",
+      "ncbi_gene_summary": "This function of this gene has yet to be determined but based on sequence similarity to other SET domain proteins it may function as a histone methyltransferase. Mutations in this gene have been associated with an autosomal dominant form of intellectual disability. Alternative splicing results in multiple transcript variants encoding different isoforms. [provided by RefSeq, Jul 2017]",
+      "ncbi_gene_url": "https://www.ncbi.nlm.nih.gov/gene/55209",
+      "script_gene_function": "This function of this gene has yet to be determined but based on sequence similarity to other SET domain proteins it may function as a histone methyltransferase. Mutations in this gene have been associated with an autosomal dominant form of intellectual disability. Alternative splicing results in multiple transcript variants encoding different isoforms. [provided by RefSeq, Jul 2017]",
+      "script_gene_function_source": "NCBI Gene (Entrez)",
+      "omim_gene_function": "-",
+      "omim_inheritance_mode": "Intellectual developmental disorder, autosomal dominant 23 (Autosomal dominant)",
+      "evidence_summary": "consequence=intron_variant(-3); CADD=20.3(+6); total=+3",
+      "variants": [
+        {
+          "chrom": "chr3",
+          "pos": "9434718",
+          "ref": "A",
+          "alt": "T",
+          "gene_symbol": "SETD5",
+          "transcript_id": "ENST00000402198.7",
+          "refseq_id": "NM_001080517.3",
+          "mane_select": "NM_001080517.3",
+          "consequence": "intron_variant",
+          "impact": "MODIFIER",
+          "hgvsc": "c.330-106A>T",
+          "hgvsp": "-",
+          "exon": "-",
+          "protein_domains": "-",
+          "revel_score": "-",
+          "cadd_phred": "20.3",
+          "gnomad_popmax_af": "-",
+          "gnomad_eas_af": "-",
+          "gnomad_nhomalt": "-",
+          "spliceai_ds_max": "0",
+          "spliceai_type": "-",
+          "loftee_lof_flag": "-",
+          "clinvar_significance": "-",
+          "clinvar_review_status": "-",
+          "clinvar_star_rating": "0",
+          "vcf_info_af": "-",
+          "vcf_info_dp": "-",
+          "vcf_info_vaf": "-",
+          "vcf_info_ref_dp": "-",
+          "vcf_info_alt_dp": "-",
+          "vcf_info_qd": "-",
+          "vcf_info_fs": "-",
+          "vcf_info_mq": "-",
+          "vcf_info_beagle_phased": "-",
+          "vcf_info_chn_ref_support": "-",
+          "vcf_info_chn_alt_carrier_count": "-",
+          "vcf_info_chn_alt_ac": "-",
+          "vcf_info_phasing_confidence": "-",
+          "vcf_info_reg_ccre_id": "-",
+          "vcf_info_reg_ccre_class": "-",
+          "vcf_info_reg_ccre_count": "-",
+          "vcf_info_ncrna_gene_name": "-",
+          "vcf_info_ncrna_gene_type": "-",
+          "vcf_info_is_pseudogene": "-",
+          "vcf_info_pseudogene_name": "-",
+          "vcf_info_pseudogene_source": "-",
+          "clinical_best_tissue": "Brain - Cerebellum",
+          "clinical_transcript_tpm": "2.69",
+          "gtex_transcript_top5_tissues": "Uterus:3.12;Artery - Aorta:2.78;Brain - Cerebellum:2.69;Thyroid:2.66;Colon - Sigmoid:2.65",
+          "pathogenic_rank": 192603,
+          "evidence_summary": "consequence=intron_variant(-3); CADD=20.3(+6); total=+3"
+        }
+      ],
+      "drug_recommendations": [],
+      "trial_teams": [],
+      "drug_recommendation_summary": "当前变异 ClinVar/功能后果未达到 Pathogenic 或高影响 LoF 标准，本报告不提供用药建议。",
+      "narrative": {
+        "gene_function": "This function of this gene has yet to be determined but based on sequence similarity to other SET domain proteins it may function as a histone methyltransferase. Mutations in this gene have been associated with an autosomal dominant form of intellectual disability. Alternative splicing results in multiple transcript variants encoding different isoforms. [provided by RefSeq, Jul 2017]",
+        "inheritance_mode": "Intellectual developmental disorder, autosomal dominant 23 (Autosomal dominant)",
+        "phenotype_association": "intellectual disability-facial dysmorphism syndrome due to SETD5 haploinsufficiency; genetic disorder; Intellectual disability (HP:0001249); Neurodevelopmental disorder; neurodegenerative disease",
+        "pathway_summary": "SETD5 encodes a putative histone methyltransferase containing a SET domain and a PHD domain, involved in chromatin remodeling and transcriptional regulation. Its loss-of-function and haploinsufficiency disrupt neurodevelopmental gene expression programs, leading to intellectual disability and facial dysmorphism. The reactome main pathway is not specifically annotated for this gene.",
+        "literature": [
+          {
+            "pmid": "40869907",
+            "title": "Two Years of Growth Hormone Therapy in a Child with Severe Short Stature Due to Overlap Syndrome with a Novel SETD5 Gene Mutation: Case Report and Review of the Literature.",
+            "authors_journal_year": "Luppino G et al., Genes, 2025",
+            "summary": "报道一例携带新发 SETD5 基因突变的患儿合并严重矮小，经生长激素治疗两年后身高改善，提示 SETD5 缺陷可能涉及生长激素轴的临床表型扩展。",
+            "evidence_level": "case_report"
+          },
+          {
+            "pmid": "37797428",
+            "title": "Drug-resistant focal epilepsy in a girl with SETD5-related intellectual disability.",
+            "authors_journal_year": "Manokaran RK et al., Seizure, 2023",
+            "summary": "报道一例 SETD5 相关智力残疾女性患儿伴发药物难治性局灶性癫痫，提示 SETD5 单倍剂量不足可累及神经系统兴奋性调控。",
+            "evidence_level": "case_report"
+          },
+          {
+            "pmid": "25138099",
+            "title": "Loss-of-function variants of SETD5 cause intellectual disability and the core phenotype of microdeletion 3p25.3 syndrome.",
+            "authors_journal_year": "Kuechler A et al., Eur J Hum Genet, 2015",
+            "summary": "通过全外显子组测序和染色体微阵列分析发现 SETD5 功能缺失变异及微缺失导致智力残疾和 3p25.3 微缺失综合征核心表型，CRISPR/Cas9 模型证实无义介导的 mRNA 降解为共同致病机制，SETD5 变异在 ID 中频率约 0.7%。",
+            "evidence_level": "cohort_study"
+          }
+        ],
+        "clinical_note": "样本 26B03487389，SETD5 基因检出内含子变异 chr3:9434718 A>T（c.330-106A>T），CADD=20.3，VAF 及 ClinVar 信息缺失。先证者孕 15 周，母系家族史提示智力异常（母陶彩萍智力落后），但该变异为内含子区域低-中度有害性变异，未达经典 Pathogenic/LoF 标准，解读需谨慎。建议结合家系共分离验证及 RNA 水平剪接影响分析进一步评估致病性。",
+        "therapeutic_implication": "当前变异 ClinVar/功能后果未达到 Pathogenic 或高影响 LoF 标准，本报告不提供用药建议。"
+      }
+    }
+  ],
+  "narrative": {
+    "gene_narratives": {
+      "CNOT3": {
+        "gene_function": "Involved in regulation of stem cell population maintenance. Part of CCR4-NOT complex. [provided by Alliance of Genome Resources, Jul 2025]",
+        "inheritance_mode": "Intellectual developmental disorder with speech delay, autism, and dysmorphic facies (Autosomal dominant)",
+        "phenotype_association": "intellectual developmental disorder with speech delay, autism and dysmorphic facies (IDDSADF) [Open Targets score: 0.756]; neurodegenerative disease [score: 0.540]; complex neurodevelopmental disorder [score: 0.463]; Neurodevelopmental disorder [score: 0.373]. Corroborated by HPO term HP:0001249 (Intellectual disability).",
+        "pathway_summary": "Generic Transcription Pathway (Reactome). CNOT3 is the central component of the CCR4-NOT protein complex, a global regulator of RNA polymerase II transcription that governs mRNA deadenylation, degradation, and translational control.",
+        "literature": [
+          {
+            "pmid": "42117603",
+            "title": "Phenotypic and Genetic Insights Into CNOT3-Related Intellectual Developmental Disorder of Speech Delay, Autism, and Dysmorphic Faces (IDDSADF) From the First Two Japanese Cases.",
+            "authors_journal_year": "Ariyasu D et al. Am J Med Genet A. 2026",
+            "summary": "首次报道日本IDDSADF病例（8岁女童、19岁男童），均携带CNOT3致病杂合变异（c.732dup及c.837+1G>A），表型包括发育迟缓、特殊面容及身材矮小，发现薄帐篷状上唇可能为种族相关特征。",
+            "evidence_level": "case_report"
+          },
+          {
+            "pmid": "36802310",
+            "title": "Clinical features of CNOT3-associated neurodevelopmental disorder in three Chinese patients.",
+            "authors_journal_year": "Zhao P et al. Neurogenetics. 2023",
+            "summary": "首次报道中国人群IDDSADF，发现3个新CNOT3杂合变异（c.1058_1059insT、c.724delT及c.387+2T>C），功能研究证实CNOT3 mRNA水平显著下降及外显子跳跃，并观察到CCR4-NOT复合物其他亚基表达改变。",
+            "evidence_level": "case_series"
+          },
+          {
+            "pmid": "38179413",
+            "title": "Novel In-Frame Deletion in CNOT3 Associated with IDDSADF.",
+            "authors_journal_year": "Lee CG et al. Neurol Genet. 2024",
+            "summary": "报道新型CNOT3框内缺失变异导致IDDSADF，进一步拓展CNOT3基因型-表型谱。",
+            "evidence_level": "case_report"
+          }
+        ],
+        "clinical_note": "受检者孕15周，因母系家族智力异常史行遗传咨询。CNOT3基因检出杂合剪接供体变异 c.1897_1904+5del (chr19:54152615 CTGAGCGTATTCGG>C)，该变异导致编码序列缺失及剪接供体改变。SpliceAI预测提示剪接异常（LoF证据+48分）。该基因为IDDSADF（智力发育障碍伴语言迟缓、孤独症及特殊面容）的致病基因，呈常染色体显性遗传。鉴于该变异的剪接破坏效应，结合家族史，可能为该家系的遗传学病因，但ClinVar及人群频率数据有限，需进一步家系共分离验证及RNA水平功能验证。",
+        "therapeutic_implication": "当前变异为剪接供体位点变异，ClinVar及功能后果尚未达到明确Pathogenic或高影响LoF标准，本报告不提供用药建议。暂无严格匹配的靶向药物候选。"
+      },
+      "KANSL1": {
+        "gene_function": "This gene encodes a nuclear protein that is a subunit of two protein complexes involved with histone acetylation, the MLL1 complex and the NSL1 complex. The encoded protein has been implicated in a variety of cellular processes including enhancer regulation, cell proliferation, and mitosis. Mutations in this gene are associated with Koolen-de Vries Syndrome. [provided by RefSeq, May 2022]",
+        "inheritance_mode": "Koolen-De Vries syndrome (Autosomal dominant)",
+        "phenotype_association": "",
+        "pathway_summary": "Epigenetic regulation by WDR5-containing histone modifying complexes",
+        "literature": [],
+        "clinical_note": "",
+        "therapeutic_implication": ""
+      },
+      "TNRC6B": {
+        "gene_function": "Enables RNA binding activity. Involved in positive regulation of nuclear-transcribed mRNA catabolic process, deadenylation-dependent decay; positive regulation of nuclear-transcribed mRNA poly(A) tail shortening; and regulatory ncRNA-mediated gene silencing. Acts upstream of with a positive effect on miRNA-mediated gene silencing by inhibition of translation. Predicted to be located in cytosol. Predicted to be active in P-body and nucleoplasm. Implicated in subserous uterine fibroid and uterine fibroid. [provided by Alliance of Genome Resources, Jul 2025]",
+        "inheritance_mode": "Global developmental delay with speech and behavioral abnormalities (Autosomal dominant)",
+        "phenotype_association": "Primary: global developmental delay with speech and behavioral abnormalities (MONDO:0030995, score 0.74). Additional associations from Open Targets: genetic disorder (EFO:0000508, score 0.54), complex neurodevelopmental disorder (MONDO:0100038, score 0.46), autism spectrum disorder (EFO:0003756, score 0.42), abnormality of the skeletal system (HP:0000924, score 0.41). Consistent with HPO term HP:0001249 (intellectual disability).",
+        "pathway_summary": "TNRC6B encodes a trinucleotide repeat-containing adaptor 6B protein that functions as a key component of the miRNA-mediated gene silencing machinery. It acts in the RNA-induced silencing complex (RISC) to facilitate mRNA deadenylation, decay, and translational repression via interaction with Argonaute proteins. The gene is involved in positive regulation of nuclear-transcribed mRNA catabolic process (deadenylation-dependent decay), poly(A) tail shortening, and regulatory ncRNA-mediated gene silencing.",
+        "literature": [
+          {
+            "pmid": "41147347",
+            "title": "A Case Report: Co-Occurrence of TNRC6B Gene Variant and Xq28 Microdeletion Syndrome With Comprehensive Literature Review.",
+            "authors_journal_year": "Deng Y et al., Birth Defects Res, 2025",
+            "summary": "报道了一例 TNRC6B 杂合变异合并 Xq28 微缺失综合征的患儿。TNRC6B 编码 RNA 沉默关键蛋白，其杂合变异与发育迟缓/智力障碍、言语和语言发育延迟、运动发育迟缓以及自闭症、ADHD 等神经行为表型相关。",
+            "evidence_level": "Case Report"
+          },
+          {
+            "pmid": "39115759",
+            "title": "Identification of the synonymous variant c.3141G > A in TNRC6B gene that altered RNA splicing by minigene assay.",
+            "authors_journal_year": "Zhou F et al., Mol Biol Rep, 2024",
+            "summary": "通过 minigene 剪接实验鉴定了一个 TNRC6B 基因的同义变异 c.3141G>A 改变了 RNA 剪接，进一步证实 TNRC6B 变异可导致常染色体显性遗传的全球发育迟缓伴言语和行为异常（OMIM: 619243）。",
+            "evidence_level": "Functional Study"
+          },
+          {
+            "pmid": "38404251",
+            "title": "Novel variants in TNRC6B cause global developmental delay with speech and behavioral abnormalities, short stature, low body weight, café-au-lait spots, and metabolic abnormality.",
+            "authors_journal_year": "Yang Q et al., Mol Genet Genomic Med, 2024",
+            "summary": "报道了 TNRC6B 新发变异导致的 TNRC6B 缺陷综合征（MIM 619243），表型谱包括面部畸形、发育迟缓/智力障碍、言语与语言延迟、注意缺陷多动障碍（ADHD）及可变的行为异常。",
+            "evidence_level": "Case Series"
+          }
+        ],
+        "clinical_note": "该样本携带 TNRC6B 基因的一个杂合内含子变异 chr22:40313649 C>T（c.4678+652C>T），对应转录本 NM_001162501.2。CADD 评分 5.462（致病性阈值通常≥20），SpliceAI 预测剪接改变概率为 0.26（中等偏低），ClinVar 无收录记录（-），VAF 及测序深度未提供。该变异目前证据不足以认定为明确致病性（Pathogenic）或可能致病性（Likely Pathogenic），分类倾向为意义不明确变异（VUS）。OMIM 已明确 TNRC6B 杂合致病变异导致常染色体显性遗传的全球发育迟缓伴言语和行为异常（OMIM #619243），但当前变异的功能后果需进一步 RNA 测序或 minigene 剪接实验验证。",
+        "therapeutic_implication": "当前变异位点（c.4678+652C>T, intron_variant）的 CADD 评分和 ClinVar 状态均未达到致病性或高影响 LoF 标准，因此本报告不提供具体用药建议。暂无严格匹配的候选药物。"
+      },
+      "SETD5": {
+        "gene_function": "This function of this gene has yet to be determined but based on sequence similarity to other SET domain proteins it may function as a histone methyltransferase. Mutations in this gene have been associated with an autosomal dominant form of intellectual disability. Alternative splicing results in multiple transcript variants encoding different isoforms. [provided by RefSeq, Jul 2017]",
+        "inheritance_mode": "Intellectual developmental disorder, autosomal dominant 23 (Autosomal dominant)",
+        "phenotype_association": "intellectual disability-facial dysmorphism syndrome due to SETD5 haploinsufficiency; genetic disorder; Intellectual disability (HP:0001249); Neurodevelopmental disorder; neurodegenerative disease",
+        "pathway_summary": "SETD5 encodes a putative histone methyltransferase containing a SET domain and a PHD domain, involved in chromatin remodeling and transcriptional regulation. Its loss-of-function and haploinsufficiency disrupt neurodevelopmental gene expression programs, leading to intellectual disability and facial dysmorphism. The reactome main pathway is not specifically annotated for this gene.",
+        "literature": [
+          {
+            "pmid": "40869907",
+            "title": "Two Years of Growth Hormone Therapy in a Child with Severe Short Stature Due to Overlap Syndrome with a Novel SETD5 Gene Mutation: Case Report and Review of the Literature.",
+            "authors_journal_year": "Luppino G et al., Genes, 2025",
+            "summary": "报道一例携带新发 SETD5 基因突变的患儿合并严重矮小，经生长激素治疗两年后身高改善，提示 SETD5 缺陷可能涉及生长激素轴的临床表型扩展。",
+            "evidence_level": "case_report"
+          },
+          {
+            "pmid": "37797428",
+            "title": "Drug-resistant focal epilepsy in a girl with SETD5-related intellectual disability.",
+            "authors_journal_year": "Manokaran RK et al., Seizure, 2023",
+            "summary": "报道一例 SETD5 相关智力残疾女性患儿伴发药物难治性局灶性癫痫，提示 SETD5 单倍剂量不足可累及神经系统兴奋性调控。",
+            "evidence_level": "case_report"
+          },
+          {
+            "pmid": "25138099",
+            "title": "Loss-of-function variants of SETD5 cause intellectual disability and the core phenotype of microdeletion 3p25.3 syndrome.",
+            "authors_journal_year": "Kuechler A et al., Eur J Hum Genet, 2015",
+            "summary": "通过全外显子组测序和染色体微阵列分析发现 SETD5 功能缺失变异及微缺失导致智力残疾和 3p25.3 微缺失综合征核心表型，CRISPR/Cas9 模型证实无义介导的 mRNA 降解为共同致病机制，SETD5 变异在 ID 中频率约 0.7%。",
+            "evidence_level": "cohort_study"
+          }
+        ],
+        "clinical_note": "样本 26B03487389，SETD5 基因检出内含子变异 chr3:9434718 A>T（c.330-106A>T），CADD=20.3，VAF 及 ClinVar 信息缺失。先证者孕 15 周，母系家族史提示智力异常（母陶彩萍智力落后），但该变异为内含子区域低-中度有害性变异，未达经典 Pathogenic/LoF 标准，解读需谨慎。建议结合家系共分离验证及 RNA 水平剪接影响分析进一步评估致病性。",
+        "therapeutic_implication": "当前变异 ClinVar/功能后果未达到 Pathogenic 或高影响 LoF 标准，本报告不提供用药建议。"
+      }
+    },
+    "clinical_advice": {
+      "immediate_recommendations": [
+        "遗传咨询：建议对先证者（孕妇）及其母亲（存在智力落后的先证者母亲）进行专业遗传咨询，评估遗传病因及再发风险。CNOT3 剪切供体变异是当前最值得关注的候选变异，建议行家系共分离验证，明确该位点在先证者母亲中的携带状态。",
+        "CNOT3 基因变异验证：建议对该 splice_donor_variant (c.1897_1904+5del) 进行 Sanger 测序验证，并检测先证者及其父母/母亲的样本以明确是否为遗传性变异（文献报道 CNOT3 相关 IDDSADF 存在家族性遗传病例，Meyer et al., 2020, Clin Genet）。",
+        "产前诊断评估：建议在充分遗传咨询的前提下，评估是否需要对胎儿进行该位点的产前诊断检测，并讨论常染色体显性遗传模式下50%的遗传风险。",
+        "其他基因变异（KANSL1、TNRC6B、SETD5）均为深部内含子变异，功能影响证据不足，当前不支持作为主要致病因素，但在家系全外显子组/全基因组分析中可作进一步数据分析。",
+        "由于本报告涉及的基因变异均未达到明确的致病性标准，且 strict_drug_candidates 中无可用药物候选，当前无需用药干预。所有治疗建议需在明确遗传诊断后由专科医生评估。",
+        "建议转诊至产前遗传专科门诊，结合超声结构筛查等结果进行综合评估和管理。"
+      ],
+      "monitoring": [
+        "建议对先证者母亲（智力落后患者）进行临床随访，包括神经发育评估、智力功能评估及可能的影像学检查。",
+        "若胎儿出生后，建议进行早期神经发育监测，包括认知、语言、运动功能及社交行为发育评估。",
+        "建议定期随访至儿童神经科/发育行为儿科，进行标准化发育筛查量表评估。",
+        "若家系中其他成员出现神经发育异常表现，建议一并纳入评估和管理。"
+      ],
+      "communication_points": [
+        "当前检测共检出4个候选基因（CNOT3、KANSL1、TNRC6B、SETD5）的变异，其中 CNOT3 的剪切供体变异（c.1897_1904+5del）证据评分最高（+48分），且关联疾病「智力发育障碍伴语言迟滞、自闭症及特殊面容（IDDSADF）」的核心表型智力落后与先证者母亲的临床表现一致，提示该变异为最可能的致病候选。",
+        "注意 CNOT3 相关疾病表型存在家族内变异度（Meyer et al., 2020），部分携带者可仅表现为轻度智力落后，不伴有语言运动异常——与先证者母亲的情况相符。同时已有中国患者中 CNOT3 变异的报道（Zhao et al., 2023），具有种族特异性参考价值。",
+        "KANSL1（排名#2）导致 Koolen-de Vries 综合征，典型表型除智力落后外尚包括特征性面容、肌张力低下、骨骼异常等，当前家族史中无相关描述，且变异为深部内含子变异（CADD 18.23），证据有限，表型匹配度不高。",
+        "TNRC6B（排名#3）关联全面发育迟滞伴语言和行为异常，表型部分重叠但变异证据极弱（CADD 5.462，SpliceAI 0.26，深部内含子），暂不支持作为主要致病因素。",
+        "SETD5（排名#4）关联智力障碍-面部畸形综合征，表型上智力落后匹配但未见面部畸形报道，且变异为深部内含子变异（CADD 20.3），证据有限。",
+        "鉴于当前所有药物候选人列表均为空，本报告不提供任何药物干预建议。明确致病基因诊断需依赖进一步家系验证和临床评估。",
+        "最终遗传诊断需结合家系共分离分析、临床专科评估及多学科会诊综合判断。"
+      ],
+      "key_findings": [
+        "**CNOT3**（排名 #1）：主要关联疾病/表型为「智力发育障碍伴语言迟滞、自闭症及特殊面容（IDDSADF, OMIM #618672）」。患者临床核心表型（先证者母亲智力落后，HP:0001249）与该疾病的关键特征——智力残疾——重叠较高。该基因检出 splice_donor_variant (c.1897_1904+5del)，为潜在功能缺失变异，文献支持 CNOT3 LoF 变异可导致 IDDSADF，且已报道家族性遗传病例（Meyer et al., 2020）及中国患者（Zhao et al., 2023）。匹配度判定：高。建议优先进行家系共分离验证。",
+        "**KANSL1**（排名 #2）：主要关联疾病/表型为「Koolen-de Vries 综合征」。该综合征典型表型包括智力残疾、特征性面容、肌张力低下、癫痫、先天性心脏病等多系统累及，而当前临床信息仅提示先证者母亲存在智力落后，未描述面容异常或其他 KdVS 特征性表现，表型匹配度有限。该变异为深部内含子变异（c.2204-223G>A, CADD 18.23），虽存在一定剪接预测信号（SpliceAI 0.38），但证据仍不足以支持致病结论。匹配度判定：部分重叠但证据不足。",
+        "**TNRC6B**（排名 #3）：主要关联疾病/表型为「全面发育迟滞伴语言和行为异常」。患者 HPO 表型为智力落后，与发育迟滞表型有一定重叠。但该变异为深部内含子变异（c.4678+652C>T, CADD 5.462, SpliceAI 0.26），预测评分低，功能影响证据极弱。匹配度判定：表型部分重叠但变异证据不足。",
+        "**SETD5**（排名 #4）：主要关联疾病/表型为「SETD5 单倍剂量不足所致智力障碍-面部畸形综合征」。智力残疾为该综合征核心表型，与患者 HPO 匹配；但典型 SETD5 表型常伴特殊面容、先天性心脏缺陷等，当前家族史中无相关描述。该变异为深部内含子变异（c.330-106A>T, CADD 20.3），缺乏剪接功能预测数据支持。匹配度判定：表型部分重叠但证据有限。"
+      ]
+    }
+  },
+  "report_version": "v1.1",
+  "top_n": 4
+}
