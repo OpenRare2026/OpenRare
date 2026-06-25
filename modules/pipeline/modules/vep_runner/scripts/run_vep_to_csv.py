@@ -824,6 +824,25 @@ def vep_uploaded_variation_keys(chrom: str, pos: str, ref: str, alt: str) -> lis
     return keys
 
 
+def original_variant_lookup_keys(
+    chrom: str,
+    pos: str,
+    ref: str,
+    alt: str,
+    variant_id: str,
+) -> list[str]:
+    """Build lookup keys for VEP Uploaded_variation values.
+
+    VEP uses the VCF ID column when present (e.g. rs28428499); otherwise it falls
+    back to the coordinate form chr1_14833_G/C. Index both so either can be mapped
+    back to the original VCF allele.
+    """
+    keys = vep_uploaded_variation_keys(chrom, pos, ref, alt)
+    if variant_id and variant_id not in {".", "-"}:
+        keys.append(variant_id)
+    return keys
+
+
 def vcf_info_column_name(info_id: str) -> str:
     return f"{VCF_INFO_COLUMN_PREFIX}{info_id}"
 
@@ -994,7 +1013,7 @@ def load_original_vcf_coordinates(path: Path) -> tuple[dict[str, dict[str, str]]
             parts = line.rstrip("\n").split("\t")
             if len(parts) < 5:
                 continue
-            chrom, pos, _variant_id, ref, alts = parts[:5]
+            chrom, pos, variant_id, ref, alts = parts[:5]
             info = parts[7] if len(parts) > 7 else ""
             for alt_index, alt in enumerate(alts.split(",")):
                 original = {"chrom": chrom, "pos": pos, "ref": ref, "alt": alt}
@@ -1002,7 +1021,7 @@ def load_original_vcf_coordinates(path: Path) -> tuple[dict[str, dict[str, str]]
                 for column in info_values:
                     remember_info_id(column.removeprefix(VCF_INFO_COLUMN_PREFIX))
                 original.update(info_values)
-                for key in vep_uploaded_variation_keys(chrom, pos, ref, alt):
+                for key in original_variant_lookup_keys(chrom, pos, ref, alt, variant_id):
                     coordinates.setdefault(key, original)
     return coordinates, info_field_ids
 
@@ -1071,7 +1090,7 @@ def load_original_vcf_coordinates_sqlite(
             parts = line.rstrip("\n").split("\t")
             if len(parts) < 5:
                 continue
-            chrom, pos, _variant_id, ref, alts = parts[:5]
+            chrom, pos, variant_id, ref, alts = parts[:5]
             info = parts[7] if len(parts) > 7 else ""
             for alt_index, alt in enumerate(alts.split(",")):
                 original = {"chrom": chrom, "pos": pos, "ref": ref, "alt": alt}
@@ -1080,7 +1099,7 @@ def load_original_vcf_coordinates_sqlite(
                     remember_info_id(column.removeprefix(VCF_INFO_COLUMN_PREFIX))
                 original.update(info_values)
                 payload = json.dumps(original, ensure_ascii=False, separators=(",", ":"))
-                for key in vep_uploaded_variation_keys(chrom, pos, ref, alt):
+                for key in original_variant_lookup_keys(chrom, pos, ref, alt, variant_id):
                     batch.append((key, payload))
                 if len(batch) >= SQLITE_INSERT_BATCH_SIZE:
                     flush_original_variant_batch(con, batch)
