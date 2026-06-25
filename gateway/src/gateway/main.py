@@ -48,16 +48,16 @@ REPO_ROOT = find_root(Path(__file__).resolve())
 MODULES = {
     "pipeline": {
         "manifest": "modules/pipeline/pixi.toml",
-        "port": 18901,
+        "port": 15001,
         "health": "/health",
         # shell script handles cwd + env
         "task": "api",
     },
     "ppi_score": {
         "manifest": "modules/pixi_ppi_score/pixi.toml",
-        "port": 9000,
+        "port": 15002,
         "health": "/health",
-        "cmd": ["uvicorn", "app.api:app", "--host", "127.0.0.1", "--port", "9000"],
+        "cmd": ["uvicorn", "app.api:app", "--host", "127.0.0.1", "--port", "15002"],
         "cwd": "modules/pixi_ppi_score",
         "env": {"PYTHONPATH": "app"},
     },
