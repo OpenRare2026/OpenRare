@@ -1,5 +1,5 @@
-# pix_report — 自包含子模块（可嵌入其他项目的 module/ 目录）
-# 运行：cd module/pix_report && pixi install && pixi run api
+# pixi_report — 自包含子模块（可嵌入其他项目的 modules/ 目录）
+# 运行：cd modules/pixi_report && pixi install && pixi run api
 
 [workspace]
 name = "pix-report"

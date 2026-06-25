@@ -4,7 +4,7 @@ __pycache__/
 *.py[oc]
 .env
 tools/bin/
-test_data/output/
+test_data/
 examples/demo_case/output_test_*/
 
 # 大文件 / 需自行下载

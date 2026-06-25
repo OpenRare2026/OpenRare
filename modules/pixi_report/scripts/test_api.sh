@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 在 module/pix_report 目录下执行：pixi run test-api
+# 在 modules/pixi_report 目录下执行：pixi run test-api
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"

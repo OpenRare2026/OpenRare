@@ -1,6 +1,6 @@
 """Genome report HTTP API (FastAPI).
 
-启动服务（在 module/pix_report 目录）::
+启动服务（在 modules/pixi_report 目录）::
 
     pixi install
     cp .env.example .env   # 配置 LLM / Open Targets MCP 等
