@@ -1,6 +1,0 @@
-{
-  "input_csv": "/mnt/workspace/wangzilu1/openrare_v3_api_service_test/output/P001_api_full/05_vcf_info_to_csv/vep_output.with_info.csv",
-  "output_csv": "/mnt/workspace/wangzilu1/openrare_v3_api_service_test/output/P001_api_full/06_result_sorting/vep_output.sorted.csv",
-  "rows": 27515,
-  "sort_key": "_raw_pathogenic_score desc, original_order asc"
-}
