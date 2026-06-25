@@ -92,3 +92,20 @@ ppi-health = { cwd = "modules/pixi_ppi_score", cmd = ["bash", "scripts/curl_heal
 # modules/<future> — add tasks here, e.g.:
 # other-test = { cwd = "modules/other", cmd = ["bash", "scripts/test.sh"] }
 # ---------------------------------------------------------------------------
+
+# ---------- gateway / orchestrator ----------
+[feature.gateway.dependencies]
+python = ">=3.12"
+fastapi = "*"
+uvicorn = "*"
+httpx = "*"
+pydantic = ">=2"
+
+[feature.gateway.pypi-dependencies]
+gateway = { path = "gateway", editable = true }
+
+[feature.gateway.tasks]
+up = "python -m gateway.main"
+
+[environments]
+gateway = { features = ["gateway"], no-default-feature = true }
