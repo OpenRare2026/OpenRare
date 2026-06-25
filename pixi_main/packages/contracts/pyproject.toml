@@ -1,0 +1,14 @@
+[project]
+name = "contracts"
+version = "0.1.0"
+description = "Shared pydantic I/O schemas (single source of truth for cross-module data flow)"
+requires-python = ">=3.8"
+# Deps are intentionally empty: pixi installs pydantic (conda) into every env.
+dependencies = []
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/contracts"]

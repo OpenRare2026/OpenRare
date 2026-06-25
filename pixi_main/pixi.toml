@@ -1,0 +1,58 @@
+[workspace]
+name = "my-backend-project"
+version = "0.1.0"
+channels = ["conda-forge"]
+platforms = ["linux-64", "osx-64", "osx-arm64", "win-64"]
+
+# NOTE: there is intentionally no [dependencies] table here.
+# The default feature stays empty, and every environment below sets
+# `no-default-feature = true`, so nothing ever leaks between modules.
+
+# ---------- module A : Python 3.8 ----------
+[feature.module-a.dependencies]
+python = "3.8.*"
+fastapi = "*"
+uvicorn = "*"
+pydantic = ">=2,<3"
+
+[feature.module-a.pypi-dependencies]
+module-a = { path = "modules/module-a", editable = true }
+contracts = { path = "packages/contracts", editable = true }
+
+[feature.module-a.tasks]
+# standalone run of just this module (optional; the gateway calls uvicorn directly)
+serve = "uvicorn module_a.main:app --host 127.0.0.1 --port 8001"
+
+# ---------- module B : Python 3.12 ----------
+[feature.module-b.dependencies]
+python = "3.12.*"
+fastapi = "*"
+uvicorn = "*"
+pydantic = ">=2,<3"
+
+[feature.module-b.pypi-dependencies]
+module-b = { path = "modules/module-b", editable = true }
+contracts = { path = "packages/contracts", editable = true }
+
+[feature.module-b.tasks]
+serve = "uvicorn module_b.main:app --host 127.0.0.1 --port 8002"
+
+# ---------- gateway / orchestrator ----------
+[feature.orchestrator.dependencies]
+python = "3.12.*"
+fastapi = "*"
+uvicorn = "*"
+httpx = "*"
+pydantic = ">=2,<3"
+
+[feature.orchestrator.pypi-dependencies]
+gateway = { path = "gateway", editable = true }
+contracts = { path = "packages/contracts", editable = true }
+
+[feature.orchestrator.tasks]
+up = "python -m gateway.main"
+
+[environments]
+module-a = { features = ["module-a"], no-default-feature = true }
+module-b = { features = ["module-b"], no-default-feature = true }
+orchestrator = { features = ["orchestrator"], no-default-feature = true }
