@@ -47,16 +47,22 @@ GATEWAY_PORT = 8100
 _use_gateway: bool | None = None
 
 
+_remote_mode: bool = False
+
+
 def set_remote(enabled: bool = True) -> None:
-    global _active_targets
+    global _active_targets, _remote_mode
     _active_targets = _REMOTE if enabled else _LOCAL
+    _remote_mode = enabled
 
 
 async def _check_gateway() -> bool:
     global _use_gateway
+    if _remote_mode:  # ponytail: no local gateway in remote mode
+        return False
     if _use_gateway is None:
         try:
-            async with httpx.AsyncClient() as c:
+            async with httpx.AsyncClient(trust_env=False) as c:
                 r = await c.get(f"http://{GATEWAY_HOST}:{GATEWAY_PORT}/health", timeout=2.0)
                 _use_gateway = r.status_code == 200
         except Exception:
@@ -81,7 +87,7 @@ async def module_request(
         url = f"http://{GATEWAY_HOST}:{GATEWAY_PORT}/m/{name}{path}"
     else:
         url = module_url(name, path)
-    async with httpx.AsyncClient(timeout=timeout) as client:
+    async with httpx.AsyncClient(timeout=timeout, trust_env=False) as client:
         return await client.request(method, url, **kwargs)
 
 
@@ -518,7 +524,7 @@ async def step_report(artifacts: dict) -> dict:
     report_pdf = os.path.join(output_dir, "report.pdf")
 
     try:
-        async with httpx.AsyncClient(timeout=600.0) as client:
+        async with httpx.AsyncClient(timeout=600.0, trust_env=False) as client:
             if await _check_gateway():
                 url = f"{GATEWAY_URL}/m/report/report/stream"
             else:
