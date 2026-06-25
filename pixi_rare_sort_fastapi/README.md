@@ -89,6 +89,7 @@ RPL5,0.999153,...
 | `/score` | POST | 服务器已有文件评分 |
 | `/score/upload` | POST | 上传文件评分 |
 | `/status/{job_id}` | GET | 查询任务状态 |
+| `/output/{job_id}` | GET | 下载结果 CSV |
 | `/jobs` | GET | 列出全部任务 |
 
 ### 任务状态
@@ -127,17 +128,26 @@ curl -X POST "http://localhost:5000/score?input_path=/data/vep.csv&gene_score_pa
 
 ```bash
 curl -X POST http://localhost:5000/score/upload \
-  -F "file=@vep_output.sorted.csv" \
+  -F "file=@vep_output.csv" \
   -F "gene_score_file=@gene_phenotype_score.csv" \
   -F "ppi_score_file=@ppi_score.csv"
-# → {"job_id":"abc12345","status":"queued","filename":"vep_output.sorted.csv"}
+# → {"job_id":"abc12345","status":"queued","filename":"vep_output.csv"}
 ```
 
 ### GET /status/{job_id}
 
 ```bash
 curl http://localhost:5000/status/abc12345
-# → {"status":"done","output":"/tmp/.../ranked.csv","elapsed":2.07}
+# → {"status":"done","output":"/home/.../outputs/abc12345.csv","elapsed":2.07}
+```
+
+### GET /output/{job_id}
+
+下载已完成任务的结果 CSV 文件。输出持久化在 `outputs/` 目录，服务重启不丢失。
+
+```bash
+curl -O http://localhost:5000/output/abc12345
+# → 下载 abc12345.csv
 ```
 
 ### GET /jobs
@@ -174,19 +184,42 @@ theta 权重固定：
 
 ### Pass 2 — 基因加权（duckdb SQL）
 
+gene_score 和 ppi_final 采用 **加分因子**策略（≥ 0.9）：
+
+```
+factor(x) = NULL      → 1.0         （无数据，不增不减）
+            = 0        → 0.9         （确认无证据，轻微打折）
+            > 0        → 1.0 + √(x)  （有证据，加分）
+```
+
 **仅 gene_score：**
 ```
-pathogenic_score = evolve_score × √(gene_score)
+pathogenic_score = evolve_score × factor(gene_score)
+```
+
+**仅 ppi_score：**
+```
+pathogenic_score = evolve_score × factor(ppi_final)
 ```
 
 **gene_score + ppi_score：**
 ```
-pathogenic_score = evolve_score × √(gene_score) × √(ppi_final)
+pathogenic_score = evolve_score × factor(gene_score) × factor(ppi_final)
 ```
 
 **不加权：** `pathogenic_score = evolve_score`
 
-未匹配基因 score 为 0，`pathogenic_rank` 按降序重排，NULL 排末尾。
+因子效果示例：
+
+| ppi_final | factor | 效果 |
+|-----------|--------|------|
+| NULL | 1.0 | 不变 |
+| 0 | 0.9 | -10% |
+| 0.2 | 1.447 | +45% |
+| 0.5 | 1.707 | +71% |
+| 0.8 | 1.894 | +89% |
+
+`pathogenic_rank` 按 `pathogenic_score` 降序重排。
 
 ### 输出列
 
@@ -198,10 +231,11 @@ pathogenic_score = evolve_score × √(gene_score) × √(ppi_final)
 
 ```text
 pixi_rare_sort_fastapi/
-├── main.py          # FastAPI 入口，4 端点 + 异步任务队列
+├── main.py          # FastAPI 入口，5 端点 + 异步任务队列
 ├── pipeline.py       # 评分流水线（Pass 1 特征提取 → Pass 2 duckdb JOIN）
 ├── _core.py          # 评分核心（6 个 Contributor calibrate + apply_theta + rank_units）
 ├── dataio.py         # 宽表 I/O（列裁剪 + 分块流式，自动选引擎）
+├── outputs/          # 结果输出目录，持久化存储
 ├── pixi.toml         # 项目清单（全部依赖 conda-forge）
 ├── pixi.lock         # 依赖版本锁定
 └── README.md
@@ -209,8 +243,8 @@ pixi_rare_sort_fastapi/
 
 | 文件 | 作用 |
 |------|------|
-| `main.py` | FastAPI 服务，内存任务队列 |
-| `pipeline.py` | 两阶段流水线，组装 Pass 1 + Pass 2 |
+| `main.py` | FastAPI 服务，内存任务队列，输出持久化，支持下载 |
+| `pipeline.py` | 两阶段流水线，Pass 1 Python 打分 → Pass 2 duckdb JOIN + 基因加权 |
 | `_core.py` | 评分核心：Contributor、calibrate、theta 加权、去重排名 |
 | `dataio.py` | 大规模 I/O，引擎优先级 duckdb > polars > pyarrow > pandas |
 | `pixi.toml` | 依赖声明，全部来自 conda-forge |

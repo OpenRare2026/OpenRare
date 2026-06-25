@@ -147,7 +147,8 @@ def run(input_path: str, output_csv: str | None = None, chunksize: int = 250_000
         gs_src = f"read_csv_auto('{gene_score_csv.replace(chr(39), chr(39)+chr(39))}', all_varchar=true)"
         con.execute(f"CREATE OR REPLACE TABLE gene_scores AS SELECT gene_symbol, CAST(gene_score AS DOUBLE) AS gene_score FROM {gs_src}")
         extra_joins += "\n        LEFT JOIN gene_scores gs ON src.gene_symbol = gs.gene_symbol"
-        pathogenic_expr = f"s.evolve_score * SQRT(COALESCE(gs.gene_score, 0))"
+        gene_factor = "CASE WHEN gs.gene_score IS NULL THEN 1.0 WHEN gs.gene_score = 0 THEN 0.9 ELSE 1.0 + SQRT(gs.gene_score) END"
+        pathogenic_expr = f"s.evolve_score * ({gene_factor})"
         extra_cols += ", gs.gene_score"
         print("[pass 2] gene_score table loaded", flush=True)
 
@@ -155,7 +156,8 @@ def run(input_path: str, output_csv: str | None = None, chunksize: int = 250_000
         ppi_src = f"read_csv_auto('{ppi_score_csv.replace(chr(39), chr(39)+chr(39))}', all_varchar=true)"
         con.execute(f"CREATE OR REPLACE TABLE ppi_scores AS SELECT gene, CAST(ppi_final AS DOUBLE) AS ppi_final FROM {ppi_src}")
         extra_joins += "\n        LEFT JOIN ppi_scores ppi ON src.gene_symbol = ppi.gene"
-        pathogenic_expr = f"({pathogenic_expr}) * SQRT(COALESCE(ppi.ppi_final, 0))"
+        ppi_factor = "CASE WHEN ppi.ppi_final IS NULL THEN 1.0 WHEN ppi.ppi_final = 0 THEN 0.9 ELSE 1.0 + SQRT(ppi.ppi_final) END"
+        pathogenic_expr = f"({pathogenic_expr}) * ({ppi_factor})"
         extra_cols += ", ppi.ppi_final"
         print("[pass 2] ppi_score table loaded", flush=True)
 

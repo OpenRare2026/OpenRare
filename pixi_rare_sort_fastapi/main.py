@@ -1,17 +1,21 @@
 """ponytail: FastAPI wrapper — file upload + async job queue (in-memory dict)."""
 from __future__ import annotations
 
-import os, uuid, threading, time, tempfile
+import os, uuid, threading, time
 from pathlib import Path
 
 from fastapi import FastAPI, Query, UploadFile, File, HTTPException
+from fastapi.responses import FileResponse
 import uvicorn
 
 from pipeline import run
 
 app = FastAPI(title="rare_sort")
 
-# ponytail: in-memory dict, lost on restart. Replace with sqlite/redis if persistence matters.
+OUTPUT_DIR = Path(__file__).resolve().parent / "outputs"
+OUTPUT_DIR.mkdir(exist_ok=True)
+
+# ponytail: in-memory dict, lost on restart. Output files persist on disk.
 jobs: dict[str, dict] = {}
 
 
@@ -20,8 +24,8 @@ def _run_job(job_id: str, input_path: str, gene_score_csv: str | None = None,
     jobs[job_id]["status"] = "running"
     jobs[job_id]["started_at"] = time.time()
     try:
-        output = Path(tempfile.mkdtemp()) / "ranked.csv"
-        result_path = run(input_path, str(output),
+        output = str(OUTPUT_DIR / f"{job_id}.csv")
+        result_path = run(input_path, output,
                           gene_score_csv=gene_score_csv,
                           ppi_score_csv=ppi_score_csv)
         jobs[job_id]["status"] = "done"
@@ -53,6 +57,7 @@ def score_path(input_path: str = Query(..., description="CSV/Parquet path on ser
 async def score_upload(file: UploadFile = File(...),
                        gene_score_file: UploadFile | None = None,
                        ppi_score_file: UploadFile | None = None):
+    import tempfile
     tmpdir = tempfile.mkdtemp()
     input_path = os.path.join(tmpdir, file.filename or "upload.csv")
     with open(input_path, "wb") as f:
@@ -75,6 +80,10 @@ async def score_upload(file: UploadFile = File(...),
 
     job_id = uuid.uuid4().hex[:8]
     jobs[job_id] = {"status": "queued", "input": input_path, "filename": file.filename, "created_at": time.time()}
+    if gene_score_path:
+        jobs[job_id]["gene_score_path"] = gene_score_path
+    if ppi_score_path:
+        jobs[job_id]["ppi_score_path"] = ppi_score_path
     threading.Thread(target=_run_job, args=(job_id, input_path, gene_score_path, ppi_score_path), daemon=True).start()
     return {"job_id": job_id, "status": "queued", "filename": file.filename}
 
@@ -85,6 +94,19 @@ def job_status(job_id: str):
     if not j:
         raise HTTPException(404, f"job not found: {job_id}")
     return j
+
+
+@app.get("/output/{job_id}")
+def download_output(job_id: str):
+    j = jobs.get(job_id)
+    if not j:
+        raise HTTPException(404, f"job not found: {job_id}")
+    if j["status"] != "done":
+        raise HTTPException(404, f"job not done (status: {j['status']})")
+    path = j.get("output")
+    if not path or not os.path.exists(path):
+        raise HTTPException(404, "output file not found on disk")
+    return FileResponse(path, filename=f"{job_id}.csv", media_type="text/csv")
 
 
 @app.get("/jobs")
