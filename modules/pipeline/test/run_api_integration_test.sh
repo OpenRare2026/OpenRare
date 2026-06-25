@@ -117,7 +117,7 @@ poll_job() {
 
 verify_output() {
   local output_dir="$1"
-  local sorted="${output_dir}/06_result_sorting/vep_output.sorted.csv"
+  local sorted="${output_dir}/06_genos_evee_annotation/vep_output.with_genos_evee.csv"
   [[ -s "$sorted" ]] || { echo "ERROR: missing output: $sorted" >&2; return 1; }
   local rows
   rows="$(wc -l < "$sorted")"

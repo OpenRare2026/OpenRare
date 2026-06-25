@@ -9,7 +9,9 @@ import re
 from pathlib import Path
 
 VCF_INFO_COLUMN_PREFIX = "vcf_info_"
+VCF_FORMAT_COLUMN_PREFIX = "vcf_format_"
 INFO_HEADER_RE = re.compile(r"^##INFO=<ID=([^,>]+),Number=([^,>]+)")
+FORMAT_HEADER_RE = re.compile(r"^##FORMAT=<ID=([^,>]+),Number=([^,>]+)")
 
 
 def open_text(path: Path):
@@ -20,6 +22,10 @@ def open_text(path: Path):
 
 def info_column(info_id: str) -> str:
     return f"{VCF_INFO_COLUMN_PREFIX}{info_id}"
+
+
+def format_column(format_id: str) -> str:
+    return f"{VCF_FORMAT_COLUMN_PREFIX}{format_id}"
 
 
 def remember(value: str, ordered: list[str], seen: set[str]) -> None:
@@ -136,12 +142,40 @@ def parse_info_values(info: str, alt_index: int, info_numbers: dict[str, str]) -
     return values
 
 
-def load_vcf_info(vcf_path: Path) -> tuple[dict[str, dict[str, str]], list[str], dict[str, str]]:
+def parse_format_values(format_text: str, sample_text: str) -> dict[str, str]:
+    values: dict[str, str] = {}
+    if not format_text or format_text in {".", "-"}:
+        return values
+    format_ids = format_text.split(":")
+    sample_values = sample_text.split(":") if sample_text else []
+    for index, format_id in enumerate(format_ids):
+        if not format_id:
+            continue
+        value = sample_values[index] if index < len(sample_values) else "-"
+        values[format_column(format_id)] = "-" if value in {"", "."} else value
+    return values
+
+
+def load_vcf_annotations(
+    vcf_path: Path,
+    requested_sample: str | None = None,
+) -> tuple[dict[str, dict[str, str]], list[str], list[str], dict[str, object]]:
     lookup: dict[str, dict[str, str]] = {}
     info_numbers: dict[str, str] = {}
     info_ids: list[str] = []
     seen_info_ids: set[str] = set()
-    stats = {"vcf_records": 0, "vcf_alleles": 0, "lookup_keys": 0}
+    format_ids: list[str] = []
+    seen_format_ids: set[str] = set()
+    sample_names: list[str] = []
+    selected_sample = ""
+    selected_sample_column: int | None = None
+    stats: dict[str, object] = {
+        "vcf_records": 0,
+        "vcf_alleles": 0,
+        "lookup_keys": 0,
+        "sample_count": 0,
+        "selected_sample": "",
+    }
 
     with open_text(vcf_path) as handle:
         for line in handle:
@@ -153,6 +187,28 @@ def load_vcf_info(vcf_path: Path) -> tuple[dict[str, dict[str, str]], list[str],
                     info_numbers[info_id] = number
                     remember(info_id, info_ids, seen_info_ids)
                 continue
+            if line.startswith("##FORMAT="):
+                match = FORMAT_HEADER_RE.match(line)
+                if match:
+                    format_id, _number = match.groups()
+                    remember(format_id, format_ids, seen_format_ids)
+                continue
+            if line.startswith("#CHROM"):
+                header_parts = line.split("\t")
+                sample_names = header_parts[9:] if len(header_parts) > 9 else []
+                stats["sample_count"] = len(sample_names)
+                if requested_sample:
+                    if requested_sample not in sample_names:
+                        raise ValueError(
+                            f"sample not found in VCF: {requested_sample}; available samples: {sample_names}"
+                        )
+                    selected_sample = requested_sample
+                elif sample_names:
+                    selected_sample = sample_names[0]
+                if selected_sample:
+                    selected_sample_column = 9 + sample_names.index(selected_sample)
+                stats["selected_sample"] = selected_sample
+                continue
             if not line or line.startswith("#"):
                 continue
             parts = line.split("\t")
@@ -161,19 +217,34 @@ def load_vcf_info(vcf_path: Path) -> tuple[dict[str, dict[str, str]], list[str],
             stats["vcf_records"] += 1
             chrom, pos, _var_id, ref, alts = parts[:5]
             info = parts[7]
+            format_text = parts[8] if len(parts) > 8 else ""
+            sample_text = (
+                parts[selected_sample_column]
+                if selected_sample_column is not None and selected_sample_column < len(parts)
+                else ""
+            )
             for alt_index, alt in enumerate(alts.split(",")):
                 stats["vcf_alleles"] += 1
                 values = parse_info_values(info, alt_index, info_numbers)
+                values.update(parse_format_values(format_text, sample_text))
                 for column in values:
-                    remember(column.removeprefix(VCF_INFO_COLUMN_PREFIX), info_ids, seen_info_ids)
+                    if column.startswith(VCF_INFO_COLUMN_PREFIX):
+                        remember(column.removeprefix(VCF_INFO_COLUMN_PREFIX), info_ids, seen_info_ids)
+                    elif column.startswith(VCF_FORMAT_COLUMN_PREFIX):
+                        remember(column.removeprefix(VCF_FORMAT_COLUMN_PREFIX), format_ids, seen_format_ids)
                 for key in vep_keys(chrom, pos, ref, alt):
                     if key not in lookup:
                         lookup[key] = values
     stats["lookup_keys"] = len(lookup)
-    return lookup, info_ids, stats
+    return lookup, info_ids, format_ids, stats
 
 
-def output_fieldnames(input_fields: list[str], info_ids: list[str], insert_after: str = "alt") -> list[str]:
+def output_fieldnames(
+    input_fields: list[str],
+    info_ids: list[str],
+    format_ids: list[str],
+    insert_after: str = "alt",
+) -> list[str]:
     fields: list[str] = []
     seen: set[str] = set()
 
@@ -188,15 +259,25 @@ def output_fieldnames(input_fields: list[str], info_ids: list[str], insert_after
         if field == insert_after:
             for info_id in info_ids:
                 add(info_column(info_id))
+            for format_id in format_ids:
+                add(format_column(format_id))
             inserted = True
     if not inserted:
         for info_id in info_ids:
             add(info_column(info_id))
+        for format_id in format_ids:
+            add(format_column(format_id))
     return fields
 
 
-def annotate_csv(input_csv: Path, input_vcf: Path, output_csv: Path, log_json: Path | None = None) -> dict[str, object]:
-    lookup, info_ids, vcf_stats = load_vcf_info(input_vcf)
+def annotate_csv(
+    input_csv: Path,
+    input_vcf: Path,
+    output_csv: Path,
+    log_json: Path | None = None,
+    sample_name: str | None = None,
+) -> dict[str, object]:
+    lookup, info_ids, format_ids, vcf_stats = load_vcf_annotations(input_vcf, sample_name)
     output_csv.parent.mkdir(parents=True, exist_ok=True)
     rows = 0
     matched = 0
@@ -205,7 +286,7 @@ def annotate_csv(input_csv: Path, input_vcf: Path, output_csv: Path, log_json: P
         reader = csv.DictReader(src)
         if reader.fieldnames is None:
             raise ValueError(f"CSV header not found: {input_csv}")
-        fieldnames = output_fieldnames(list(reader.fieldnames), info_ids)
+        fieldnames = output_fieldnames(list(reader.fieldnames), info_ids, format_ids)
         with output_csv.open("w", newline="") as dst:
             writer = csv.DictWriter(dst, fieldnames=fieldnames, extrasaction="ignore")
             writer.writeheader()
@@ -217,6 +298,9 @@ def annotate_csv(input_csv: Path, input_vcf: Path, output_csv: Path, log_json: P
                 for info_id in info_ids:
                     column = info_column(info_id)
                     row[column] = (values or {}).get(column, "-")
+                for format_id in format_ids:
+                    column = format_column(format_id)
+                    row[column] = (values or {}).get(column, "-")
                 writer.writerow({field: row.get(field, "-") for field in fieldnames})
 
     stats = {
@@ -226,6 +310,8 @@ def annotate_csv(input_csv: Path, input_vcf: Path, output_csv: Path, log_json: P
         "rows": rows,
         "matched_rows": matched,
         "info_fields": len(info_ids),
+        "format_fields": len(format_ids),
+        "format_field_ids": format_ids,
         **vcf_stats,
     }
     if log_json:
@@ -235,15 +321,29 @@ def annotate_csv(input_csv: Path, input_vcf: Path, output_csv: Path, log_json: P
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Append all VCF INFO fields to a VEP CSV.")
+    parser = argparse.ArgumentParser(description="Append VCF INFO and sample FORMAT fields to a VEP CSV.")
     parser.add_argument("--input-csv", required=True, help="VEP CSV from module 04")
     parser.add_argument("--input-vcf", required=True, help="VCF used as module 04 VEP input")
-    parser.add_argument("--output-csv", required=True, help="CSV with vcf_info_* columns")
+    parser.add_argument("--output-csv", required=True, help="CSV with vcf_info_* and vcf_format_* columns")
+    parser.add_argument(
+        "--sample-name",
+        help="VCF sample to parse; default is the first sample in the VCF header",
+    )
     parser.add_argument("--log-json", help="Optional JSON statistics path")
     args = parser.parse_args()
 
-    stats = annotate_csv(Path(args.input_csv), Path(args.input_vcf), Path(args.output_csv), Path(args.log_json) if args.log_json else None)
-    print(f"Annotated {stats['matched_rows']}/{stats['rows']} CSV row(s) with {stats['info_fields']} VCF INFO field(s): {args.output_csv}")
+    stats = annotate_csv(
+        Path(args.input_csv),
+        Path(args.input_vcf),
+        Path(args.output_csv),
+        Path(args.log_json) if args.log_json else None,
+        args.sample_name,
+    )
+    print(
+        f"Annotated {stats['matched_rows']}/{stats['rows']} CSV row(s) with "
+        f"{stats['info_fields']} INFO and {stats['format_fields']} FORMAT field(s) "
+        f"from sample {stats['selected_sample'] or '-'}: {args.output_csv}"
+    )
     return 0
 
 
