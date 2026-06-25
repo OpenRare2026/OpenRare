@@ -62,21 +62,23 @@ def run_check():
             ))
 
     # ── C. External data directories ──
-    # Check if an external_data dir exists (can be a symlink to real storage)
-    external_data = _MODULE_DIR / "external_data"
+    # Check if an external_data dir exists. On 113 the real data lives at:
+    #   /mnt/workspace/xlw/phenotype_score/v3_pixi/external_data/
+    # Create a symlink or set PHENOTYPE_DATA_DIR env var to point there.
+    external_data = Path(os.environ.get("PHENOTYPE_DATA_DIR", str(_MODULE_DIR / "external_data")))
     if external_data.exists():
         found = [d for d in _EXPECTED_DATA_DIRS if (external_data / d).exists()]
         missing = [d for d in _EXPECTED_DATA_DIRS if not (external_data / d).exists()]
         results.append(CheckResult(
             name="external_data",
             status="ok" if not missing else "error",
-            message=f"found: {found}; missing: {missing}" if missing else f"all {len(found)} dirs present"
+            message=f"found: {found}; missing: {missing}" if missing else f"all {len(found)} dirs present at {external_data}"
         ))
     else:
         results.append(CheckResult(
             name="external_data",
             status="error",
-            message=f"external_data/ dir not found at {external_data}; see EXTERNAL_DATA.md"
+            message=f"external_data/ not found at {external_data}; set PHENOTYPE_DATA_DIR or symlink to data. See EXTERNAL_DATA.md"
         ))
 
     # ── D. Python ──

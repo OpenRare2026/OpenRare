@@ -53,7 +53,16 @@ def run_check():
         if str(_MODULE_DIR) in sys.path:
             sys.path.remove(str(_MODULE_DIR))
 
-    # ── B. Python ──
+    # ── B. Platform compatibility (verified: needs linux-64 or osx-arm64) ──
+    import platform as _plat
+    machine = _plat.machine()
+    system = _plat.system()
+    if system == "Linux" or (system == "Darwin" and machine == "arm64"):
+        results.append(CheckResult(name="platform", status="ok", message=f"{system} {machine}"))
+    else:
+        results.append(CheckResult(name="platform", status="warn", message=f"{system} {machine} — untested"))
+
+    # ── C. Python ──
     pyver = f"{sys.version_info.major}.{sys.version_info.minor}"
     if sys.version_info >= (3, 11):
         results.append(CheckResult(name="python", status="ok", message=f"Python {pyver}"))
