@@ -1,0 +1,6 @@
+{
+  "wide_path": "fixtures/wide_table.csv",
+  "phenotype_path": "fixtures/phenotype.csv",
+  "hpo_path": "fixtures/hpo_terms.txt",
+  "top_n": 2
+}
