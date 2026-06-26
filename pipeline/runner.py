@@ -30,16 +30,6 @@ _LOCAL = {
     "report":           ("127.0.0.1", 8800),
 }
 
-# ponytail: remote targets. Switch back to _LOCAL after testing.
-_REMOTE = {
-    "RAG-HPO":          ("172.27.206.112", 9003),
-    "pipeline":         ("172.27.206.113", 18901),
-    "phenotype_score":  ("172.27.206.112", 7003),
-    "ppi_score":        ("172.27.206.113", 9000),
-    "rare_sort":        ("172.27.206.113", 5002),
-    "report":           ("172.27.206.112", 8800),
-}
-
 _active_targets = _LOCAL
 
 GATEWAY_HOST = "127.0.0.1"
@@ -47,19 +37,8 @@ GATEWAY_PORT = 8100
 _use_gateway: bool | None = None
 
 
-_remote_mode: bool = False
-
-
-def set_remote(enabled: bool = True) -> None:
-    global _active_targets, _remote_mode
-    _active_targets = _REMOTE if enabled else _LOCAL
-    _remote_mode = enabled
-
-
 async def _check_gateway() -> bool:
     global _use_gateway
-    if _remote_mode:  # ponytail: no local gateway in remote mode
-        return False
     if _use_gateway is None:
         try:
             async with httpx.AsyncClient(trust_env=False) as c:
