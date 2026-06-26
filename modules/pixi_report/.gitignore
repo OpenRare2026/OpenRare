@@ -1,0 +1,17 @@
+.pixi
+.test_*
+__pycache__/
+*.py[oc]
+.env
+tools/bin/
+test_data/
+examples/demo_case/output_test_*/
+
+# 大文件 / 需自行下载
+data/pharmGKB/
+data/omim/
+data/MONDO/
+
+# 以下公开 CSV 可提交，勿忽略：
+# data/ChinaDrug/chinadrugtrials.csv
+# data/Chictr/chictr.csv

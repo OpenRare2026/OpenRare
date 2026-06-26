@@ -1,0 +1,17 @@
+## 1. 报告头部（Header）
+
+| 项目 | 内容 |
+|------|------|
+| 样本 ID | {{ ctx.meta.sample_id }} |
+| 家系类型 | {{ ctx.meta.family_type or "未提供" }} |
+| 家系关系 | {{ ctx.meta.pedigree_role or "未提供" }} |
+| 临床诊断 / 指征 | {{ ctx.meta.clinical_info or "未提供" }} |
+| HPO 表型 | {% if ctx.meta.hpo_terms %}{{ ctx.meta.hpo_terms | join(", ") }}{% else %}{{ ctx.meta.hpo_raw or "未提供" }}{% endif %} |
+| 报告受众 | clinician（临床医生） |
+| 分析目的 | 基于全外显子/基因组测序变异注释宽表，识别与临床表型相关的候选致病变异 |
+| VCF 来源 | {{ ctx.meta.vcf_path or "未提供" }} |
+| GRCh38 转换 | {{ ctx.meta.liftover_path or "未提供" }} |
+| 分析日期 | {{ ctx.meta.report_date }} |
+| 报告人 | AI 辅助基因组解读系统（需临床遗传学专家复核） |
+
+**关键提示**：本报告为**辅助决策**性质，所有候选变异需经实验验证（Sanger、功能实验）后方可用于临床决策。

@@ -1,0 +1,52 @@
+[workspace]
+name = "rag-hpo"
+version = "2.0.0"
+description = "HPO phenotype extraction via LLM + RAG"
+authors = ["wyzBelinda"]
+channels = ["conda-forge"]
+platforms = ["linux-64", "osx-arm64"]
+
+[tasks]
+serve = { cmd = "uvicorn server:app --host 0.0.0.0 --port 8000", cwd = "src", env = { PYTHONPATH = "src" } }
+cli = { cmd = "python rag_hpo.py", cwd = "src", env = { PYTHONPATH = "src" } }
+build-db = { cmd = "python build_vector_db.py", cwd = "src", env = { PYTHONPATH = "src" } }
+test = "pytest tests/"
+lint = "ruff check src/"
+fmt = "ruff format src/"
+
+[dependencies]
+python = ">=3.10"
+numpy = "*"
+pandas = "*"
+tqdm = "*"
+requests = "*"
+tiktoken = "*"
+sentence-transformers = "*"
+fastembed = "*"
+faiss-cpu = "*"
+rapidfuzz = "*"
+pronto = "*"
+pydantic-settings = "*"
+tabulate = "*"
+fastapi = ">=0.100"
+uvicorn = "*"
+python-dotenv = "*"
+
+[feature.test.dependencies]
+pytest = "*"
+httpx = "*"
+
+[feature.dev.dependencies]
+ruff = "*"
+
+[feature.prod.dependencies]
+# prod-only extras: gunicorn for production server
+gunicorn = "*"
+
+[feature.prod.tasks]
+serve-prod = "gunicorn src.server:app -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000"
+
+[environments]
+test = ["test"]
+dev = ["test", "dev"]
+prod = ["test", "dev", "prod"]

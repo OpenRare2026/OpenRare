@@ -1,0 +1,222 @@
+{
+  "version": "1.0.0",
+  "description": "ACMG/AMP Classification Rule Engine Configuration",
+  "thresholds": {
+    "pathogenic": 10.0,
+    "likely_pathogenic": 6.0,
+    "likely_benign": -6.0,
+    "benign": -10.0,
+    "pvs1_count": 1,
+    "ps_count": 2,
+    "pm_count": 3,
+    "pp_count": 4
+  },
+  "enabled_criteria": [
+    "PVS1",
+    "PS1", "PS2", "PS3", "PS4",
+    "PM1", "PM2", "PM3", "PM4", "PM5", "PM6",
+    "PP1", "PP2", "PP3", "PP4", "PP5",
+    "BA1",
+    "BS1", "BS2", "BS3", "BS4",
+    "BP1", "BP2", "BP3", "BP4", "BP5", "BP6", "BP7"
+  ],
+  "criteria": {
+    "PVS1": {
+      "enabled": true,
+      "score": 8.0,
+      "description": "Null variant in gene where LOF is known mechanism",
+      "lof_genes": [],
+      "exemption_list": []
+    },
+    "PS1": {
+      "enabled": true,
+      "score": 4.0,
+      "description": "Same amino acid change as established pathogenic variant",
+      "pathogenic_database": "ClinVar"
+    },
+    "PS2": {
+      "enabled": true,
+      "score": 4.0,
+      "description": "De novo with confirmed parentage",
+      "require_parentage_confirmation": true
+    },
+    "PS3": {
+      "enabled": true,
+      "score": 4.0,
+      "description": "Functional studies show damaging effect",
+      "min_functional_score": 0.8,
+      "validated_assays_only": true
+    },
+    "PS4": {
+      "enabled": true,
+      "score": 4.0,
+      "description": "Prevalence increased in affected vs controls",
+      "min_odds_ratio": 5.0,
+      "min_cases": 10
+    },
+    "PM1": {
+      "enabled": true,
+      "score": 2.0,
+      "description": "Located in mutational hot spot or critical domain",
+      "hotspot_databases": ["COSMIC", "ClinVar"]
+    },
+    "PM2": {
+      "enabled": true,
+      "score": 2.0,
+      "description": "Absent from population databases",
+      "max_af_gnomad": 0.0001,
+      "population_databases": ["gnomAD", "ExAC", "1000G"]
+    },
+    "PM3": {
+      "enabled": true,
+      "score": 2.0,
+      "description": "Detected in trans with pathogenic variant",
+      "require_phase_confirmation": true
+    },
+    "PM4": {
+      "enabled": true,
+      "score": 2.0,
+      "description": "Protein length change in non-repeat region",
+      "repeat_region_databases": ["UCSC"]
+    },
+    "PM5": {
+      "enabled": true,
+      "score": 2.0,
+      "description": "Novel missense at residue with known pathogenic missense",
+      "pathogenic_database": "ClinVar"
+    },
+    "PM6": {
+      "enabled": true,
+      "score": 2.0,
+      "description": "Assumed de novo without parentage confirmation"
+    },
+    "PP1": {
+      "enabled": true,
+      "score": 1.0,
+      "description": "Co-segregation with disease in family",
+      "min_segregations": 3
+    },
+    "PP2": {
+      "enabled": true,
+      "score": 1.0,
+      "description": "Missense in gene with low benign missense rate",
+      "max_benign_missense_rate": 0.01
+    },
+    "PP3": {
+      "enabled": true,
+      "score": 1.0,
+      "description": "Computational evidence supports deleterious effect",
+      "min_tools_agreeing": 3,
+      "tools": ["SIFT", "PolyPhen2", "MutationTaster", "CADD", "REVEL"]
+    },
+    "PP4": {
+      "enabled": true,
+      "score": 1.0,
+      "description": "Phenotype highly specific for single genetic etiology"
+    },
+    "PP5": {
+      "enabled": true,
+      "score": 1.0,
+      "description": "Reputable source reports as pathogenic",
+      "trusted_sources": ["ClinVar", "HGMD", "LOVD"]
+    },
+    "BA1": {
+      "enabled": true,
+      "score": -8.0,
+      "description": "Allele frequency >5% in population databases",
+      "min_af_threshold": 0.05
+    },
+    "BS1": {
+      "enabled": true,
+      "score": -4.0,
+      "description": "Allele frequency greater than expected for disorder",
+      "disease_prevalence_thresholds": {}
+    },
+    "BS2": {
+      "enabled": true,
+      "score": -4.0,
+      "description": "Observed in healthy adult individual"
+    },
+    "BS3": {
+      "enabled": true,
+      "score": -4.0,
+      "description": "Functional studies show no damaging effect"
+    },
+    "BS4": {
+      "enabled": true,
+      "score": -4.0,
+      "description": "Lack of segregation in affected family members"
+    },
+    "BP1": {
+      "enabled": true,
+      "score": -1.0,
+      "description": "Missense in gene where truncating variants cause disease"
+    },
+    "BP2": {
+      "enabled": true,
+      "score": -1.0,
+      "description": "Observed in trans/cis with pathogenic variant"
+    },
+    "BP3": {
+      "enabled": true,
+      "score": -1.0,
+      "description": "In-frame indel in repetitive region"
+    },
+    "BP4": {
+      "enabled": true,
+      "score": -1.0,
+      "description": "Computational evidence suggests no impact",
+      "tools": ["SIFT", "PolyPhen2", "MutationTaster", "CADD"]
+    },
+    "BP5": {
+      "enabled": true,
+      "score": -1.0,
+      "description": "Variant found in case with alternate molecular basis"
+    },
+    "BP6": {
+      "enabled": true,
+      "score": -1.0,
+      "description": "Reputable source reports as benign"
+    },
+    "BP7": {
+      "enabled": true,
+      "score": -1.0,
+      "description": "Synonymous variant with no predicted splice impact"
+    }
+  },
+  "databases": {
+    "population": {
+      "gnomAD": {
+        "url": "https://gnomad.broadinstitute.org",
+        "version": "3.1.2"
+      },
+      "ExAC": {
+        "url": "https://exac.broadinstitute.org",
+        "version": "0.3.1"
+      },
+      "1000G": {
+        "url": "https://www.internationalgenome.org",
+        "version": "Phase 3"
+      }
+    },
+    "clinical": {
+      "ClinVar": {
+        "url": "https://www.ncbi.nlm.nih.gov/clinvar",
+        "version": "latest"
+      },
+      "HGMD": {
+        "url": "https://www.hgmd.cf.ac.uk",
+        "version": "professional"
+      }
+    }
+  },
+  "scoring_weights": {
+    "very_strong": 8.0,
+    "strong": 4.0,
+    "moderate": 2.0,
+    "supporting": 1.0,
+    "benign_standalone": -8.0,
+    "benign_strong": -4.0,
+    "benign_supporting": -1.0
+  }
+}

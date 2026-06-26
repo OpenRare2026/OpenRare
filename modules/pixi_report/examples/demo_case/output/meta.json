@@ -1,0 +1,22 @@
+{
+  "family_type": "单人",
+  "pedigree_role": "先证者",
+  "sample_id": "26B03487389",
+  "clinical_info": "遗传咨询#主诉：咨询1天余，伴随 #现病史：孕15周，自诉孕妇母亲陶彩萍智力异常，智力落后，语言，运动无异常，未做遗传学检查，否认家族史。",
+  "hpo_raw": "【空】\nHP:0001249 智力障碍/Intellectual disability",
+  "hpo_terms": [
+    "HP:0001249"
+  ],
+  "raghpo_returns": {
+    "job_id": "4c849a02-2e7c-4349-b0b7-d38f02275fc6",
+    "status": "completed",
+    "results": []
+  },
+  "liftover_path": "",
+  "vcf_path": "",
+  "wide_table_path": "/mnt/workspace/lixinhang/code/search_agent/modules/pixi_report/examples/demo_case/wide_table.csv",
+  "gene_disease_path": "",
+  "ppi_path": "/mnt/workspace/lixinhang/code/search_agent/modules/pixi_report/examples/demo_case/ppi_score.csv",
+  "report_path": "",
+  "report_date": "2026-06-26"
+}

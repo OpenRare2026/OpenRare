@@ -1,0 +1,7 @@
+source_path	v3_path	role
+/mnt/workspace/wangzilu1/regulatory_annotation/resources/regulatory/hg38/ENCFF420VPZ.bed.gz	vcf_preprocessing/resources/regulatory/hg38/ENCFF420VPZ.bed.gz	ENCODE SCREEN cCRE original BED
+/mnt/workspace/wangzilu1/regulatory_annotation/resources/regulatory/hg38/encode_screen_v4_grch38_ccre.slim.bed.gz	vcf_preprocessing/resources/regulatory/hg38/encode_screen_v4_grch38_ccre.slim.bed.gz	CRE annotation slim BED
+/mnt/workspace/wangzilu1/regulatory_annotation/resources/regulatory/hg38/encode_screen_v4_grch38_ccre.slim.bed.gz.tbi	vcf_preprocessing/resources/regulatory/hg38/encode_screen_v4_grch38_ccre.slim.bed.gz.tbi	CRE annotation tabix index
+/mnt/workspace/wangzilu1/regulatory_annotation/resources/ncrna/hg38/gencode.v49.annotation.gtf.gz	vcf_preprocessing/resources/ncrna/hg38/gencode.v49.annotation.gtf.gz	GENCODE v49 original GTF
+/mnt/workspace/wangzilu1/regulatory_annotation/resources/ncrna/hg38/gencode.v49.ncrna_gene.slim.bed.gz	vcf_preprocessing/resources/ncrna/hg38/gencode.v49.ncrna_gene.slim.bed.gz	NCRNA annotation slim BED
+/mnt/workspace/wangzilu1/regulatory_annotation/resources/ncrna/hg38/gencode.v49.ncrna_gene.slim.bed.gz.tbi	vcf_preprocessing/resources/ncrna/hg38/gencode.v49.ncrna_gene.slim.bed.gz.tbi	NCRNA annotation tabix index

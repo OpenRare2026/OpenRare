@@ -1,0 +1,11 @@
+.pixi/
+__pycache__/
+*.pyc
+.env
+*.pkl
+tmp/
+jobs/
+hp.obo
+hpo_meta.json
+hpo_embedded.npz
+hpo_terms_full.csv
