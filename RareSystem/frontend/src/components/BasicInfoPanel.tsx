@@ -225,7 +225,7 @@ const BasicInfoPanel: React.FC<BasicInfoPanelProps> = ({
             onClick={() => window.open(`https://hpo.jax.org/app/browse/term/${term.hpo_id}`, '_blank')}
           >
             <TagOutlined style={{ marginRight: 4 }} />
-            {term.phrase}
+            {term.phrase || term.hpo_id}
             <LinkOutlined style={{ marginLeft: 4, fontSize: 10 }} />
           </span>
         </Tooltip>

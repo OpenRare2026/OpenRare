@@ -1,0 +1,35 @@
+# Development override for docker-compose.yml
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+#
+# Differences from production:
+#   - Mounts source code for hot reload
+#   - Runs uvicorn with --reload
+#   - Exposes both frontend dev server (8888) and backend API (18000) directly
+#   - No nginx, no supervisor
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: rare-disease-dev
+    ports:
+      - "18000:18000"
+      - "8888:8888"
+    env_file:
+      - ./backend/.env
+    volumes:
+      - ./backend:/app/backend
+      - ./frontend:/app/frontend
+      - ./config:/app/config
+      - ./data:/app/data
+      - ./logs:/app/logs
+    environment:
+      - API_HOST=0.0.0.0
+      - API_RELOAD=true
+      - LOG_LEVEL=DEBUG
+    command: >
+      bash -c "
+        cd /app/frontend && npm run dev -- --host 0.0.0.0 &
+        cd /app/backend && python run.py
+      "

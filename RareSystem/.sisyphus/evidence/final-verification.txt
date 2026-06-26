@@ -1,0 +1,27 @@
+=== Delete Case Feature - Final Verification ===
+Date: 2026-05-20T18:10:36+08:00
+
+=== Must Have [7/7] ===
+✅ DELETE /api/cases/{patient_id} endpoint implemented
+✅ Popconfirm before deletion
+✅ Disable delete button for active case
+✅ Delete VCF files from disk
+✅ Refresh case list after deletion
+✅ Clear session if deleted case was active
+✅ TDD tests pass (6 pytest tests)
+
+=== Must NOT Have [4/4] ===
+✅ No bulk delete
+✅ No undo/restore/soft-delete
+✅ No SkillConfig deletion
+✅ No permission checks
+
+=== Tasks [6/6] ===
+✅ Task 1: Backend TDD Red - pytest tests
+✅ Task 2: Frontend API - deleteCase method
+✅ Task 3: Frontend TDD Red - vitest tests
+✅ Task 4: Backend TDD Green - DELETE endpoint
+✅ Task 5: Frontend TDD Green - delete UI
+✅ Task 6: Build verification passed
+
+=== VERDICT: APPROVE ===

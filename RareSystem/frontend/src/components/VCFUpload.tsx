@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Upload, Button, Card, Alert, Progress, Typography, Space, Collapse, Tag, Switch, InputNumber, Select, Spin } from 'antd'
+import { Upload, Button, Card, Alert, Progress, Typography, Space, Collapse, Tag, InputNumber, Input, Spin } from 'antd'
 import { InboxOutlined, FileTextOutlined, CheckCircleOutlined, ExperimentOutlined, LoadingOutlined } from '@ant-design/icons'
 import { useTranslation } from 'react-i18next'
 import type { UploadProps, UploadFile } from 'antd/es/upload/interface'
@@ -16,17 +16,18 @@ interface PatientInfo {
   ethnicity?: string
   diagnosis_description?: string
   medical_history?: string
-  hpo_terms?: Array<{ phrase: string; hpo_id: string }>
+  hpo_terms?: Array<{ phrase: string; hpo_id: string; category?: string; display_category?: string }>
 }
 
 interface VCFUploadProps {
   patientId: string
   patientInfo?: PatientInfo
   hpoJobId?: string
+  directHpoTerms?: Array<{ phrase: string; hpo_id: string; category?: string; display_category?: string }>
   onUploadComplete: (patientId: string, vcfFileId: string) => void
 }
 
-const VCFUpload: React.FC<VCFUploadProps> = ({ patientId, patientInfo, hpoJobId, onUploadComplete }) => {
+const VCFUpload: React.FC<VCFUploadProps> = ({ patientId, patientInfo, hpoJobId, directHpoTerms, onUploadComplete }) => {
   const { t } = useTranslation()
   const [fileList, setFileList] = useState<UploadFile[]>([])
   const [uploading, setUploading] = useState(false)
@@ -34,17 +35,23 @@ const VCFUpload: React.FC<VCFUploadProps> = ({ patientId, patientInfo, hpoJobId,
   const [preview, setPreview] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
   const [vepStatus, setVepStatus] = useState<string | null>(null)
-  const [vepHgvs, setVepHgvs] = useState(true)
-  const [vepNoPick, setVepNoPick] = useState(false)
-  const [vepFormat, setVepFormat] = useState('vcf')
-  const [vepFork, setVepFork] = useState(1)
+  const [vepChromosomes, setVepChromosomes] = useState('')
+  const [vepFork, setVepFork] = useState(16)
   const [vepJobId, setVepJobId] = useState<string | null>(null)
   const [vepPolling, setVepPolling] = useState(false)
   const [vepElapsedSeconds, setVepElapsedSeconds] = useState(0)
   const [vepAnnotatedCount, setVepAnnotatedCount] = useState<number | null>(null)
+  const [hpoWaiting, setHpoWaiting] = useState(false)
+  const [hpoStatus, setHpoStatus] = useState<string | null>(null)
+  const [hpoElapsedSeconds, setHpoElapsedSeconds] = useState(0)
   const pollingRef = useRef<NodeJS.Timeout | null>(null)
   const elapsedRef = useRef<NodeJS.Timeout | null>(null)
+  const hpoPollingRef = useRef<NodeJS.Timeout | null>(null)
+  const hpoElapsedRef = useRef<NodeJS.Timeout | null>(null)
   const startTimeRef = useRef<number>(0)
+  const hpoStartTimeRef = useRef<number>(0)
+
+  const needHpoWait = !!hpoJobId && !directHpoTerms
 
   const handlePreview = async (file: File) => {
     const reader = new FileReader()
@@ -74,12 +81,10 @@ const VCFUpload: React.FC<VCFUploadProps> = ({ patientId, patientInfo, hpoJobId,
 
   useEffect(() => {
     return () => {
-      if (pollingRef.current) {
-        clearInterval(pollingRef.current)
-      }
-      if (elapsedRef.current) {
-        clearInterval(elapsedRef.current)
-      }
+      if (pollingRef.current) clearInterval(pollingRef.current)
+      if (elapsedRef.current) clearInterval(elapsedRef.current)
+      if (hpoPollingRef.current) clearInterval(hpoPollingRef.current)
+      if (hpoElapsedRef.current) clearInterval(hpoElapsedRef.current)
     }
   }, [])
 
@@ -96,11 +101,11 @@ const VCFUpload: React.FC<VCFUploadProps> = ({ patientId, patientInfo, hpoJobId,
       try {
         const status = await api.getVEPJobStatus(jobId)
         setVepStatus(status.status)
-        if (status.vep_annotated_count !== null) {
+        if (status.vep_annotated_count != null) {
           setVepAnnotatedCount(status.vep_annotated_count)
         }
 
-        const completedStates = ['completed', 'completion', 'success', 'finished', 'done']
+        const completedStates = ['completed', 'completion', 'success', 'succeeded', 'finished', 'done']
         const failedStates = ['failed', 'timeout', 'error']
 
         if (completedStates.includes(status.status)) {
@@ -122,6 +127,59 @@ const VCFUpload: React.FC<VCFUploadProps> = ({ patientId, patientInfo, hpoJobId,
     }, 10000)
   }
 
+  const waitForHpoAndSubmitVep = async (vcfFileId: string, hpoJobId: string) => {
+    setHpoWaiting(true)
+    hpoStartTimeRef.current = Date.now()
+    setHpoElapsedSeconds(0)
+
+    hpoElapsedRef.current = setInterval(() => {
+      setHpoElapsedSeconds(Math.floor((Date.now() - hpoStartTimeRef.current) / 1000))
+    }, 1000)
+
+    hpoPollingRef.current = setInterval(async () => {
+      try {
+        const hpoResult = await api.getHPOJobStatus(hpoJobId)
+        setHpoStatus(hpoResult.status)
+
+        if (hpoResult.status === 'completed') {
+          if (hpoPollingRef.current) clearInterval(hpoPollingRef.current)
+          if (hpoElapsedRef.current) clearInterval(hpoElapsedRef.current)
+
+          const extractedHpoIds = (hpoResult.results || []).map((r: { hpo_id: string }) => r.hpo_id)
+
+          try {
+            const vepResult = await api.submitVEPForVcf(Number(vcfFileId), extractedHpoIds, {
+              fork: vepFork,
+              chromosomes: vepChromosomes || undefined,
+            })
+
+            if (vepResult.vep_job_id) {
+              setVepJobId(vepResult.vep_job_id)
+              setVepStatus(vepResult.vep_status)
+              setHpoWaiting(false)
+              startVepPolling(vepResult.vep_job_id, vcfFileId, patientId)
+            } else {
+              setHpoWaiting(false)
+              setTimeout(() => {
+                onUploadComplete(patientId, vcfFileId)
+              }, 500)
+            }
+          } catch (vepErr) {
+            setHpoWaiting(false)
+            setError(vepErr instanceof Error ? vepErr.message : 'VEP submission failed after HPO extraction')
+          }
+        } else if (hpoResult.status === 'failed') {
+          if (hpoPollingRef.current) clearInterval(hpoPollingRef.current)
+          if (hpoElapsedRef.current) clearInterval(hpoElapsedRef.current)
+          setHpoWaiting(false)
+          setError(`HPO extraction failed: ${hpoResult.error || 'Unknown error'}`)
+        }
+      } catch (err) {
+        console.error('Failed to poll HPO status:', err)
+      }
+    }, 5000)
+  }
+
   const handleUpload = async () => {
     if (fileList.length === 0) return
 
@@ -135,26 +193,46 @@ const VCFUpload: React.FC<VCFUploadProps> = ({ patientId, patientInfo, hpoJobId,
     setVepElapsedSeconds(0)
     setVepAnnotatedCount(null)
 
+    const vepOptions = {
+      fork: vepFork,
+      chromosomes: vepChromosomes || undefined,
+    }
+
     try {
-      const result = await api.uploadVCF(file, patientId, setProgress, patientInfo, {
-        hgvs: vepHgvs,
-        no_pick: vepNoPick,
-        format: vepFormat,
-        fork: vepFork,
-      }, hpoJobId)
-      setProgress(100)
-      if (result.vep_status) {
-        setVepStatus(result.vep_status)
-      }
-      if (result.vep_job_id) {
-        setVepJobId(result.vep_job_id)
+      if (directHpoTerms && directHpoTerms.length > 0) {
+        const hpoTermsForUpload = directHpoTerms
+        const result = await api.uploadVCF(file, patientId, setProgress, { ...patientInfo, hpo_terms: hpoTermsForUpload }, vepOptions, undefined)
+        setProgress(100)
+        if (result.vep_status) setVepStatus(result.vep_status)
+        if (result.vep_job_id) {
+          setVepJobId(result.vep_job_id)
+          setUploading(false)
+          startVepPolling(result.vep_job_id, result.vcf_file_id, result.patient_id)
+        } else {
+          setUploading(false)
+          setTimeout(() => {
+            onUploadComplete(result.patient_id, result.vcf_file_id)
+          }, 500)
+        }
+      } else if (needHpoWait) {
+        const result = await api.uploadVCF(file, patientId, setProgress, patientInfo, vepOptions, hpoJobId)
+        setProgress(100)
         setUploading(false)
-        startVepPolling(result.vep_job_id, result.vcf_file_id, result.patient_id)
+        waitForHpoAndSubmitVep(result.vcf_file_id, hpoJobId)
       } else {
-        setUploading(false)
-        setTimeout(() => {
-          onUploadComplete(result.patient_id, result.vcf_file_id)
-        }, 500)
+        const result = await api.uploadVCF(file, patientId, setProgress, patientInfo, vepOptions, hpoJobId)
+        setProgress(100)
+        if (result.vep_status) setVepStatus(result.vep_status)
+        if (result.vep_job_id) {
+          setVepJobId(result.vep_job_id)
+          setUploading(false)
+          startVepPolling(result.vep_job_id, result.vcf_file_id, result.patient_id)
+        } else {
+          setUploading(false)
+          setTimeout(() => {
+            onUploadComplete(result.patient_id, result.vcf_file_id)
+          }, 500)
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed')
@@ -167,6 +245,8 @@ const VCFUpload: React.FC<VCFUploadProps> = ({ patientId, patientInfo, hpoJobId,
     const secs = seconds % 60
     return mins > 0 ? `${mins}m ${secs}s` : `${secs}s`
   }
+
+  const isProcessing = uploading || vepPolling || hpoWaiting
 
   const headerLines = preview.filter((l) => l.startsWith('#'))
   const dataLines = preview.filter((l) => !l.startsWith('#') && l.trim())
@@ -191,6 +271,30 @@ const VCFUpload: React.FC<VCFUploadProps> = ({ patientId, patientInfo, hpoJobId,
           />
         )}
 
+        {directHpoTerms && directHpoTerms.length > 0 && (
+          <Alert
+            message={t('vcfUpload.hpoDirectLabel')}
+            description={
+              <Space wrap>
+                {directHpoTerms.map((term) => (
+                  <Tag key={term.hpo_id} color="processing">{term.hpo_id}</Tag>
+                ))}
+              </Space>
+            }
+            type="info"
+            showIcon
+          />
+        )}
+
+        {needHpoWait && !hpoWaiting && (
+          <Alert
+            message={t('vcfUpload.hpoExtractionPending')}
+            description={t('vcfUpload.hpoExtractionPendingDesc')}
+            type="info"
+            showIcon
+          />
+        )}
+
         <Dragger {...uploadProps}>
           <p className="ant-upload-drag-icon">
             <InboxOutlined />
@@ -205,27 +309,48 @@ const VCFUpload: React.FC<VCFUploadProps> = ({ patientId, patientInfo, hpoJobId,
           <Panel header={<Space><ExperimentOutlined />VEP Annotation Options</Space>} key="vep-options">
             <Space direction="vertical" style={{ width: '100%' }} size="middle">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span>HGVS notation</span>
-                <Switch checked={vepHgvs} onChange={setVepHgvs} />
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span>No pick (all consequences)</span>
-                <Switch checked={vepNoPick} onChange={setVepNoPick} />
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span>Output format</span>
-                <Select value={vepFormat} onChange={setVepFormat} style={{ width: 120 }}>
-                  <Select.Option value="vcf">VCF</Select.Option>
-                  <Select.Option value="json">JSON</Select.Option>
-                </Select>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span>Parallel forks</span>
-                <InputNumber min={1} max={8} value={vepFork} onChange={(v) => setVepFork(v || 1)} />
+                <InputNumber min={1} max={32} value={vepFork} onChange={(v) => setVepFork(v || 16)} />
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>Chromosomes (optional)</span>
+                <Input
+                  placeholder="e.g. 1-22,X"
+                  value={vepChromosomes}
+                  onChange={(e) => setVepChromosomes(e.target.value)}
+                  style={{ width: 180 }}
+                />
               </div>
             </Space>
           </Panel>
         </Collapse>
+
+        {hpoWaiting && (
+          <Card size="small" style={{ background: '#fff7e6', borderColor: '#ffd591' }}>
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Spin indicator={<LoadingOutlined style={{ fontSize: 16 }} spin />} />
+                <Text strong>{t('vcfUpload.hpoWaitingTitle')}</Text>
+              </div>
+              <div>
+                <Text type="secondary">{t('vcfUpload.hpoStatus')}: </Text>
+                <Tag color={hpoStatus === 'queued' ? 'blue' : hpoStatus === 'processing' ? 'orange' : 'default'}>
+                  {hpoStatus || 'queued'}
+                </Tag>
+              </div>
+              <div>
+                <Text type="secondary">{t('vcfUpload.elapsed')}: </Text>
+                <Text>{formatElapsedTime(hpoElapsedSeconds)}</Text>
+              </div>
+              <Progress
+                percent={100}
+                status="active"
+                strokeColor={{ '0%': '#fa8c16', '100%': '#52c41a' }}
+                format={() => t('vcfUpload.hpoWaitingProgress')}
+              />
+            </Space>
+          </Card>
+        )}
 
         {vepPolling && vepJobId && (
           <Card size="small" style={{ background: '#f0f5ff', borderColor: '#adc6ff' }}>
@@ -327,13 +452,15 @@ const VCFUpload: React.FC<VCFUploadProps> = ({ patientId, patientInfo, hpoJobId,
         <Button
           type="primary"
           onClick={handleUpload}
-          disabled={fileList.length === 0 || uploading || vepPolling}
-          loading={uploading || vepPolling}
-          icon={progress === 100 && !vepPolling ? <CheckCircleOutlined /> : undefined}
+          disabled={fileList.length === 0 || isProcessing}
+          loading={isProcessing}
+          icon={progress === 100 && !isProcessing ? <CheckCircleOutlined /> : undefined}
           block
         >
           {uploading
             ? 'Uploading...'
+            : hpoWaiting
+            ? t('vcfUpload.hpoWaitingBtn')
             : vepPolling
             ? 'VEP processing...'
             : progress === 100

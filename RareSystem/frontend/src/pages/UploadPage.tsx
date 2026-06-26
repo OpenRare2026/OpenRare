@@ -13,11 +13,13 @@ import {
   Col,
   Divider,
   Alert,
+  Tooltip,
 } from 'antd'
 import {
   UserOutlined,
   FileTextOutlined,
   MedicineBoxOutlined,
+  QuestionCircleOutlined,
 } from '@ant-design/icons'
 import { useTranslation } from 'react-i18next'
 import VCFUpload from '@/components/VCFUpload'
@@ -29,6 +31,13 @@ const { Title, Text, Paragraph } = Typography
 const { Step } = Steps
 const { TextArea } = Input
 
+interface HpoTermItem {
+  phrase: string
+  hpo_id: string
+  category?: string
+  display_category?: string
+}
+
 interface UploadPageProps {
   onUploadComplete: (patientId: string, vcfFileId: string, hpoJobId?: string) => void
 }
@@ -38,25 +47,49 @@ const UploadPage: React.FC<UploadPageProps> = ({ onUploadComplete }) => {
   const [currentStep, setCurrentStep] = useState(0)
   const [patientForm] = Form.useForm()
   const [patientId, setPatientId] = useState<string | null>(null)
-  const [patientInfo, setPatientInfo] = useState<Partial<Patient>>({})
+  const [patientInfo, setPatientInfo] = useState<Partial<Patient> & { hpo_terms?: HpoTermItem[] }>({})
   const [vcfFileId, setVcfFileId] = useState<string | null>(null)
   const [hpoJobId, setHpoJobId] = useState<string | null>(null)
+  const [directHpoTerms, setDirectHpoTerms] = useState<HpoTermItem[]>([])
 
-  const handlePatientSubmit = async (values: Partial<Patient>) => {
+  const handlePatientSubmit = async (values: Partial<Patient> & { hpo_input?: string[] }) => {
     const id = `patient_${Date.now()}`
     setPatientId(id)
-    setPatientInfo(values)
-    
-    if (values.diagnosis_description) {
-      try {
-        const result = await api.extractHPOAsync(id, values.diagnosis_description)
-        if (result.job_id) {
-          setHpoJobId(result.job_id)
+
+    const hpoInputIds: string[] = values.hpo_input || []
+    const builtHpoTerms: HpoTermItem[] = []
+
+    if (hpoInputIds.length > 0) {
+      for (const rawId of hpoInputIds) {
+        const formattedId = rawId.toUpperCase().startsWith('HP:') ? rawId.toUpperCase() : `HP:${rawId}`
+        builtHpoTerms.push({
+          phrase: formattedId,
+          hpo_id: formattedId,
+          category: 'phenotype',
+          display_category: 'primary',
+        })
+      }
+      setDirectHpoTerms(builtHpoTerms)
+      setHpoJobId(null)
+    } else {
+      setDirectHpoTerms([])
+      if (values.diagnosis_description) {
+        try {
+          const result = await api.extractHPOAsync(id, values.diagnosis_description)
+          if (result.job_id) {
+            setHpoJobId(result.job_id)
+          }
+        } catch (err) {
+          console.error('HPO extraction request failed:', err)
         }
-      } catch (err) {
-        console.error('HPO extraction request failed:', err)
       }
     }
+
+    const patientInfoData = {
+      ...values,
+      hpo_terms: builtHpoTerms.length > 0 ? builtHpoTerms : undefined,
+    }
+    setPatientInfo(patientInfoData)
 
     setCurrentStep(1)
   }
@@ -141,11 +174,31 @@ const UploadPage: React.FC<UploadPageProps> = ({ onUploadComplete }) => {
                   <Form.Item
                     name="diagnosis_description"
                     label={t('upload.phenotypeLabel')}
-                    rules={[{ required: true, message: t('upload.phenotypeRequired') }]}
+                    rules={[{ required: false }]}
                   >
                     <TextArea
                       rows={4}
                       placeholder={t('upload.phenotypePlaceholder')}
+                    />
+                  </Form.Item>
+
+                  <Form.Item
+                    name="hpo_input"
+                    label={
+                      <Space>
+                        <span>{t('upload.hpoInputLabel')}</span>
+                        <Tooltip title={t('upload.hpoInputTooltip')}>
+                          <QuestionCircleOutlined style={{ color: '#1890ff' }} />
+                        </Tooltip>
+                      </Space>
+                    }
+                    extra={t('upload.hpoInputExtra')}
+                  >
+                    <Select
+                      mode="tags"
+                      placeholder={t('upload.hpoInputPlaceholder')}
+                      tokenSeparators={[',', ' ', ';']}
+                      style={{ width: '100%' }}
                     />
                   </Form.Item>
 
@@ -170,6 +223,7 @@ const UploadPage: React.FC<UploadPageProps> = ({ onUploadComplete }) => {
                 patientId={patientId!}
                 patientInfo={patientInfo}
                 hpoJobId={hpoJobId ?? undefined}
+                directHpoTerms={directHpoTerms.length > 0 ? directHpoTerms : undefined}
                 onUploadComplete={handleUploadComplete}
               />
             )}

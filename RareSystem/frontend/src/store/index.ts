@@ -1,6 +1,5 @@
 import { create } from 'zustand'
 import type {
-  Variant,
   ACMGClassification,
   AnalysisSession,
   FilterOptions,
@@ -32,8 +31,10 @@ export interface ProviderInfo {
 
 interface AppState {
   currentSession: AnalysisSession | null
-  variants: Variant[]
-  selectedVariant: Variant | null
+  variants: Record<string, string>[]
+  selectedVariant: Record<string, string> | null
+  selectedVcfFileId: string | null
+  selectedRowIndex: number | null
   classification: ACMGClassification | null
   filters: FilterOptions
   chatMessages: ChatMessage[]
@@ -46,8 +47,9 @@ interface AppState {
   providers: ProviderInfo[]
 
   setCurrentSession: (session: AnalysisSession | null) => void
-  setVariants: (variants: Variant[]) => void
-  setSelectedVariant: (variant: Variant | null) => void
+  setVariants: (variants: Record<string, string>[]) => void
+  setSelectedVariant: (variant: Record<string, string> | null) => void
+  setSelectedVariantKeys: (vcfFileId: string | null, rowIndex: number | null) => void
   setClassification: (classification: ACMGClassification | null) => void
   setFilters: (filters: FilterOptions) => void
   addChatMessage: (message: ChatMessage) => void
@@ -67,6 +69,8 @@ const initialState = {
   currentSession: null,
   variants: [],
   selectedVariant: null,
+  selectedVcfFileId: null as string | null,
+  selectedRowIndex: null as number | null,
   classification: null,
   filters: {},
   chatMessages: [],
@@ -85,6 +89,7 @@ export const useAppStore = create<AppState>((set) => ({
   setCurrentSession: (session) => set({ currentSession: session }),
   setVariants: (variants) => set({ variants }),
   setSelectedVariant: (variant) => set({ selectedVariant: variant, classification: null }),
+  setSelectedVariantKeys: (vcfFileId, rowIndex) => set({ selectedVcfFileId: vcfFileId, selectedRowIndex: rowIndex }),
   setClassification: (classification) => set({ classification }),
   setFilters: (filters) => set({ filters }),
   addChatMessage: (message) => set((state) => ({ chatMessages: [...state.chatMessages, message] })),

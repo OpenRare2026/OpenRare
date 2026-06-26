@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef, useMemo, forwardRef, useImperativeHandle } from 'react'
+import { useState, useRef } from 'react'
 import {
   Table,
   Tag,
   Space,
   Button,
+  Input,
   Typography,
   Tooltip,
   Badge,
@@ -21,22 +22,20 @@ import {
   ExperimentOutlined,
   LinkOutlined,
   SearchOutlined,
-  ReloadOutlined,
   BookOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
 } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
+import { useTranslation } from 'react-i18next'
 import api from '@/services/api'
-import type { PathwayResult, GeneVariant, PathwayAnalysisResponse, PathwayDetailResponse } from '@/types'
+import type { PathwayResult, PathwayAnalysisResponse, PathwayDetailResponse } from '@/types'
 
 const { Text, Paragraph } = Typography
 const { Panel } = Collapse
 
 interface PathwayViewProps {
-  vcfFileId: string
-  onVariantSelect: (variant: GeneVariant) => void
-  genes?: string[]
+  onVariantSelect?: (variant: Record<string, string>, rowIndex?: number) => void
 }
 
 interface PathwayWithVariants extends PathwayResult {
@@ -45,100 +44,87 @@ interface PathwayWithVariants extends PathwayResult {
 
 const CACHE_KEY_PREFIX = 'pathway_cache_'
 
-export interface PathwayViewRef {
-  reloadPathways: () => void
-}
-
-const PathwayView = forwardRef<PathwayViewRef, PathwayViewProps>(({
-  vcfFileId,
+const PathwayView: React.FC<PathwayViewProps> = ({
   onVariantSelect: _onVariantSelect,
-  genes: externalGenes,
-}, ref) => {
+}) => {
+  const { t } = useTranslation()
   const [loading, setLoading] = useState(false)
   const [pathways, setPathways] = useState<PathwayWithVariants[]>([])
   const [selectedPathway, setSelectedPathway] = useState<PathwayWithVariants | null>(null)
   const [drawerVisible, setDrawerVisible] = useState(false)
   const [variantsLoading, setVariantsLoading] = useState(false)
   const [analyzedGeneSet, setAnalyzedGeneSet] = useState<Set<string>>(new Set())
-  const lastFetchKeyRef = useRef<string>('')
+  const [geneInput, setGeneInput] = useState('')
+  const lastAnalyzedGenesRef = useRef<string>('')
 
-  const currentGenesKey = useMemo(() => {
-    if (externalGenes && externalGenes.length > 0) {
-      return externalGenes.slice().sort().join(',')
+  const parseGeneInput = (input: string): string[] => {
+    return input
+      .split(/[,\s;]+/)
+      .map(g => g.trim().toUpperCase())
+      .filter(g => g.length > 0)
+  }
+
+  const handleAnalyze = async () => {
+    const genes = parseGeneInput(geneInput)
+    if (genes.length === 0) {
+      message.warning(t('pathway.noGenesWarning'))
+      return
     }
-    return vcfFileId
-  }, [externalGenes, vcfFileId])
 
-  useEffect(() => {
-    loadPathways()
-  }, [currentGenesKey])
-
-  useImperativeHandle(ref, () => ({
-    reloadPathways: () => loadPathways(true)
-  }), [])
-
-  const loadPathways = async (forceReload = false) => {
-    if (!forceReload && lastFetchKeyRef.current === currentGenesKey) {
+    const genesKey = genes.slice().sort().join(',')
+    if (lastAnalyzedGenesRef.current === genesKey && pathways.length > 0) {
       return
     }
 
     setLoading(true)
     try {
       let response: PathwayAnalysisResponse
-      
-      const cacheKey = `${CACHE_KEY_PREFIX}${currentGenesKey}`
-      
-      if (!forceReload) {
-        const cached = localStorage.getItem(cacheKey)
-        if (cached) {
-          try {
-            const parsed = JSON.parse(cached)
-            const cacheTime = parsed.timestamp || 0
-            const now = Date.now()
-            if (now - cacheTime < 30 * 60 * 1000) {
-              const filteredPathways = parsed.pathways.filter((p: PathwayResult) => 
-                p.mapped_genes && p.mapped_genes.length > 0
-              )
-              setPathways(filteredPathways.map((p: PathwayResult, idx: number) => ({
-                ...p,
-                key: idx,
-              })))
-              setAnalyzedGeneSet(new Set(parsed.genes || []))
-              lastFetchKeyRef.current = currentGenesKey
-              setLoading(false)
-              return
-            }
-          } catch (e) {
-            console.debug('Failed to parse cached pathway data')
+
+      const cacheKey = `${CACHE_KEY_PREFIX}${genesKey}`
+      const cached = localStorage.getItem(cacheKey)
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached)
+          const cacheTime = parsed.timestamp || 0
+          if (Date.now() - cacheTime < 30 * 60 * 1000) {
+            const filteredPathways = parsed.pathways.filter((p: PathwayResult) =>
+              p.mapped_genes && p.mapped_genes.length > 0
+            )
+            setPathways(filteredPathways.map((p: PathwayResult, idx: number) => ({
+              ...p,
+              key: idx,
+            })))
+            setAnalyzedGeneSet(new Set(parsed.genes || []))
+            lastAnalyzedGenesRef.current = genesKey
+            setLoading(false)
+            return
           }
+        } catch {
+          console.debug('Failed to parse cached pathway data')
         }
       }
 
-      if (externalGenes && externalGenes.length > 0) {
-        response = await api.analyzePathways(externalGenes)
-      } else {
-        response = await api.analyzeVcfPathways(vcfFileId)
-      }
-      
-      const filteredPathways = response.pathways.filter(p => 
+      response = await api.analyzePathways(genes)
+
+      const filteredPathways = response.pathways.filter(p =>
         p.mapped_genes && p.mapped_genes.length > 0
       )
-      
+
       const pathwayData = filteredPathways.map((p, idx) => ({
         ...p,
         key: idx,
       }))
-      
+
       const allMappedGenes = new Set<string>()
       filteredPathways.forEach(p => {
         if (p.mapped_genes) {
           p.mapped_genes.forEach(g => allMappedGenes.add(g))
         }
       })
-      
+
       setPathways(pathwayData)
       setAnalyzedGeneSet(allMappedGenes)
-      lastFetchKeyRef.current = currentGenesKey
+      lastAnalyzedGenesRef.current = genesKey
 
       try {
         localStorage.setItem(cacheKey, JSON.stringify({
@@ -146,15 +132,12 @@ const PathwayView = forwardRef<PathwayViewRef, PathwayViewProps>(({
           genes: Array.from(allMappedGenes),
           timestamp: Date.now(),
         }))
-      } catch (e) {
+      } catch {
         console.debug('Failed to cache pathway data')
       }
 
-      console.log(`Loaded ${filteredPathways.length} pathways with mapped genes (filtered from ${response.pathways.length} total)`)
-      console.log(`Total mapped genes: ${allMappedGenes.size}`)
-      
     } catch (error) {
-      message.error('Failed to load pathway analysis')
+      message.error(t('pathway.loadFailed'))
       console.error('Pathway analysis error:', error)
     } finally {
       setLoading(false)
@@ -305,27 +288,41 @@ const PathwayView = forwardRef<PathwayViewRef, PathwayViewProps>(({
         <Space style={{ width: '100%', justifyContent: 'space-between' }}>
           <Space>
             <ExperimentOutlined />
-            <Text strong>Pathway Enrichment</Text>
+            <Text strong>{t('pathway.enrichmentTitle')}</Text>
             {pathways.length > 0 && (
               <Badge count={pathways.length} style={{ backgroundColor: '#1890ff' }} />
             )}
             {analyzedGeneSet.size > 0 && (
               <Text type="secondary" style={{ fontSize: 12 }}>
-                ({analyzedGeneSet.size} genes mapped)
+                ({analyzedGeneSet.size} {t('pathway.genesMapped')})
               </Text>
             )}
           </Space>
-          <Space>
-            <Button
-              icon={<ReloadOutlined />}
-              size="small"
-              onClick={() => loadPathways(true)}
-              loading={loading}
-            >
-              Refresh
-            </Button>
-          </Space>
         </Space>
+      </div>
+
+      <div style={{ padding: '8px 16px', borderBottom: '1px solid #f0f0f0', background: '#fafafa', flexShrink: 0 }}>
+        <Space.Compact style={{ width: '100%' }}>
+          <Input
+            placeholder={t('pathway.geneInputPlaceholder')}
+            value={geneInput}
+            onChange={(e) => setGeneInput(e.target.value)}
+            onPressEnter={handleAnalyze}
+            style={{ flex: 1 }}
+            allowClear
+          />
+          <Button
+            type="primary"
+            icon={<SearchOutlined />}
+            onClick={handleAnalyze}
+            loading={loading}
+          >
+            {t('pathway.analyzeBtn')}
+          </Button>
+        </Space.Compact>
+        <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 4 }}>
+          {t('pathway.geneInputHint')}
+        </Text>
       </div>
 
       {analyzedGeneSet.size > 0 && pathwaysWithGenes.length > 0 && (
@@ -357,13 +354,9 @@ const PathwayView = forwardRef<PathwayViewRef, PathwayViewProps>(({
         ) : (
           <Empty
             image={Empty.PRESENTED_IMAGE_SIMPLE}
-            description="No pathway data available"
+            description={t('pathway.emptyDescription')}
             style={{ padding: 40 }}
-          >
-            <Button type="primary" icon={<SearchOutlined />} onClick={() => loadPathways(true)}>
-              Analyze Pathways
-            </Button>
-          </Empty>
+          />
         )}
       </div>
 
@@ -720,6 +713,6 @@ const PathwayView = forwardRef<PathwayViewRef, PathwayViewProps>(({
       </Drawer>
     </div>
   )
-})
+}
 
 export default PathwayView

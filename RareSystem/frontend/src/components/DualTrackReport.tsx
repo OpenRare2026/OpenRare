@@ -14,7 +14,6 @@ import {
   FileTextOutlined,
   DownloadOutlined,
   DeleteOutlined,
-  FilePdfOutlined,
 } from '@ant-design/icons'
 import ReactMarkdown from 'react-markdown'
 import { useAppStore } from '@/store'
@@ -30,19 +29,20 @@ const DualTrackReport: React.FC<DualTrackReportProps> = () => {
   const { t } = useTranslation()
   const { geneAnalysisReports, removeGeneAnalysisReport } = useAppStore()
 
-  const handleDownloadPdf = async (runId: string) => {
+  const handleDownloadMd = async (runId: string) => {
     try {
-      const blob = await api.downloadReportPdf(runId)
+      const mdContent = await api.downloadReportMd(runId)
+      const blob = new Blob([mdContent], { type: 'text/markdown;charset=utf-8' })
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `gene_analysis_report_${runId}.pdf`
+      a.download = `gene_analysis_report_${runId}.md`
       document.body.appendChild(a)
       a.click()
       window.URL.revokeObjectURL(url)
       document.body.removeChild(a)
     } catch (error) {
-      console.error('Failed to download PDF:', error)
+      console.error('Failed to download report:', error)
     }
   }
 
@@ -84,9 +84,9 @@ const DualTrackReport: React.FC<DualTrackReportProps> = () => {
                 <Button 
                   type="primary" 
                   icon={<DownloadOutlined />}
-                  onClick={() => handleDownloadPdf(report.run_id)}
+                  onClick={() => handleDownloadMd(report.run_id)}
                 >
-                  {t('report.downloadPdf') || 'Download PDF'}
+                  {t('report.downloadReport') || 'Download Report'}
                 </Button>
                 <Popconfirm
                   title={t('report.confirmDelete') || 'Delete this report?'}
@@ -104,7 +104,7 @@ const DualTrackReport: React.FC<DualTrackReportProps> = () => {
             <List.Item.Meta
               title={
                 <Space>
-                  <FilePdfOutlined />
+                  <FileTextOutlined />
                   <Text strong>{t('report.reportId') || 'Report ID'}: {report.run_id}</Text>
                   <Tag color="blue">{report.meta?.genes?.length || 0} genes</Tag>
                 </Space>

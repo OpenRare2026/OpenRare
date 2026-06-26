@@ -12,7 +12,7 @@ import { UploadPage, AnalysisPage, BrowseCases } from '@/pages'
 import { ErrorBoundary } from '@/components'
 import Settings from '@/components/Settings'
 
-const { Header, Content, Sider, Footer } = Layout
+const { Header, Content, Sider } = Layout
 const { Title, Text } = Typography
 
 type PageView = 'upload' | 'analysis' | 'browse' | 'settings'
@@ -197,22 +197,6 @@ function App() {
               <Settings />
             )}
           </Content>
-
-          <Footer
-            style={{
-              textAlign: 'center',
-              background: '#fafafa',
-              borderTop: '1px solid #f0f0f0',
-              padding: '12px 24px',
-            }}
-          >
-            <Space split={<Text type="secondary">|</Text>}>
-              <Text type="secondary">
-                {t('footer.copyright')}
-              </Text>
-              <Text type="secondary">{t('footer.deployment')}</Text>
-            </Space>
-          </Footer>
         </Layout>
       </Layout>
       </ErrorBoundary>

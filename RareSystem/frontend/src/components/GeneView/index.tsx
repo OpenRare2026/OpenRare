@@ -20,10 +20,12 @@ import {
   ExperimentOutlined,
   ApiOutlined,
   FilePdfOutlined,
+  SortAscendingOutlined,
+  ReloadOutlined,
 } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
 import api from '@/services/api'
-import type { GeneSummary, GeneInfo, GeneVariant, Variant, GenePhenotypeScore, PpiGeneScore, GeneAnalysisReport, ReportMeta } from '@/types'
+import type { GeneSummary, GeneInfo, GeneVariant, GenePhenotypeScore, PpiGeneScore, RankedGeneScore, GeneAnalysisReport, ReportMeta } from '@/types'
 import ReportView from '@/components/ReportView'
 import { useAppStore } from '@/store'
 
@@ -32,7 +34,7 @@ const { Text } = Typography
 interface GeneViewProps {
   vcfFileId: string
   patientId: number
-  onVariantSelect: (variant: GeneVariant | Variant) => void
+  onVariantSelect: (variant: Record<string, string>, rowIndex?: number) => void
   onGeneFilter: (gene: string) => void
 }
 
@@ -74,15 +76,20 @@ const GeneView: React.FC<GeneViewProps> = ({ vcfFileId, patientId, onVariantSele
   const [primaryHpoTerms, setPrimaryHpoTerms] = useState<string[]>([])
   const [hpoLoading, setHpoLoading] = useState(false)
   const [hpoJobStatus, setHpoJobStatus] = useState<string>('')
-  const [hpoJobUid, setHpoJobUid] = useState<string | null>(null)
   const [hpoScores, setHpoScores] = useState<GenePhenotypeScore[]>([])
+  const [caseData, setCaseData] = useState<{ diagnosis_description?: string; medical_history?: string }>({})
   
   const [ppiLoading, setPpiLoading] = useState(false)
   const [ppiJobStatus, setPpiJobStatus] = useState<string>('')
-  const [ppiJobId, setPpiJobId] = useState<string | null>(null)
   const [ppiScores, setPpiScores] = useState<PpiGeneScore[]>([])
-  
-  const [viewMode, setViewMode] = useState<'genes' | 'hpo' | 'ppi'>('genes')
+
+  const [rankLoading, setRankLoading] = useState(false)
+  const [rankJobStatus, setRankJobStatus] = useState<string>('')
+  const [rankScores, setRankScores] = useState<RankedGeneScore[]>([])
+  const [rankPage, setRankPage] = useState(1)
+  const [rankPageSize, setRankPageSize] = useState(20)
+
+  const [viewMode, setViewMode] = useState<'genes' | 'hpo' | 'ppi' | 'rank'>('genes')
   
   const [reportModalVisible, setReportModalVisible] = useState(false)
   
@@ -95,6 +102,7 @@ const GeneView: React.FC<GeneViewProps> = ({ vcfFileId, patientId, onVariantSele
 
   const HPO_CACHE_KEY = `hpo_scores_${vcfFileId}`
   const PPI_CACHE_KEY = `ppi_scores_${vcfFileId}`
+  const RANK_CACHE_KEY = `rank_scores_${vcfFileId}`
 
   const handleReportGenerated = useCallback((report: { run_id: string; pdf_url: string; markdown: string; meta?: ReportMeta }) => {
     const newReport: GeneAnalysisReport = {
@@ -114,32 +122,20 @@ const GeneView: React.FC<GeneViewProps> = ({ vcfFileId, patientId, onVariantSele
     fetchPrimaryHpoTerms()
     loadCachedHpoScores()
     loadCachedPpiScores()
+    loadCachedRankScores()
   }, [vcfFileId, patientId])
 
   const loadCachedHpoScores = () => {
     try {
       const cached = localStorage.getItem(HPO_CACHE_KEY)
       if (cached) {
-        const { scores, timestamp, hpoJobUid } = JSON.parse(cached)
+        const { scores, timestamp } = JSON.parse(cached)
         if (scores && timestamp && Date.now() - timestamp < 24 * 60 * 60 * 1000) {
           setHpoScores(scores)
-          if (hpoJobUid) setHpoJobUid(hpoJobUid)
         }
       }
     } catch (error) {
       console.error('Failed to load cached HPO scores:', error)
-    }
-  }
-
-  const saveHpoScoresToCache = (scores: GenePhenotypeScore[], uid: string) => {
-    try {
-      localStorage.setItem(HPO_CACHE_KEY, JSON.stringify({
-        scores,
-        timestamp: Date.now(),
-        hpoJobUid: uid,
-      }))
-    } catch (error) {
-      console.error('Failed to cache HPO scores:', error)
     }
   }
 
@@ -157,16 +153,21 @@ const GeneView: React.FC<GeneViewProps> = ({ vcfFileId, patientId, onVariantSele
     }
   }
 
-  const savePpiScoresToCache = (scores: PpiGeneScore[]) => {
+  const loadCachedRankScores = () => {
     try {
-      localStorage.setItem(PPI_CACHE_KEY, JSON.stringify({
-        scores,
-        timestamp: Date.now(),
-      }))
+      const cached = localStorage.getItem(RANK_CACHE_KEY)
+      if (cached) {
+        const { scores, timestamp } = JSON.parse(cached)
+        if (scores && timestamp && Date.now() - timestamp < 24 * 60 * 60 * 1000) {
+          setRankScores(scores)
+        }
+      }
     } catch (error) {
-      console.error('Failed to cache PPI scores:', error)
+      console.error('Failed to load cached ranking scores:', error)
     }
   }
+
+
 
   const fetchGenes = async () => {
     setLoading(true)
@@ -182,11 +183,15 @@ const GeneView: React.FC<GeneViewProps> = ({ vcfFileId, patientId, onVariantSele
 
   const fetchPrimaryHpoTerms = async () => {
     try {
-      const caseData = await api.getCase(patientId)
-      const primary = caseData?.hpo_terms
+      const data = await api.getCase(patientId)
+      const primary = data?.hpo_terms
         ?.filter((term: any) => term.display_category !== 'secondary')
         ?.map((term: any) => term.hpo_id) || []
       setPrimaryHpoTerms(primary)
+      setCaseData({
+        diagnosis_description: data?.diagnosis_description || undefined,
+        medical_history: data?.medical_history || undefined,
+      })
     } catch (error) {
       console.error('Failed to fetch HPO terms:', error)
     }
@@ -236,134 +241,123 @@ const GeneView: React.FC<GeneViewProps> = ({ vcfFileId, patientId, onVariantSele
     
     try {
       const result = await api.submitPhenotypeHpoJob(parseInt(vcfFileId), primaryHpoTerms)
-      setHpoJobUid(result.uid)
-      setHpoJobStatus(result.status)
-      
-      pollHpoJobStatus(result.uid)
+      setHpoScores(result.scores)
+      setHpoJobStatus('completed')
+      setViewMode('hpo')
+
+      try {
+        localStorage.setItem(HPO_CACHE_KEY, JSON.stringify({ scores: result.scores, timestamp: Date.now() }))
+      } catch { /* ignore storage quota errors */ }
     } catch (error: any) {
-      console.error('Failed to submit HPO job:', error)
-      setHpoJobStatus('failed')
+      if (error?.response?.status === 504 || error?.code === 'ECONNABORTED' || error?.message?.includes('timeout')) {
+        setHpoJobStatus('timeout')
+        try {
+          const cached = await api.getPhenotypeHpoResults(parseInt(vcfFileId))
+          setHpoScores(cached.scores)
+          setHpoJobStatus('completed')
+          setViewMode('hpo')
+          try {
+            localStorage.setItem(HPO_CACHE_KEY, JSON.stringify({ scores: cached.scores, timestamp: Date.now() }))
+          } catch { /* ignore */ }
+        } catch {
+          setHpoJobStatus('failed')
+        }
+      } else {
+        console.error('Failed to get HPO scores:', error)
+        setHpoJobStatus('failed')
+      }
+    } finally {
       setHpoLoading(false)
     }
   }
 
-  const pollHpoJobStatus = async (uid: string) => {
-    let attempts = 0
-    const maxAttempts = 180
-    
-    const poll = async () => {
+  const handleRunPpiScoring = async (forceRefresh = false) => {
+    setPpiLoading(true)
+    setPpiJobStatus(forceRefresh ? 're-running' : 'loading')
+
+    if (!forceRefresh) {
       try {
-        const status = await api.getPhenotypeHpoJobStatus(uid)
-        setHpoJobStatus(status.status)
-        
-        if (status.status === 'completion') {
-          const results = await api.getPhenotypeHpoResults(uid)
-          setHpoScores(results.scores)
-          saveHpoScoresToCache(results.scores, uid)
-          setViewMode('hpo')
-          setHpoLoading(false)
+        const cached = await api.getPpiResults(parseInt(vcfFileId))
+        if (cached.scores && cached.scores.length > 0) {
+          setPpiScores(cached.scores)
+          setPpiJobStatus('completed')
+          setViewMode('ppi')
+          try {
+            localStorage.setItem(PPI_CACHE_KEY, JSON.stringify({ scores: cached.scores, timestamp: Date.now() }))
+          } catch { /* ignore storage quota errors */ }
+          setPpiLoading(false)
           return
         }
-        
-        if (status.status === 'failure') {
-          console.error('HPO job failed:', status.message)
-          setHpoLoading(false)
-          return
-        }
-        
-        attempts++
-        if (attempts < maxAttempts) {
-          setTimeout(poll, 10000)
-        } else {
-          setHpoLoading(false)
-        }
-      } catch (error: any) {
-        console.error('Poll error:', error)
-        attempts++
-        if (attempts < maxAttempts) {
-          setTimeout(poll, 10000)
-        } else {
-          setHpoLoading(false)
-        }
+      } catch {
+        // No cached results — proceed to submit
       }
     }
-    
-    poll()
-  }
 
-  const handleRunPpiScoring = async () => {
-    if (!hpoJobUid) return
-    
-    setPpiLoading(true)
     setPpiJobStatus('submitting')
-    
+
     try {
-      const result = await api.submitPpiJob(parseInt(vcfFileId), hpoJobUid, primaryHpoTerms)
-      setPpiJobId(result.job_id)
-      setPpiJobStatus(result.status)
-      
-      pollPpiJobStatus(result.job_id)
+      const result = await api.submitPpiJob(parseInt(vcfFileId), primaryHpoTerms, forceRefresh)
+      setPpiScores(result.scores)
+      setPpiJobStatus('completed')
+      setViewMode('ppi')
+
+      try {
+        localStorage.setItem(PPI_CACHE_KEY, JSON.stringify({ scores: result.scores, timestamp: Date.now() }))
+      } catch { /* ignore storage quota errors */ }
     } catch (error: any) {
-      console.error('Failed to submit PPI job:', error)
-      setPpiJobStatus('failed')
+      if (error?.response?.status === 504 || error?.code === 'ECONNABORTED' || error?.message?.includes('timeout')) {
+        setPpiJobStatus('timeout')
+        try {
+          const cached = await api.getPpiResults(parseInt(vcfFileId))
+          setPpiScores(cached.scores)
+          setPpiJobStatus('completed')
+          setViewMode('ppi')
+          try {
+            localStorage.setItem(PPI_CACHE_KEY, JSON.stringify({ scores: cached.scores, timestamp: Date.now() }))
+          } catch { /* ignore */ }
+        } catch {
+          setPpiJobStatus('failed')
+        }
+      } else {
+        console.error('Failed to get PPI scores:', error)
+        setPpiJobStatus('failed')
+      }
+    } finally {
       setPpiLoading(false)
     }
   }
 
-  const pollPpiJobStatus = async (jobId: string) => {
-    let attempts = 0
-    const maxAttempts = 180
-    
-    const poll = async () => {
+  const handleRunRanking = async () => {
+    setRankLoading(true)
+    setRankJobStatus('submitting')
+
+    try {
+      const result = await api.submitRankingJob(parseInt(vcfFileId))
+      setRankScores(result.scores)
+      setRankJobStatus('completed')
+      setViewMode('rank')
+
       try {
-        const status = await api.getPpiJobStatus(jobId)
-        setPpiJobStatus(status.status)
-        
-        if (status.status === 'completed' || status.status === 'done' || status.status === 'success') {
-          const results = await api.getPpiResults(jobId)
-          setPpiScores(results.scores)
-          savePpiScoresToCache(results.scores)
-          setViewMode('ppi')
-          setPpiLoading(false)
-          return
-        }
-        
-        if (status.status === 'failed') {
-          console.error('PPI job failed:', status.message)
-          setPpiLoading(false)
-          return
-        }
-        
+        localStorage.setItem(RANK_CACHE_KEY, JSON.stringify({ scores: result.scores, timestamp: Date.now() }))
+      } catch { /* ignore */ }
+    } catch (error: any) {
+      if (error?.response?.status === 504 || error?.code === 'ECONNABORTED' || error?.message?.includes('timeout')) {
+        setRankJobStatus('timeout')
         try {
-          const results = await api.getPpiResults(jobId)
-          if (results.scores && results.scores.length > 0) {
-            setPpiScores(results.scores)
-            savePpiScoresToCache(results.scores)
-            setViewMode('ppi')
-            setPpiLoading(false)
-            return
-          }
+          const cached = await api.getRankingResults(parseInt(vcfFileId))
+          setRankScores(cached.scores)
+          setRankJobStatus('completed')
+          setViewMode('rank')
         } catch {
+          setRankJobStatus('failed')
         }
-        
-        attempts++
-        if (attempts < maxAttempts) {
-          setTimeout(poll, 10000)
-        } else {
-          setPpiLoading(false)
-        }
-      } catch (error: any) {
-        console.error('PPI poll error:', error)
-        attempts++
-        if (attempts < maxAttempts) {
-          setTimeout(poll, 10000)
-        } else {
-          setPpiLoading(false)
-        }
+      } else {
+        console.error('Failed to get ranking scores:', error)
+        setRankJobStatus('failed')
       }
+    } finally {
+      setRankLoading(false)
     }
-    
-    poll()
   }
 
   const formatPosition = (chr: string, pos: number) => `${chr}:${pos.toLocaleString()}`
@@ -499,7 +493,7 @@ const GeneView: React.FC<GeneViewProps> = ({ vcfFileId, patientId, onVariantSele
         key: 'action',
         width: 70,
         render: (_, record) => (
-          <Button type="link" size="small" onClick={() => onVariantSelect(record)}>
+          <Button type="link" size="small" onClick={() => onVariantSelect(record as unknown as Record<string, string>)}>
             {t('geneView.details')}
           </Button>
         ),
@@ -784,7 +778,8 @@ const GeneView: React.FC<GeneViewProps> = ({ vcfFileId, patientId, onVariantSele
   }
 
   const canRunHpo = primaryHpoTerms.length > 0
-  const canRunPpi = hpoJobUid !== null
+  const canRunPpi = primaryHpoTerms.length > 0
+  const canRunRank = ppiScores.length > 0 || ppiJobStatus === 'completed'
   
   const geneStart = (genePage - 1) * genePageSize
   const geneEnd = geneStart + genePageSize
@@ -810,11 +805,12 @@ const GeneView: React.FC<GeneViewProps> = ({ vcfFileId, patientId, onVariantSele
         <Space>
           <Segmented
             value={viewMode}
-            onChange={(value) => setViewMode(value as 'genes' | 'hpo' | 'ppi')}
+            onChange={(value) => setViewMode(value as 'genes' | 'hpo' | 'ppi' | 'rank')}
             options={[
               { label: `Genes (${genes.length})`, value: 'genes' },
               { label: hpoScores.length > 0 ? `HPO (${hpoScores.length})` : 'HPO', value: 'hpo' },
               { label: ppiScores.length > 0 ? `PPI (${ppiScores.length})` : 'PPI', value: 'ppi' },
+              { label: rankScores.length > 0 ? `Rank (${rankScores.length})` : 'Rank', value: 'rank' },
             ]}
           />
           {viewMode === 'genes' && genes.length > 0 && (
@@ -862,12 +858,27 @@ const GeneView: React.FC<GeneViewProps> = ({ vcfFileId, patientId, onVariantSele
               size="small"
             />
           )}
+          {viewMode === 'rank' && rankScores.length > 0 && (
+            <Pagination
+              current={rankPage}
+              pageSize={rankPageSize}
+              total={rankScores.length}
+              onChange={(page, pageSize) => {
+                setRankPage(page)
+                setRankPageSize(pageSize)
+              }}
+              showSizeChanger
+              showTotal={(total) => `${total} genes`}
+              pageSizeOptions={['10', '20', '50', '100']}
+              size="small"
+            />
+          )}
         </Space>
         <Space>
-          {(hpoLoading || ppiLoading) && (
+          {(hpoLoading || ppiLoading || rankLoading) && (
             <Space>
               <Spin size="small" />
-              <Text type="secondary">{hpoLoading ? hpoJobStatus : ppiJobStatus}...</Text>
+              <Text type="secondary">{hpoLoading ? hpoJobStatus : ppiLoading ? ppiJobStatus : rankJobStatus}...</Text>
             </Space>
           )}
           <Button 
@@ -876,13 +887,22 @@ const GeneView: React.FC<GeneViewProps> = ({ vcfFileId, patientId, onVariantSele
           >
             Generate Report
           </Button>
-          <Tooltip title={!canRunPpi ? 'Run HPO Scoring first' : ''}>
+          <Tooltip title={!canRunPpi ? 'Run HPO Scoring first' : ppiScores.length > 0 ? 'Re-run PPI scoring from scratch' : 'Run PPI scoring (uses cache if available)'}>
             <Button 
-              icon={<ApiOutlined />}
-              onClick={handleRunPpiScoring}
+              icon={ppiScores.length > 0 ? <ReloadOutlined /> : <ApiOutlined />}
+              onClick={ppiScores.length > 0 ? () => handleRunPpiScoring(true) : () => handleRunPpiScoring(false)}
               disabled={!canRunPpi || ppiLoading}
             >
-              Run PPI Scoring
+              {ppiScores.length > 0 ? 'Re-run PPI Scoring' : 'Run PPI Scoring'}
+            </Button>
+          </Tooltip>
+          <Tooltip title={!canRunRank ? 'Run PPI Scoring first' : ''}>
+            <Button 
+              icon={<SortAscendingOutlined />}
+              onClick={handleRunRanking}
+              disabled={!canRunRank || rankLoading}
+            >
+              Run Ranking
             </Button>
           </Tooltip>
           <Tooltip title={!canRunHpo ? 'No primary HPO terms available' : ''}>
@@ -945,7 +965,7 @@ const GeneView: React.FC<GeneViewProps> = ({ vcfFileId, patientId, onVariantSele
             />
           )}
         </div>
-      ) : (
+      ) : viewMode === 'ppi' ? (
         <div style={{ flex: 1, overflow: 'hidden' }}>
           {ppiScores.length > 0 ? (
             <Table
@@ -963,15 +983,78 @@ const GeneView: React.FC<GeneViewProps> = ({ vcfFileId, patientId, onVariantSele
             />
           )}
         </div>
-      )}
-      
+      ) : viewMode === 'rank' ? (
+        <div style={{ flex: 1, overflow: 'hidden' }}>
+          {rankScores.length > 0 ? (
+            <Table
+              columns={[
+                { title: 'Path.Rank', dataIndex: 'rank', key: 'rank', width: 70, sorter: (a: RankedGeneScore, b: RankedGeneScore) => (a.rank ?? 0) - (b.rank ?? 0), defaultSortOrder: 'ascend' as const },
+                {
+                  title: 'Gene',
+                  dataIndex: 'gene',
+                  key: 'gene',
+                  width: 100,
+                  render: (gene: string) => (
+                    <Button type="link" size="small" onClick={() => onGeneFilter(gene)} style={{ padding: 0 }}>
+                      {gene}
+                    </Button>
+                  ),
+                },
+                {
+                  title: 'Pathogenic',
+                  dataIndex: 'combined_score',
+                  key: 'combined_score',
+                  width: 100,
+                  sorter: (a: RankedGeneScore, b: RankedGeneScore) => (a.combined_score ?? 0) - (b.combined_score ?? 0),
+                  defaultSortOrder: 'descend' as const,
+                  render: (v: number) => {
+                    const val = v ?? 0
+                    return (
+                      <Text strong={val >= 40} style={{ color: val >= 40 ? '#cf1322' : val >= 20 ? '#d46b08' : undefined }}>
+                        {val.toFixed(2)}
+                      </Text>
+                    )
+                  },
+                },
+                { title: 'Gene Score', dataIndex: 'gene_score', key: 'gene_score', width: 90, render: (v: number) => (v ?? 0) > 0 ? (v ?? 0).toFixed(3) : '-' },
+                { title: 'PPI', dataIndex: 'ppi_final', key: 'ppi_final', width: 80, render: (v: number) => (v ?? 0) > 0 ? (v ?? 0).toFixed(3) : '-' },
+                {
+                  title: 'Network',
+                  dataIndex: 'in_network',
+                  key: 'in_network',
+                  width: 60,
+                  render: (v: boolean) => v ? <Tag color="green">Y</Tag> : <Tag>—</Tag>,
+                },
+              ]}
+              dataSource={rankScores.slice((rankPage - 1) * rankPageSize, rankPage * rankPageSize)}
+              rowKey="gene"
+              size="small"
+              pagination={{
+                current: rankPage,
+                pageSize: rankPageSize,
+                total: rankScores.length,
+                onChange: (page, size) => { setRankPage(page); setRankPageSize(size) },
+                showSizeChanger: true,
+                showTotal: (total) => `${total} genes`,
+                pageSizeOptions: ['10', '20', '50', '100'],
+              }}
+              scroll={{ x: 600, y: 'calc(100vh - 380px)' }}
+            />
+          ) : (
+            <Empty
+              description={rankLoading ? 'Running ranking...' : 'No ranking results yet. Run PPI Scoring first, then click "Run Ranking".'}
+              style={{ marginTop: 48 }}
+            />
+          )}
+        </div>
+      ) : null}
       <ReportView
         visible={reportModalVisible}
         onClose={() => setReportModalVisible(false)}
         vcfFileId={parseInt(vcfFileId)}
-        hpoJobUid={hpoJobUid || undefined}
-        ppiJobId={ppiJobId || undefined}
         hpoTerms={primaryHpoTerms}
+        diagnosisDescription={caseData.diagnosis_description}
+        medicalHistory={caseData.medical_history}
         onReportGenerated={handleReportGenerated}
       />
     </div>

@@ -33,7 +33,7 @@ import {
   QuestionCircleOutlined,
   DragOutlined,
 } from '@ant-design/icons'
-import type { Variant, ACMGClassification, CriterionResult, EvidenceStrength } from '@/types'
+import type { ACMGClassification, CriterionResult, EvidenceStrength, DynamicVariantDetailResponse } from '@/types'
 import api from '@/services/api'
 import ChatInterface from './ChatInterface'
 
@@ -54,7 +54,9 @@ interface PubMedArticle {
 
 interface VariantDetailPageProps {
   visible: boolean
-  variant: Variant | null
+  variant: Record<string, string> | null
+  vcfFileId: string | null
+  rowIndex: number | null
   patientId?: number
   onClose: () => void
   onClassify?: (classification: ACMGClassification) => void
@@ -88,16 +90,31 @@ const CLASSIFICATION_COLORS: Record<string, string> = {
   Benign: '#13c2c2',
 }
 
+const VARIANT_SUMMARY_COLUMNS = [
+  '#Uploaded variation', 'Uploaded_variation',
+  'Location', 'Allele', 'Gene', 'gene_symbol',
+  'Consequence', 'IMPACT', 'HGVSc', 'HGVSp',
+  'CLINVAR_CLNSIG', 'clinvar_significance',
+  'REVEL_score', 'CADD_phred',
+  'gnomAD_AF', 'gnomADg_AF', 'gnomAD_popmax_AF', 'gnomAD_eas_AF',
+  'SIFT', 'PolyPhen',
+  'loftee_lof_flag', 'LoF_flags',
+]
+
 const VariantDetailPage: React.FC<VariantDetailPageProps> = ({
   visible,
   variant,
+  vcfFileId,
+  rowIndex,
   patientId = 1,
   onClose,
   onClassify,
 }) => {
   const { t } = useTranslation()
+  const [detailData, setDetailData] = useState<DynamicVariantDetailResponse | null>(null)
+  const [detailLoading, setDetailLoading] = useState(false)
   const [classification, setClassification] = useState<ACMGClassification | null>(null)
-  const [loading, setLoading] = useState(false)
+  const [acmgLoading, setAcmgLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [pubmedArticles, setPubmedArticles] = useState<PubMedArticle[]>([])
   const [pubmedLoading, setPubmedLoading] = useState(false)
@@ -111,19 +128,38 @@ const VariantDetailPage: React.FC<VariantDetailPageProps> = ({
   const [isDragging, setIsDragging] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
+  const getGene = (): string => {
+    const row = detailData?.row || variant
+    if (!row) return ''
+    return row['Gene'] || row['gene_symbol'] || row['SYMBOL'] || ''
+  }
+
+  const fetchDetail = async () => {
+    if (!vcfFileId || rowIndex === null) return
+    setDetailLoading(true)
+    try {
+      const result = await api.getVariantDetail(vcfFileId, rowIndex)
+      setDetailData(result)
+    } catch (err) {
+      console.error('Failed to fetch variant detail:', err)
+    } finally {
+      setDetailLoading(false)
+    }
+  }
+
   const fetchClassification = async () => {
-    if (!variant) return
-    setLoading(true)
+    const variantId = `${vcfFileId}_${rowIndex}`
+    setAcmgLoading(true)
     setError(null)
     try {
-      const result = await api.getACMGClassification(variant.id)
+      const result = await api.getACMGClassification(variantId)
       setClassification(result)
       onClassify?.(result)
     } catch (err: any) {
       const isNotFound = err?.status === 404 || err?.code === 'NOT_FOUND'
       if (isNotFound) {
         try {
-          const result = await api.runACMGAnalysis(variant.id)
+          const result = await api.runACMGAnalysis(variantId)
           setClassification(result)
           onClassify?.(result)
         } catch (analysisErr) {
@@ -133,27 +169,27 @@ const VariantDetailPage: React.FC<VariantDetailPageProps> = ({
         setError(t('acmg.classError'))
       }
     } finally {
-      setLoading(false)
+      setAcmgLoading(false)
     }
   }
 
   const runAnalysis = async () => {
-    if (!variant) return
-    setLoading(true)
+    const variantId = `${vcfFileId}_${rowIndex}`
+    setAcmgLoading(true)
     setError(null)
     try {
-      const result = await api.runACMGAnalysis(variant.id)
+      const result = await api.runACMGAnalysis(variantId)
       setClassification(result)
       onClassify?.(result)
     } catch (err) {
       setError(t('acmg.classError'))
     } finally {
-      setLoading(false)
+      setAcmgLoading(false)
     }
   }
 
   const searchPubMed = async (query?: string) => {
-    const searchQuery = query || pubmedQuery || (variant?.gene ? `${variant.gene} mutation` : '')
+    const searchQuery = query || pubmedQuery || (getGene() ? `${getGene()} mutation` : '')
     if (!searchQuery) {
       message.warning(t('pubmed.placeholder'))
       return
@@ -181,8 +217,9 @@ const VariantDetailPage: React.FC<VariantDetailPageProps> = ({
   }
 
   const searchGeneMutation = () => {
-    if (variant?.gene) {
-      const query = `${variant.gene} gene mutation pathogenic variant`
+    const gene = getGene()
+    if (gene) {
+      const query = `${gene} gene mutation pathogenic variant`
       setPubmedQuery(query)
       searchPubMed(query)
       setActiveTab('literature')
@@ -190,13 +227,15 @@ const VariantDetailPage: React.FC<VariantDetailPageProps> = ({
   }
 
   useEffect(() => {
-    if (visible && variant) {
+    if (visible && vcfFileId && rowIndex !== null) {
+      fetchDetail()
       fetchClassification()
-      if (variant.gene) {
-        setPubmedQuery(`${variant.gene} mutation`)
+      const gene = getGene()
+      if (gene) {
+        setPubmedQuery(`${gene} mutation`)
       }
     }
-  }, [visible, variant?.id])
+  }, [visible, vcfFileId, rowIndex])
 
   const handleMouseDown = useCallback(() => {
     setIsDragging(true)
@@ -302,7 +341,8 @@ const VariantDetailPage: React.FC<VariantDetailPageProps> = ({
   }
 
   const renderVariantBasicInfo = () => {
-    if (!variant) return null
+    const row = detailData?.row || variant
+    if (!row) return null
 
     return (
       <Card title={
@@ -312,41 +352,77 @@ const VariantDetailPage: React.FC<VariantDetailPageProps> = ({
         </Space>
       } style={{ marginBottom: 16 }}>
         <Descriptions column={2} bordered size="small">
-          <Descriptions.Item label={t('variantDetail.chromosome')}>{variant.chromosome}</Descriptions.Item>
-          <Descriptions.Item label={t('variantDetail.position')}>{variant.position?.toLocaleString()}</Descriptions.Item>
-          <Descriptions.Item label={t('variantDetail.reference')}>{variant.ref}</Descriptions.Item>
-          <Descriptions.Item label={t('variantDetail.alternate')}>{variant.alt}</Descriptions.Item>
-          <Descriptions.Item label={t('variantDetail.gene')}>
-            <Text strong style={{ color: '#1890ff', fontSize: 16 }}>{variant.gene || '-'}</Text>
-            {variant.gene && (
-              <Button type="link" size="small" onClick={searchGeneMutation}>
-                {t('variantDetail.searchLiterature')}
-              </Button>
-            )}
-          </Descriptions.Item>
-          <Descriptions.Item label={t('variantDetail.type')}>
-            <Tag color="blue">{variant.variant_type}</Tag>
-          </Descriptions.Item>
-          <Descriptions.Item label={t('variantDetail.quality')}>
-            <Badge
-              status={(variant.quality ?? 0) >= 30 ? 'success' : (variant.quality ?? 0) >= 20 ? 'warning' : 'error'}
-              text={variant.quality?.toFixed(1) || '-'}
-            />
-          </Descriptions.Item>
-          <Descriptions.Item label="HGVS.p">
-            <Text code>{variant.hgvs_p || '-'}</Text>
-          </Descriptions.Item>
-          <Descriptions.Item label={t('variantDetail.consequence')}>{variant.consequence?.replace(/_/g, ' ') || '-'}</Descriptions.Item>
-          <Descriptions.Item label="gnomAD AF">
-            {variant.gnomad_af ? (variant.gnomad_af * 100).toFixed(4) + '%' : '-'}
-          </Descriptions.Item>
+          {VARIANT_SUMMARY_COLUMNS.map((col) => {
+            const value = row[col]
+            if (value === undefined || value === '' || value === '-') return null
+
+            const renderValue = () => {
+              if (col === 'Gene' || col === 'gene_symbol') {
+                return (
+                  <>
+                    <Text strong style={{ color: '#1890ff', fontSize: 16 }}>{value}</Text>
+                    <Button type="link" size="small" onClick={searchGeneMutation}>
+                      {t('variantDetail.searchLiterature')}
+                    </Button>
+                  </>
+                )
+              }
+              if (col === 'IMPACT') {
+                const color = value === 'HIGH' ? 'red' : value === 'MODERATE' ? 'orange' : value === 'LOW' ? 'blue' : 'default'
+                return <Tag color={color}>{value}</Tag>
+              }
+              if (col === 'CLINVAR_CLNSIG' || col === 'clinvar_significance') {
+                const v = value.toLowerCase()
+                const color = v.includes('pathogenic') && !v.includes('likely') ? '#f5222d'
+                  : v.includes('likely pathogenic') ? '#fa8c16'
+                  : v.includes('benign') && !v.includes('likely') ? '#13c2c2'
+                  : v.includes('likely benign') ? '#52c41a'
+                  : undefined
+                return <span style={{ color, fontWeight: color ? 500 : undefined }}>{value}</span>
+              }
+              if (col === 'loftee_lof_flag' || col === 'LoF_flags') {
+                const color = value === 'HC' ? '#f5222d' : value === 'LC' ? '#fa8c16' : undefined
+                return <span style={{ color, fontWeight: color ? 500 : undefined }}>{value}</span>
+              }
+              if (col === 'Consequence') {
+                return <span>{value.replace(/_/g, ' ')}</span>
+              }
+              return <span>{value}</span>
+            }
+
+            return (
+              <Descriptions.Item key={col} label={col}>
+                {renderValue()}
+              </Descriptions.Item>
+            )
+          })}
         </Descriptions>
+
+        {detailData && detailData.columns.length > VARIANT_SUMMARY_COLUMNS.length && (
+          <Collapse style={{ marginTop: 12 }}>
+            <Panel header={`All VEP columns (${detailData.columns.length})`} key="all-columns">
+              <Descriptions column={3} bordered size="small">
+                {detailData.columns
+                  .filter((col) => !VARIANT_SUMMARY_COLUMNS.includes(col))
+                  .map((col) => {
+                    const value = row[col]
+                    if (value === undefined || value === '' || value === '-') return null
+                    return (
+                      <Descriptions.Item key={col} label={col}>
+                        <Text style={{ fontSize: 12 }}>{value}</Text>
+                      </Descriptions.Item>
+                    )
+                  })}
+              </Descriptions>
+            </Panel>
+          </Collapse>
+        )}
       </Card>
     )
   }
 
   const renderACMGSection = () => {
-    if (loading) {
+    if (acmgLoading) {
       return (
         <Card>
           <div style={{ textAlign: 'center', padding: 40 }}>
@@ -560,6 +636,7 @@ const VariantDetailPage: React.FC<VariantDetailPageProps> = ({
   }
 
   const renderLiteratureSection = () => {
+    const gene = getGene()
     return (
       <Card 
         title={
@@ -584,9 +661,9 @@ const VariantDetailPage: React.FC<VariantDetailPageProps> = ({
           </Space>
         }
       >
-        {variant?.gene && !usedQuery && (
+        {gene && !usedQuery && (
           <Alert
-            message={`Click "Search" to find literature related to ${variant.gene} gene mutations`}
+            message={`Click "Search" to find literature related to ${gene} gene mutations`}
             type="info"
             showIcon
             style={{ marginBottom: 16 }}
@@ -633,10 +710,7 @@ const VariantDetailPage: React.FC<VariantDetailPageProps> = ({
           </div>
         ) : pubmedArticles.length > 0 ? (
           <>
-            <Collapse
-              accordion
-              style={{ background: '#fff' }}
-            >
+            <Collapse accordion style={{ background: '#fff' }}>
               {pubmedArticles
                 .slice((currentPage - 1) * pageSize, currentPage * pageSize)
                 .map((article, index) => {
@@ -735,9 +809,9 @@ const VariantDetailPage: React.FC<VariantDetailPageProps> = ({
             description="No literature found. Click 'Search' to find related articles."
             image={Empty.PRESENTED_IMAGE_SIMPLE}
           >
-            {variant?.gene && (
+            {gene && (
               <Button type="primary" onClick={() => searchPubMed()}>
-                Search for {variant.gene} mutations
+                Search for {gene} mutations
               </Button>
             )}
           </Empty>
@@ -745,6 +819,10 @@ const VariantDetailPage: React.FC<VariantDetailPageProps> = ({
       </Card>
     )
   }
+
+  const row = detailData?.row || variant
+  const gene = getGene()
+  const location = row?.['Location'] || ''
 
   return (
     <Modal
@@ -765,9 +843,9 @@ const VariantDetailPage: React.FC<VariantDetailPageProps> = ({
             <Text strong style={{ fontSize: 18 }}>
               {t('variantDetail.title')}
             </Text>
-            {variant && (
+            {row && (
               <Text code style={{ fontSize: 14 }}>
-                {variant.chromosome}:{variant.position} {variant.gene && `(${variant.gene})`}
+                {location} {gene && `(${gene})`}
               </Text>
             )}
           </Space>
@@ -778,7 +856,7 @@ const VariantDetailPage: React.FC<VariantDetailPageProps> = ({
         </div>
       }
     >
-      {variant && (
+      {row && (
         <div
           ref={containerRef}
           style={{
@@ -796,7 +874,15 @@ const VariantDetailPage: React.FC<VariantDetailPageProps> = ({
               background: '#f5f5f5',
             }}
           >
-            {renderVariantBasicInfo()}
+            {detailLoading ? (
+              <Card>
+                <div style={{ textAlign: 'center', padding: 40 }}>
+                  <Spin size="large" />
+                </div>
+              </Card>
+            ) : (
+              renderVariantBasicInfo()
+            )}
 
             <Tabs activeKey={activeTab} onChange={setActiveTab} size="large">
               <TabPane

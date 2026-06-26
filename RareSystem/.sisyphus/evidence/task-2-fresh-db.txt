@@ -1,0 +1,1 @@
+OK: All 14 tables created: ['acmg_classifications', 'acmg_evidence', 'alembic_version', 'case_documents', 'case_embeddings', 'chat_messages', 'chat_sessions', 'clinical_reports', 'llm_settings', 'patients', 'research_reports', 'skill_configs', 'variants', 'vcf_files']

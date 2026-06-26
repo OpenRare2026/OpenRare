@@ -1,0 +1,78 @@
+# CNV Detector Implementation Evidence
+
+## File Created
+- backend/services/cnv_detector.py
+
+## Test Results
+All 18 tests pass:
+
+```
+tests/test_cnv_detector.py::TestCNVDetector::test_init_default_params PASSED
+tests/test_cnv_detector.py::TestCNVDetector::test_init_custom_params PASSED
+tests/test_cnv_detector.py::TestCNVDetector::test_detect_from_nonexistent_file PASSED
+tests/test_cnv_detector.py::TestCNVDetector::test_cnv_type_enum PASSED
+tests/test_cnv_detector.py::TestCNVDetector::test_cnv_region_properties PASSED
+tests/test_cnv_detector.py::TestCNVDetector::test_detect_from_sample_vcf PASSED
+tests/test_cnv_detector.py::TestCNVDetector::test_detect_deletions_only PASSED
+tests/test_cnv_detector.py::TestCNVDetector::test_detect_duplications_only PASSED
+tests/test_cnv_detector.py::TestCNVDetector::test_estimate_copy_number PASSED
+tests/test_cnv_detector.py::TestCNVDetector::test_generate_cnv_report PASSED
+tests/test_cnv_detector.py::TestConvenienceFunctions::test_detect_cnvs_function PASSED
+tests/test_cnv_detector.py::TestConvenienceFunctions::test_create_cnv_report_function PASSED
+tests/test_cnv_detector.py::TestCNVConfidenceScoring::test_confidence_high_deviation PASSED
+tests/test_cnv_detector.py::TestCNVConfidenceScoring::test_confidence_high_depth PASSED
+tests/test_cnv_detector.py::TestCNVConfidenceScoring::test_confidence_bounds PASSED
+tests/test_cnv_detector.py::TestCNVMerging::test_merge_adjacent_same_type PASSED
+tests/test_cnv_detector.py::TestCNVMerging::test_no_merge_different_types PASSED
+tests/test_cnv_detector.py::TestCNVMerging::test_no_merge_different_chromosomes PASSED
+```
+
+## Detection Features Verified
+
+### 1. CNV Deletion Detection
+```python
+detector = CNVDetector(window_size=5, min_cnv_length=1)
+deletions = detector.detect_deletions('tests/data/cnv_test.vcf')
+# Result: 2 deletions detected (CN=1.0)
+```
+
+### 2. CNV Duplication Detection
+```python
+duplications = detector.detect_duplications('tests/data/cnv_test.vcf')
+# Result: 2 duplications detected (CN=3.0)
+```
+
+### 3. Copy Number Estimation
+```python
+cn = detector.estimate_copy_number('vcf_path', 'chr1', 1000, 2000)
+# Returns estimated copy number for specific genomic region
+```
+
+### 4. CNV Report Generation
+```python
+report = detector.generate_cnv_report(cnvs)
+# Returns summary with total_cnvs, deletions, duplications, etc.
+```
+
+## Implementation Details
+
+### Data Structures
+- CNVType enum: DEL, DUP, CNV
+- CNVRegion dataclass: chromosome, start, end, copy_number, confidence_score, etc.
+- ReadDepthWindow: sliding window for read depth analysis
+
+### Key Methods
+- detect_from_vcf(): Main entry point for CNV detection
+- detect_deletions(): Filter for deletion events
+- detect_duplications(): Filter for duplication events
+- estimate_copy_number(): Copy number for specific region
+- generate_cnv_report(): Summary report generation
+
+### Detection Algorithm
+1. Extract read depth from VCF FORMAT/DP field
+2. Compute sliding window averages
+3. Calculate global baseline depth
+4. Detect depth ratio deviations (<0.75 = DEL, >1.25 = DUP)
+5. Calculate confidence scores
+6. Merge adjacent CNVs of same type
+7. Filter by minimum length

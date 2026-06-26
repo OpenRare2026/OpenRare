@@ -57,8 +57,13 @@ class VCFFile(Base):
 
 class Variant(Base):
     """
-    Variant model - stores genetic variant information detected from VCF files.
-    
+    Variant model - stores genetic variant information from VCF files.
+
+    NOTE: VEP annotation columns have been removed. VEP results are now
+    stored directly as Parquet files via ParquetService, keyed by VEPJob.
+    The frontend reads VEP columns dynamically from Parquet — whatever
+    VEP returns is what gets displayed.
+
     Supports multiple variant types:
     - SNV (Single Nucleotide Variant)
     - INDEL (Insertion/Deletion)
@@ -76,42 +81,7 @@ class Variant(Base):
     quality = Column(Float, nullable=True)  # Quality score from variant caller
     filter_status = Column(String(50), nullable=True)  # PASS or filter flags
     info_field = Column(JSON, nullable=True)  # Additional INFO field data
-    gene = Column(String(100), nullable=True, index=True)  # Gene symbol from GFF3 annotation
     vcf_file_id = Column(Integer, ForeignKey("vcf_files.id"), nullable=False)
-
-    # VEP annotation fields
-    hgvs_c = Column(String(255), nullable=True)
-    hgvs_p = Column(String(255), nullable=True)
-    consequence = Column(String(200), nullable=True)
-    impact = Column(String(50), nullable=True)
-    transcript = Column(String(50), nullable=True)
-    all_genes = Column(String(500), nullable=True)
-    cdna_position = Column(String(50), nullable=True)
-    cds_position = Column(String(50), nullable=True)
-    protein_position = Column(String(50), nullable=True)
-    amino_acids = Column(String(100), nullable=True)
-    codons = Column(String(100), nullable=True)
-    exon = Column(String(50), nullable=True)
-    intron = Column(String(50), nullable=True)
-    strand = Column(String(10), nullable=True)
-    protein_domains = Column(String(500), nullable=True)
-    revel_score = Column(Float, nullable=True)
-    cadd = Column(Float, nullable=True)
-    spliceai_ds_max = Column(Float, nullable=True)
-    spliceai_type = Column(String(50), nullable=True)
-    loftee_lof_flag = Column(String(50), nullable=True)
-    loftee_lof_filter = Column(String(200), nullable=True)
-    clinvar_significance = Column(String(100), nullable=True)
-    clinvar_review_status = Column(String(200), nullable=True)
-    clinvar_star_rating = Column(Integer, nullable=True)
-    sift = Column(String(100), nullable=True)
-    polyphen = Column(String(100), nullable=True)
-    gnomad_popmax_af = Column(Float, nullable=True)
-    gnomad_eas_af = Column(Float, nullable=True)
-    gnomad_nhomalt = Column(Integer, nullable=True)
-    pathogenic_rank = Column(Integer, nullable=True)
-    evidence_summary = Column(Text, nullable=True)
-    vep_annotated = Column(Boolean, default=False)
     
     __table_args__ = (
         UniqueConstraint('chromosome', 'position', 'ref', 'alt', 'vcf_file_id', name='uix_variant_unique'),
@@ -256,6 +226,13 @@ class VEPJob(Base):
     log_url = Column(String(500), nullable=True)
     rows = Column(Integer, nullable=True)
     error = Column(Text, nullable=True)
+    csv_path = Column(String(512), nullable=True)
+    parquet_path = Column(String(512), nullable=True)
+    gene_phenotype_score_path = Column(String(512), nullable=True)
+    variant_phenotype_score_path = Column(String(512), nullable=True)
+    ppi_score_path = Column(String(512), nullable=True)
+    ranked_csv_path = Column(String(512), nullable=True)
+    phenotype_path = Column(String(512), nullable=True)
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
 

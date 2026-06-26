@@ -1,54 +1,69 @@
 # Rare Disease Genetic Diagnosis Analysis System - Backend Dependencies
-# Python 3.12+ required
-# Generated from: /mnt/workspace/hujie/miniconda3/envs/py312
+# Python 3.9+ required
+#
+# IMPORTANT: Install torch separately before running pip install -r requirements.txt:
+#   pip install torch==2.1.2 --index-url https://download.pytorch.org/whl/cpu
+# The --index-url flag is not PEP 508 compliant and will cause pip errors if
+# included in this file directly.
+#
+# For GPU: pip install torch==2.1.2 --index-url https://download.pytorch.org/whl/cu118
 
 # Web Framework
-fastapi==0.136.3
-uvicorn==0.48.0
-python-multipart==0.0.29
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+python-multipart==0.0.6
 
 # API Documentation
-pydantic==2.13.4
+pydantic==2.5.3
+pydantic-settings==2.1.0
 
 # Database ORM
-sqlalchemy==2.0.50
-alembic==1.18.4
+sqlalchemy==2.0.25
+alembic==1.13.1
 
-# Task Queue & Cache
-redis==7.4.0
+# Async Task Queue
+celery==5.3.6
+redis==5.0.1
 
 # VCF Processing
-pysam==0.24.0
+pysam==0.22.0
+bcftools==1.19
 
 # Data Processing
-numpy==2.4.6
-pandas==3.0.3
-dask==2026.3.0
-pyarrow==18.1.0
+numpy==1.26.3
+pandas==2.1.4
 
 # Statistics & Genetics
-scikit-allel==1.3.13
-
-# Graph Database
-neo4j==6.2.0
+scipy==1.12.0
+scikit-allel==1.3.5
 
 # Environment Management
-python-dotenv==1.2.2
+python-dotenv==1.0.0
 
 # HTTP Client
-httpx==0.28.1
-aiohttp==3.13.5
-requests==2.34.2
+httpx==0.26.0
+aiohttp==3.9.1
+
+# External API Integration
+requests==2.31.0
 
 # Logging & Monitoring
-loguru==0.7.3
-
-# Configuration
-pyyaml==6.0.3
+loguru==0.7.2
 
 # Testing
-pytest==9.0.3
-pytest-asyncio==1.4.0
+pytest==7.4.4
+pytest-asyncio==0.23.3
+pytest-cov==4.1.0
 
-# Annotation
-annotated-doc==0.0.4
+# Security
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+
+# PDF/Report Generation
+reportlab==4.0.8
+weasyprint==60.2
+
+# Vector Embeddings & RAG
+# (requires torch - install separately, see header comment)
+sentence-transformers==2.3.1
+faiss-cpu==1.7.4

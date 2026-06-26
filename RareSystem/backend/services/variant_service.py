@@ -6,13 +6,15 @@ Provides business logic for:
 - Filtering by chromosome, position, type, quality, ACMG classification
 - Pagination for large variant lists
 - Caching frequently accessed variants
-- Batch import from VCF parser
+
+Note: VCF import methods have been removed. VEP results are now stored
+directly as Parquet files via ParquetService.
 """
 import logging
 import json
 import hashlib
 from datetime import datetime
-from typing import List, Optional, Dict, Any, Tuple, Generator
+from typing import List, Optional, Dict, Any, Tuple
 from dataclasses import dataclass, field
 
 from sqlalchemy.orm import Session
@@ -20,7 +22,6 @@ from sqlalchemy import and_, or_
 import redis
 
 from database.models import Variant, VCFFile, ACMGClassification
-from services.vcf_parser import VCFVariant
 
 logger = logging.getLogger(__name__)
 
@@ -404,134 +405,6 @@ class VariantService:
 
         logger.info(f"Batch create: {created} created, {duplicates} duplicates skipped")
         return created, duplicates
-
-    def import_from_vcf_variant(
-        self,
-        vcf_variant: VCFVariant,
-        vcf_file_id: int,
-        batch_mode: bool = False
-    ) -> Variant:
-        variant_data = {
-            "chromosome": vcf_variant.chromosome,
-            "position": vcf_variant.position,
-            "ref": vcf_variant.reference,
-            "alt": vcf_variant.alternate,
-            "variant_type": vcf_variant.variant_type,
-            "quality": vcf_variant.quality,
-            "filter_status": vcf_variant.filter_status,
-            "info_field": vcf_variant.info,
-            "vcf_file_id": vcf_file_id,
-        }
-
-        if batch_mode:
-            existing = self._db.query(Variant).filter(
-                and_(
-                    Variant.chromosome == variant_data["chromosome"],
-                    Variant.position == variant_data["position"],
-                    Variant.ref == variant_data["ref"],
-                    Variant.alt == variant_data["alt"],
-                    Variant.vcf_file_id == vcf_file_id
-                )
-            ).first()
-
-            if existing:
-                return existing
-
-            variant = Variant(**variant_data)
-            self._db.add(variant)
-            return variant
-
-        return self.create(variant_data)
-
-    def batch_import_from_vcf(
-        self,
-        vcf_variants: List[VCFVariant],
-        vcf_file_id: int,
-        batch_size: int = 1000
-    ) -> Tuple[int, int]:
-        imported = 0
-        duplicates = 0
-
-        for i in range(0, len(vcf_variants), batch_size):
-            batch = vcf_variants[i:i + batch_size]
-
-            for vcf_variant in batch:
-                try:
-                    self.import_from_vcf_variant(vcf_variant, vcf_file_id, batch_mode=True)
-                    imported += 1
-                except Exception as e:
-                    logger.warning(f"Failed to import variant: {e}")
-                    duplicates += 1
-
-            self._db.commit()
-            logger.info(f"Imported batch {i // batch_size + 1}: {imported} total variants")
-
-        self._cache.delete_pattern(f"{CACHE_PREFIX}*")
-
-        logger.info(f"Batch import complete: {imported} imported, {duplicates} skipped")
-        return imported, duplicates
-
-    def stream_import_from_vcf(
-        self,
-        vcf_variant_iterator: Generator[VCFVariant, None, None],
-        vcf_file_id: int,
-        batch_size: int = 1000
-    ) -> Tuple[int, int]:
-        imported = 0
-        duplicates = 0
-        batch = []
-
-        for vcf_variant in vcf_variant_iterator:
-            batch.append(vcf_variant)
-
-            if len(batch) >= batch_size:
-                count, dups = self._process_import_batch(batch, vcf_file_id)
-                imported += count
-                duplicates += dups
-                batch = []
-
-        if batch:
-            count, dups = self._process_import_batch(batch, vcf_file_id)
-            imported += count
-            duplicates += dups
-
-        self._cache.delete_pattern(f"{CACHE_PREFIX}*")
-
-        logger.info(f"Stream import complete: {imported} imported, {duplicates} skipped")
-        return imported, duplicates
-
-    def _process_import_batch(
-        self,
-        batch: List[VCFVariant],
-        vcf_file_id: int
-    ) -> Tuple[int, int]:
-        imported = 0
-        duplicates = 0
-
-        for vcf_variant in batch:
-            try:
-                variant_data = {
-                    "chromosome": vcf_variant.chromosome,
-                    "position": vcf_variant.position,
-                    "ref": vcf_variant.reference,
-                    "alt": vcf_variant.alternate,
-                    "variant_type": vcf_variant.variant_type,
-                    "quality": vcf_variant.quality,
-                    "filter_status": vcf_variant.filter_status,
-                    "info_field": vcf_variant.info,
-                    "vcf_file_id": vcf_file_id,
-                }
-
-                variant = Variant(**variant_data)
-                self._db.add(variant)
-                imported += 1
-
-            except Exception as e:
-                logger.warning(f"Failed to process variant: {e}")
-                duplicates += 1
-
-        self._db.commit()
-        return imported, duplicates
 
     def get_variant_count_by_chromosome(self, vcf_file_id: int) -> Dict[str, int]:
         from sqlalchemy import func

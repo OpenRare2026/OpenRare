@@ -1,42 +1,41 @@
 """
 Phenotype-HPO Scoring API endpoints.
-"""
-import logging
-from typing import List, Optional
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Depends
+POST /submit — submits VEP output CSV to the phenotype-HPO scoring service
+               at PHENOTYPE_HPO_API_BASE_URL, polls until completion, downloads
+               gene_phenotype_score.csv, saves to VEPJob record, returns parsed results.
+
+GET /results/{vcf_file_id} — returns cached gene phenotype scores from the saved CSV.
+"""
+import csv
+import logging
+import os
+from typing import List, Optional
+from pathlib import Path
+
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from database import get_db, Variant
-from services.phenotype_hpo_service import (
-    PhenotypeHpoService,
-    PhenotypeHpoJobInfo,
-    GenePhenotypeScore,
-    PhenotypeHpoServiceError,
-)
+from database import get_db, VEPJob
+from services.phenotype_hpo_service import PhenotypeHpoService
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/phenotype-hpo", tags=["phenotype-hpo"])
 
+DATA_DIR = os.environ.get(
+    "VEP_DATA_DIR",
+    os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "data", "phenotype_hpo_results"
+    ),
+)
+
 
 class SubmitRequest(BaseModel):
     vcf_file_id: int
     hpo_terms: List[str] = Field(default_factory=list)
-
-
-class SubmitResponse(BaseModel):
-    uid: str
-    status: str
-    message: str
-
-
-class JobStatusResponse(BaseModel):
-    uid: str
-    status: str
-    phase: str = ""
-    message: str = ""
 
 
 class GeneScoreResponse(BaseModel):
@@ -74,157 +73,215 @@ class GeneScoresResponse(BaseModel):
     total: int
 
 
-_job_store: dict = {}
+def _parse_gene_phenotype_score_csv(path: str) -> List[GeneScoreResponse]:
+    """Parse gene_phenotype_score.csv into response models."""
+    results = []
+    col_map = {
+        "gene_symbol": "gene_symbol",
+        "hgnc_id": "hgnc_id",
+        "gene_score": "gene_score",
+        "conclusion_code": "conclusion_code",
+        "best_disease_score": "best_disease_score",
+        "best_disease_name": "best_disease_name",
+        "best_omim_id": "best_omim_id",
+        "best_orpha_id": "best_orpha_id",
+        "best_mondo_id": "best_mondo_id",
+        "best_disease_source_dbs": "best_disease_source_dbs",
+        "best_disease_match_status": "best_disease_match_status",
+        "mapping_basis": "mapping_basis",
+        "second_best_disease_score": "second_best_disease_score",
+        "score_gap_to_second_best": "score_gap_to_second_best",
+        "disease_profile_count": "disease_profile_count",
+        "input_hpo_count": "input_hpo_count",
+        "scoring_hpo_count": "scoring_hpo_count",
+        "matched_hpo_count": "matched_hpo_count",
+        "unmatched_hpo_count": "unmatched_hpo_count",
+        "mean_input_hpo_ic": "mean_input_hpo_ic",
+        "candidate_variant_count_in_gene": "candidate_variant_count_in_gene",
+        "gene_sources": "gene_sources",
+        "best_term_evidence_summary": "best_term_evidence_summary",
+        "db_versions": "db_versions",
+        "warning": "warning",
+        "sample_id": "sample_id",
+        "gene_rank": "gene_rank",
+    }
+
+    with open(path, "r", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            item = {}
+            for csv_col, model_field in col_map.items():
+                val = row.get(csv_col, "")
+                field_info = GeneScoreResponse.model_fields.get(model_field)
+                if field_info:
+                    ann = field_info.annotation
+                    if ann is float:
+                        try:
+                            item[model_field] = float(val) if val and val != "-" else 0.0
+                        except ValueError:
+                            item[model_field] = 0.0
+                    elif ann is int:
+                        try:
+                            item[model_field] = int(val) if val and val != "-" else 0
+                        except ValueError:
+                            item[model_field] = 0
+                    else:
+                        item[model_field] = val
+            results.append(GeneScoreResponse(**item))
+
+    return results
 
 
-@router.post("/submit", response_model=SubmitResponse)
+@router.post("/submit", response_model=GeneScoresResponse)
 async def submit_phenotype_hpo_job(
     request: SubmitRequest,
-    background_tasks: BackgroundTasks,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     """
-    Submit a Phenotype-HPO scoring job.
-    
-    Takes VCF file ID and HPO terms, builds VEP CSV from variants,
-    submits to external scoring service.
+    Submit VEP output to phenotype-HPO scoring service, poll until complete,
+    download gene_phenotype_score.csv, save to VEPJob, and return parsed results.
     """
-    try:
-        variants = db.query(Variant).filter(
-            Variant.vcf_file_id == request.vcf_file_id,
-            Variant.vep_annotated == True
-        ).all()
-        
-        if not variants:
-            raise HTTPException(
-                status_code=400, 
-                detail="No VEP-annotated variants found for this VCF file"
+    # 1. Find the VEPJob with a saved CSV for this vcf_file_id
+    vep_job = db.query(VEPJob).filter(
+        VEPJob.vcf_file_id == request.vcf_file_id,
+        VEPJob.csv_path.isnot(None),
+    ).order_by(VEPJob.created_at.desc()).first()
+
+    if not vep_job or not vep_job.csv_path:
+        raise HTTPException(
+            status_code=400,
+            detail="No VEP results available for this VCF file. "
+                   "VEP annotation must complete before phenotype-HPO scoring.",
+        )
+
+    vep_csv_path = Path(vep_job.csv_path)
+    if not vep_csv_path.exists():
+        raise HTTPException(
+            status_code=400,
+            detail="VEP CSV file not found on disk.",
+        )
+
+    # 2. Check if gene_phenotype_score.csv already exists for this VEPJob
+    if vep_job.gene_phenotype_score_path:
+        existing_path = Path(vep_job.gene_phenotype_score_path)
+        if existing_path.exists():
+            logger.info(
+                f"Gene phenotype score already available for vcf_file_id={request.vcf_file_id}, "
+                f"returning cached results from {existing_path}"
             )
-        
-        service = PhenotypeHpoService()
-        vep_csv = service.build_vep_csv_from_variants(variants)
-        
-        hpo_terms = request.hpo_terms if request.hpo_terms else []
-        
-        job_info = await service.submit_job(vep_csv, hpo_terms)
-        
-        _job_store[job_info.uid] = {
-            "vcf_file_id": request.vcf_file_id,
-            "hpo_terms": hpo_terms,
-        }
-        
-        background_tasks.add_task(
-            _poll_and_store_results,
-            job_info.uid,
-            request.vcf_file_id
-        )
-        
-        logger.info(f"Submitted Phenotype-HPO job {job_info.uid} for VCF {request.vcf_file_id}")
-        
-        return SubmitResponse(
-            uid=job_info.uid,
-            status=job_info.status,
-            message=job_info.message
-        )
-        
-    except PhenotypeHpoServiceError as e:
-        logger.error(f"Phenotype-HPO service error: {e}")
-        raise HTTPException(status_code=502, detail=str(e))
-    except Exception as e:
-        logger.error(f"Failed to submit Phenotype-HPO job: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+            try:
+                scores = _parse_gene_phenotype_score_csv(str(existing_path))
+                return GeneScoresResponse(scores=scores, total=len(scores))
+            except Exception as e:
+                logger.warning(f"Failed to parse cached gene phenotype scores: {e}")
 
-
-@router.get("/status/{uid}", response_model=JobStatusResponse)
-async def get_job_status(uid: str):
-    """
-    Get the status of a Phenotype-HPO scoring job.
-    """
+    # 3. Submit to phenotype-HPO service
+    service = PhenotypeHpoService()
     try:
-        service = PhenotypeHpoService()
-        status_data = await service.get_job_status(uid)
-        
-        return JobStatusResponse(
-            uid=uid,
-            status=status_data.get("status", "unknown"),
-            phase=status_data.get("phase", ""),
-            message=status_data.get("message", "")
+        job_info = await service.submit_run(
+            csv_path=str(vep_csv_path),
+            hpo_terms=request.hpo_terms if request.hpo_terms else None,
         )
-        
-    except PhenotypeHpoServiceError as e:
-        logger.error(f"Failed to get job status: {e}")
-        raise HTTPException(status_code=502, detail=str(e))
     except Exception as e:
-        logger.error(f"Status check error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to submit to phenotype-HPO service: {e}")
+        raise HTTPException(
+            status_code=502,
+            detail=f"Phenotype-HPO service submission failed: {e}",
+        )
 
+    if not job_info.uid:
+        raise HTTPException(
+            status_code=502,
+            detail="Phenotype-HPO service returned empty job uid.",
+        )
 
-@router.get("/results/{uid}", response_model=GeneScoresResponse)
-async def get_gene_scores(uid: str):
-    """
-    Get gene phenotype scores for a completed job.
-    """
+    # 4. Poll until completion
     try:
-        service = PhenotypeHpoService()
-        scores = await service.get_gene_scores(uid)
-        
-        response_scores = []
-        for s in scores:
-            response_scores.append(GeneScoreResponse(
-                gene_symbol=s.gene_symbol,
-                hgnc_id=s.hgnc_id,
-                gene_score=s.gene_score,
-                conclusion_code=s.conclusion_code,
-                best_disease_score=s.best_disease_score,
-                best_disease_name=s.best_disease_name,
-                best_omim_id=s.best_omim_id,
-                best_orpha_id=s.best_orpha_id,
-                best_mondo_id=s.best_mondo_id,
-                best_disease_source_dbs=s.best_disease_source_dbs,
-                best_disease_match_status=s.best_disease_match_status,
-                mapping_basis=s.mapping_basis,
-                second_best_disease_score=s.second_best_disease_score,
-                score_gap_to_second_best=s.score_gap_to_second_best,
-                disease_profile_count=s.disease_profile_count,
-                input_hpo_count=s.input_hpo_count,
-                scoring_hpo_count=s.scoring_hpo_count,
-                matched_hpo_count=s.matched_hpo_count,
-                unmatched_hpo_count=s.unmatched_hpo_count,
-                mean_input_hpo_ic=s.mean_input_hpo_ic,
-                candidate_variant_count_in_gene=s.candidate_variant_count_in_gene,
-                gene_sources=s.gene_sources,
-                best_term_evidence_summary=s.best_term_evidence_summary,
-                db_versions=s.db_versions,
-                warning=s.warning,
-                sample_id=s.sample_id,
-                gene_rank=s.gene_rank,
-            ))
-        
-        return GeneScoresResponse(scores=response_scores, total=len(response_scores))
-        
-    except PhenotypeHpoServiceError as e:
-        logger.error(f"Failed to get gene scores: {e}")
-        raise HTTPException(status_code=502, detail=str(e))
+        final_info = await service.poll_until_complete(job_info.uid)
     except Exception as e:
-        logger.error(f"Get results error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Failed to poll phenotype-HPO job {job_info.uid}: {e}")
+        raise HTTPException(
+            status_code=502,
+            detail=f"Phenotype-HPO service polling failed: {e}",
+        )
 
+    if final_info.status in ("failed", "error", "timeout"):
+        error_msg = final_info.error or f"Job ended with status: {final_info.status}"
+        logger.error(f"Phenotype-HPO job {job_info.uid} failed: {error_msg}")
+        raise HTTPException(status_code=502, detail=error_msg)
 
-async def _poll_and_store_results(uid: str, vcf_file_id: int):
-    """
-    Background task to poll for job completion and cache results.
-    """
+    completed_statuses = ("completed", "completion", "success", "succeeded", "finished", "done")
+    if final_info.status not in completed_statuses:
+        logger.warning(f"Phenotype-HPO job {job_info.uid}: unexpected status {final_info.status}, treating as error")
+        raise HTTPException(status_code=502, detail=f"Job ended with unexpected status: {final_info.status}")
+
+    # 5. Download results
+    save_dir = os.path.join(DATA_DIR, job_info.uid)
     try:
-        service = PhenotypeHpoService()
-        await service.poll_until_completion(uid)
-        scores = await service.get_gene_scores(uid)
-        
-        _job_store[uid]["status"] = "completed"
-        _job_store[uid]["scores"] = scores
-        
-        logger.info(f"Job {uid} completed with {len(scores)} gene scores")
-        
+        downloaded = await service.download_key_results(job_info.uid, save_dir)
     except Exception as e:
-        logger.error(f"Background polling failed for {uid}: {e}")
-        _job_store[uid]["status"] = "failed"
-        _job_store[uid]["error"] = str(e)
+        logger.error(f"Failed to download phenotype-HPO results for {job_info.uid}: {e}")
+        raise HTTPException(
+            status_code=502,
+            detail=f"Phenotype-HPO result download failed: {e}",
+        )
+
+    gene_score_path = downloaded.get("gene_phenotype_score_csv")
+    variant_score_path = downloaded.get("variant_phenotype_score_csv")
+    phenotype_path = downloaded.get("phenotype_csv")
+
+    # 6. Save paths to VEPJob
+    vep_job.gene_phenotype_score_path = gene_score_path
+    vep_job.variant_phenotype_score_path = variant_score_path
+    vep_job.phenotype_path = phenotype_path
+    db.commit()
+
+    logger.info(
+        f"Phenotype-HPO scoring complete for vcf_file_id={request.vcf_file_id}: "
+        f"gene_score={gene_score_path is not None}, "
+        f"variant_score={variant_score_path is not None}"
+    )
+
+    # 7. Parse and return results
+    if gene_score_path and Path(gene_score_path).exists():
+        try:
+            scores = _parse_gene_phenotype_score_csv(gene_score_path)
+            return GeneScoresResponse(scores=scores, total=len(scores))
+        except Exception as e:
+            logger.error(f"Failed to parse gene phenotype scores: {e}")
+            raise HTTPException(status_code=500, detail=str(e))
+    else:
+        logger.warning(
+            f"gene_phenotype_score.csv not found in phenotype-HPO output for {job_info.uid}"
+        )
+        return GeneScoresResponse(scores=[], total=0)
+
+
+@router.get("/results/{vcf_file_id}", response_model=GeneScoresResponse)
+async def get_gene_scores(
+    vcf_file_id: int,
+    db: Session = Depends(get_db),
+):
+    """Get cached gene phenotype scores for a VCF file."""
+    vep_job = db.query(VEPJob).filter(
+        VEPJob.vcf_file_id == vcf_file_id,
+        VEPJob.gene_phenotype_score_path.isnot(None),
+    ).order_by(VEPJob.created_at.desc()).first()
+
+    if not vep_job or not vep_job.gene_phenotype_score_path:
+        raise HTTPException(
+            status_code=404,
+            detail="No gene phenotype scores available. "
+                   "Submit via POST /phenotype-hpo/submit first.",
+        )
+
+    score_path = Path(vep_job.gene_phenotype_score_path)
+    if not score_path.exists():
+        raise HTTPException(status_code=404, detail="Gene phenotype score file not found")
+
+    try:
+        scores = _parse_gene_phenotype_score_csv(str(score_path))
+        return GeneScoresResponse(scores=scores, total=len(scores))
+    except Exception as e:
+        logger.error(f"Failed to parse gene phenotype scores: {e}")
+        raise HTTPException(status_code=500, detail=str(e))

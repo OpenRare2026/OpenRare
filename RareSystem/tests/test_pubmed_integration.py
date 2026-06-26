@@ -12,7 +12,7 @@ import time
 import tempfile
 import pytest
 
-sys.path.insert(0, '/mnt/zzb/peixunban/hujie/hanjianbing/backend')
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'backend'))
 
 from services.pubmed_cache import PubMedCache, create_pubmed_cache
 from services.pubmed_service import PubMedArticle, PubMedSearchResult

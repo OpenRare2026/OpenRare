@@ -1,14 +1,26 @@
 """
 VEP API Service Client — submit VCF files, poll job status, fetch results.
 
-Uses httpx for async HTTP. Falls back gracefully on any failure.
+Adapted to the OpenRare V3 Queued Pipeline API:
+  POST /run-upload   — submit VCF file (multipart, field: input_vcf)
+  GET  /jobs/{id}    — poll job status
+  GET  /jobs/{id}/files        — list output files
+  GET  /jobs/{id}/files/{path} — download a file
+  GET  /jobs/{id}/log         — fetch run log
+
+Output files (from a successful run):
+  - 06_genos_evee_annotation/vep_output.with_genos_evee.csv  (GENOS-EVEE wide table)
+  - vep_output.with_info.ranked_large.csv                    (ranked variant table)
+  - gene_phenotype_score.csv                                (gene-level HPO scoring)
+  - variant_phenotype_score.csv                              (variant-level HPO scoring)
+  - phenotype.csv                                            (phenotype mapping)
 """
 import asyncio
 import logging
+import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional
-import time
+from typing import Any, Dict, List, Optional, Tuple
 import httpx
 
 from config import (
@@ -20,9 +32,18 @@ from config import (
     VEP_ASYNC_POLL_INTERVAL,
     VEP_ASYNC_MAX_DURATION,
 )
-from services.vep_csv_parser import VEPCSVParser, VEPParseResult
 
 logger = logging.getLogger(__name__)
+
+RESULT_CSV_PRIORITIES = [
+    "vep_output.with_info.ranked_large.csv",
+    "vep_output.with_genos_evee.csv",
+    "vep_output.with_info.csv",
+]
+
+GENE_PHENOTYPE_SCORE_CSV = "gene_phenotype_score.csv"
+VARIANT_PHENOTYPE_SCORE_CSV = "variant_phenotype_score.csv"
+PHENOTYPE_CSV = "phenotype.csv"
 
 
 @dataclass
@@ -36,9 +57,12 @@ class VEPJobInfo:
     options: Optional[Dict] = None
     status_url: str = ""
     result_url: str = ""
+    files_url: str = ""
     log_url: str = ""
     rows: Optional[int] = None
     error: Optional[str] = None
+    output_dir: str = ""
+    queue_position: Optional[int] = None
 
 
 class VEPServiceError(Exception):
@@ -57,7 +81,6 @@ class VEPService:
         self.max_retries = max_retries
         self.poll_interval = poll_interval
         self.api_key = api_key
-        self.parser = VEPCSVParser()
 
     def _headers(self) -> Dict[str, str]:
         h = {}
@@ -66,14 +89,20 @@ class VEPService:
         return h
 
     async def submit_job(self, vcf_path: str, options: Optional[Dict] = None) -> VEPJobInfo:
-        url = f"{self.base_url}/runs"
-        files = {"file": (Path(vcf_path).name, open(vcf_path, "rb"), "application/octet-stream")}
-        data = {}
+        url = f"{self.base_url}/run-upload"
+        files = {
+            "input_vcf": (Path(vcf_path).name, open(vcf_path, "rb"), "application/octet-stream"),
+        }
+        data = {
+            "hgvs": "true",
+            "top_n_hpo_tissues": "3",
+        }
         if options:
             for k, v in options.items():
-                data[k] = str(v).lower() if isinstance(v, bool) else str(v)
+                if v is not None:
+                    data[k] = str(v).lower() if isinstance(v, bool) else str(v)
 
-        async with httpx.AsyncClient(timeout=60.0) as client:
+        async with httpx.AsyncClient(timeout=120.0) as client:
             resp = await client.post(url, files=files, data=data, headers=self._headers())
             resp.raise_for_status()
             result = resp.json()
@@ -81,20 +110,14 @@ class VEPService:
         return VEPJobInfo(
             job_id=result.get("job_id", ""),
             status=result.get("status", "unknown"),
-            created_at=result.get("created_at", ""),
-            updated_at=result.get("updated_at", ""),
-            input_filename=result.get("input_filename", ""),
-            input_bytes=result.get("input_bytes", 0),
-            options=result.get("options"),
             status_url=result.get("status_url", ""),
-            result_url=result.get("result_url", ""),
-            log_url=result.get("log_url", ""),
-            rows=result.get("rows"),
-            error=result.get("error"),
+            files_url=result.get("files_url", ""),
+            output_dir=result.get("output_dir", ""),
+            queue_position=result.get("queue_position"),
         )
 
     async def poll_job(self, job_id: str) -> VEPJobInfo:
-        url = f"{self.base_url}/runs/{job_id}"
+        url = f"{self.base_url}/jobs/{job_id}"
         last_status = "unknown"
 
         async with httpx.AsyncClient(timeout=30.0) as client:
@@ -108,22 +131,15 @@ class VEPService:
                     job_id=job_id,
                     status=last_status,
                     created_at=result.get("created_at", ""),
-                    updated_at=result.get("updated_at", ""),
-                    input_filename=result.get("input_filename", ""),
-                    input_bytes=result.get("input_bytes", 0),
-                    options=result.get("options"),
+                    input_filename=result.get("original_filename", ""),
                     status_url=result.get("status_url", ""),
-                    result_url=result.get("result_url", ""),
-                    log_url=result.get("log_url", ""),
-                    rows=result.get("rows"),
+                    files_url=result.get("files_url", ""),
+                    log_url=result.get("api_log_download_url", ""),
+                    output_dir=result.get("output_dir", ""),
                     error=result.get("error"),
                 )
 
-                if last_status in ("completed", "failed"):
-                    return job_info
-                
-                if await self.get_result(job_info.result_url):
-                    logger.info(f"VEP job {job_id}: result available before completion, status={last_status}")
+                if last_status in ("completed", "completion", "success", "succeeded", "finished", "done", "failed"):
                     return job_info
 
                 if attempt < self.max_retries:
@@ -134,7 +150,7 @@ class VEPService:
         return VEPJobInfo(job_id=job_id, status="timeout")
 
     async def get_status(self, job_id: str) -> VEPJobInfo:
-        url = f"{self.base_url}/runs/{job_id}"
+        url = f"{self.base_url}/jobs/{job_id}"
         async with httpx.AsyncClient(timeout=30.0) as client:
             resp = await client.get(url, headers=self._headers())
             resp.raise_for_status()
@@ -143,16 +159,85 @@ class VEPService:
                 job_id=job_id,
                 status=result.get("status", "unknown"),
                 created_at=result.get("created_at", ""),
-                updated_at=result.get("updated_at", ""),
-                input_filename=result.get("input_filename", ""),
-                input_bytes=result.get("input_bytes", 0),
-                options=result.get("options"),
+                input_filename=result.get("original_filename", ""),
                 status_url=result.get("status_url", ""),
-                result_url=result.get("result_url", ""),
-                log_url=result.get("log_url", ""),
-                rows=result.get("rows"),
+                files_url=result.get("files_url", ""),
+                log_url=result.get("api_log_download_url", ""),
+                output_dir=result.get("output_dir", ""),
                 error=result.get("error"),
             )
+
+    async def list_files(self, job_id: str) -> List[Dict[str, Any]]:
+        url = f"{self.base_url}/jobs/{job_id}/files"
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.get(url, headers=self._headers())
+            resp.raise_for_status()
+            return resp.json().get("files", [])
+
+    async def download_file(self, job_id: str, file_path: str) -> bytes:
+        url = f"{self.base_url}/jobs/{job_id}/files/{file_path}"
+        async with httpx.AsyncClient(timeout=300.0) as client:
+            resp = await client.get(url, headers=self._headers())
+            resp.raise_for_status()
+            return resp.content
+
+    def _find_file_by_relative_path(self, files: List[Dict], target_name: str) -> Optional[Dict]:
+        for f in files:
+            rp = f.get("relative_path", "")
+            if rp.endswith(target_name) or os.path.basename(rp) == target_name:
+                return f
+        return None
+
+    async def get_result_csv(self, job_id: str) -> Optional[str]:
+        files = await self.list_files(job_id)
+
+        for candidate_name in RESULT_CSV_PRIORITIES:
+            match = self._find_file_by_relative_path(files, candidate_name)
+            if match:
+                relative_path = match.get("relative_path", "")
+                logger.info(f"VEP job {job_id}: downloading result CSV {relative_path}")
+                content = await self.download_file(job_id, relative_path)
+                return content.decode("utf-8", errors="replace")
+
+        return None
+
+    async def download_key_files(self, job_id: str, save_dir: str) -> Dict[str, Optional[str]]:
+        """
+        Download the key output files from a completed VEP job.
+        Returns a dict mapping file_key -> local_path (or None if not found).
+        """
+        files = await self.list_files(job_id)
+        os.makedirs(save_dir, exist_ok=True)
+
+        result = {
+            "result_csv": None,
+            "gene_phenotype_score_csv": None,
+            "variant_phenotype_score_csv": None,
+            "phenotype_csv": None,
+        }
+
+        file_targets = {
+            "result_csv": RESULT_CSV_PRIORITIES,
+            "gene_phenotype_score_csv": [GENE_PHENOTYPE_SCORE_CSV],
+            "variant_phenotype_score_csv": [VARIANT_PHENOTYPE_SCORE_CSV],
+            "phenotype_csv": [PHENOTYPE_CSV],
+        }
+
+        for key, names in file_targets.items():
+            for name in names:
+                match = self._find_file_by_relative_path(files, name)
+                if match:
+                    relative_path = match.get("relative_path", "")
+                    local_name = f"{job_id}_{os.path.basename(relative_path)}"
+                    local_path = os.path.join(save_dir, local_name)
+                    logger.info(f"VEP job {job_id}: downloading {relative_path} -> {local_path}")
+                    content = await self.download_file(job_id, relative_path)
+                    with open(local_path, "wb") as f:
+                        f.write(content)
+                    result[key] = local_path
+                    break
+
+        return result
 
     async def get_result(self, result_url: str) -> str:
         url = f"{self.base_url}{result_url}" if result_url.startswith("/") else result_url
@@ -161,62 +246,12 @@ class VEPService:
             resp.raise_for_status()
             return resp.text
 
-    async def get_log(self, log_url: str) -> str:
-        url = f"{self.base_url}{log_url}" if log_url.startswith("/") else log_url
+    async def get_log(self, job_id: str) -> str:
+        url = f"{self.base_url}/jobs/{job_id}/log"
         async with httpx.AsyncClient(timeout=30.0) as client:
             resp = await client.get(url, headers=self._headers())
             resp.raise_for_status()
             return resp.text
-
-    async def process_vcf(
-        self, vcf_path: str, options: Optional[Dict] = None
-    ) -> Optional[VEPParseResult]:
-        if not VEP_ENABLED:
-            logger.info("VEP annotation disabled, skipping")
-            return None
-
-        try:
-            logger.info(f"Submitting VCF to VEP API: {vcf_path}")
-            job_info = await self.submit_job(vcf_path, options)
-            logger.info(f"VEP job submitted: {job_info.job_id}, status={job_info.status}")
-
-            job_info = await self.poll_job(job_info.job_id)
-            logger.info(f"VEP job completed: {job_info.job_id}, status={job_info.status}")
-
-            if job_info.status == "failed":
-                logger.error(f"VEP job failed: {job_info.error}")
-                return None
-
-            if job_info.status == "timeout":
-                logger.error(f"VEP job timed out after {self.max_retries} retries")
-                return None
-
-            if not job_info.result_url:
-                logger.warning("VEP job completed but no result_url")
-                return None
-            time.sleep(5)
-            csv_content = await self.get_result(job_info.result_url)
-            logger.info(f"VEP raw CSV (first 500 chars): {csv_content[:500]}")
-            logger.info(f"VEP raw CSV (lines): {csv_content[:1000].count(chr(10))} lines")
-            variants = self.parser.parse(csv_content)
-            logger.info(f"VEP returned {len(variants.rows)} annotated variants")
-            logger.info(f"VEP columns: {variants.columns}")
-            if len(variants.rows) > 0:
-                logger.info(f"VEP first row: {variants.rows[0]}")
-            return variants
-
-        except httpx.ConnectError as e:
-            logger.error(f"VEP API connection failed: {e}")
-            return None
-        except httpx.TimeoutException as e:
-            logger.error(f"VEP API timeout: {e}")
-            return None
-        except httpx.HTTPStatusError as e:
-            logger.error(f"VEP API HTTP error: {e.response.status_code} - {e.response.text[:200]}")
-            return None
-        except Exception as e:
-            logger.error(f"VEP API unexpected error: {type(e).__name__}: {e}")
-            return None
 
     async def submit_vcf_async(
         self, vcf_path: str, options: Optional[Dict] = None
@@ -228,54 +263,3 @@ class VEPService:
         job_info = await self.submit_job(vcf_path, options)
         logger.info(f"VEP job submitted (async): {job_info.job_id}, status={job_info.status}")
         return job_info
-
-    async def poll_until_complete(
-        self, job_id: str, poll_interval: int = VEP_ASYNC_POLL_INTERVAL, max_duration: int = VEP_ASYNC_MAX_DURATION
-    ) -> Optional[VEPParseResult]:
-        start_time = time.time()
-        url = f"{self.base_url}/runs/{job_id}"
-
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            while True:
-                elapsed = time.time() - start_time
-                if elapsed > max_duration:
-                    logger.error(f"VEP job {job_id}: exceeded max duration {max_duration}s")
-                    return None
-
-                try:
-                    resp = await client.get(url, headers=self._headers())
-                    resp.raise_for_status()
-                    result = resp.json()
-                    status = result.get("status", "unknown")
-                    logger.info(f"VEP job {job_id}: status={status}, elapsed={int(elapsed)}s")
-
-                    if status == "failed":
-                        logger.error(f"VEP job {job_id} failed: {result.get('error')}")
-                        return None
-
-                    if status == "completed":
-                        result_url = result.get("result_url", "")
-                        if not result_url:
-                            logger.warning(f"VEP job {job_id} completed but no result_url")
-                            return None
-                        time.sleep(5)
-                        csv_content = await self.get_result(result_url)
-                        logger.info(f"VEP raw CSV (first 500 chars): {csv_content[:500]}")
-                        variants = self.parser.parse(csv_content)
-                        logger.info(f"VEP returned {len(variants.rows)} annotated variants")
-                        return variants
-
-                    if status == "queuing" or status == "queued" or status == "processing" or status == "running":
-                        logger.info(f"VEP job {job_id}: {status}, waiting {poll_interval}s...")
-                        await asyncio.sleep(poll_interval)
-                        continue
-
-                    logger.warning(f"VEP job {job_id}: unknown status {status}")
-                    await asyncio.sleep(poll_interval)
-
-                except httpx.HTTPStatusError as e:
-                    logger.error(f"VEP job {job_id} HTTP error: {e.response.status_code}")
-                    return None
-                except Exception as e:
-                    logger.error(f"VEP job {job_id} error: {type(e).__name__}: {e}")
-                    await asyncio.sleep(poll_interval)

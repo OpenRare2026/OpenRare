@@ -14,7 +14,7 @@ import pytest
 from unittest.mock import Mock, patch, MagicMock
 
 import sys
-sys.path.insert(0, '/mnt/zzb/peixunban/hujie/hanjianbing/backend')
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'backend'))
 
 from services.skill_base import SkillContext, SkillResult
 from services.skills.pubmed_search_skill import PubMedSearchSkill

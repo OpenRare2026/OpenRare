@@ -31,7 +31,7 @@ if env_path.exists():
     from dotenv import load_dotenv
     load_dotenv(env_path)
 
-API_PORT = int(os.getenv("API_PORT", "8000"))
+API_PORT = int(os.getenv("API_PORT", "18000"))
 CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:8888,http://127.0.0.1:8888,http://localhost:8181,http://127.0.0.1:8181").split(",")
 
 
@@ -90,6 +90,7 @@ from api.hpo import router as hpo_router
 from api.pathways import router as pathways_router
 from api.phenotype_hpo import router as phenotype_hpo_router
 from api.ppi_score import router as ppi_score_router
+from api.ranking import router as ranking_router
 from api.report import router as report_router
 app.include_router(health_router, prefix="/api", tags=["health"])
 
@@ -150,6 +151,7 @@ app.include_router(hpo_router, prefix="/api", tags=["hpo"])
 app.include_router(pathways_router, prefix="/api", tags=["pathways"])
 app.include_router(phenotype_hpo_router, prefix="/api", tags=["phenotype-hpo"])
 app.include_router(ppi_score_router, prefix="/api", tags=["ppi-score"])
+app.include_router(ranking_router, prefix="/api", tags=["ranking"])
 app.include_router(report_router, prefix="/api", tags=["report"])
 
 

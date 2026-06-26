@@ -43,7 +43,11 @@
     "readyDesc": "VCF file uploaded successfully. Your variants are ready for ACMG classification analysis.",
     "patientIdLabel": "Patient ID: ",
     "vcfFileIdLabel": "VCF File ID: ",
-    "startAnalysisBtn": "Start Analysis"
+    "startAnalysisBtn": "Start Analysis",
+    "hpoInputLabel": "HPO Terms (optional)",
+    "hpoInputTooltip": "If you already know the HPO terms, enter them here (e.g., HP:0001250). The system will skip HPO extraction and submit directly to VEP. If left empty, HPO terms will be automatically extracted from the clinical description.",
+    "hpoInputExtra": "Enter HPO IDs (e.g., HP:0001250), separated by commas or spaces. If empty, HPO will be extracted from clinical description.",
+    "hpoInputPlaceholder": "Enter HPO IDs, e.g., HP:0001250, HP:0000256"
   },
   "browse": {
     "title": "Browse Cases",
@@ -186,7 +190,15 @@
     "headerLines": "Header Lines: ",
     "sampleLines": "Sample Data Lines:",
     "startUpload": "Start Upload & Analysis",
-    "uploadComplete": "Upload Complete"
+    "uploadComplete": "Upload Complete",
+    "hpoDirectLabel": "HPO terms provided — skipping HPO extraction, submitting directly to VEP",
+    "hpoExtractionPending": "HPO Extraction in Progress",
+    "hpoExtractionPendingDesc": "After VCF upload, the system will wait for HPO extraction to complete before submitting to VEP annotation.",
+    "hpoWaitingTitle": "Waiting for HPO Extraction",
+    "hpoStatus": "HPO Status",
+    "elapsed": "Elapsed",
+    "hpoWaitingProgress": "Waiting for HPO extraction...",
+    "hpoWaitingBtn": "Waiting for HPO extraction..."
   },
   "basicInfo": {
     "loadError": "Failed to load patient data",
@@ -387,6 +399,14 @@
     "compartments": "Compartments",
     "enrichmentAnalysis": "Enrichment Analysis",
     "definition": "Definition",
-    "viewInReactome": "View in Reactome"
+    "viewInReactome": "View in Reactome",
+    "enrichmentTitle": "Pathway Enrichment",
+    "genesMapped": "genes mapped",
+    "geneInputPlaceholder": "Enter target genes, separated by commas or spaces",
+    "geneInputHint": "Enter gene symbols (e.g. BRCA1, TP53, CFTR), then click Analyze to perform pathway enrichment",
+    "analyzeBtn": "Analyze",
+    "noGenesWarning": "Please enter at least one gene symbol",
+    "loadFailed": "Pathway analysis request failed",
+    "emptyDescription": "Enter target genes above to perform pathway enrichment analysis"
   }
 }

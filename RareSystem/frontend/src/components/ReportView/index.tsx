@@ -12,6 +12,7 @@ import {
   DownloadOutlined,
   CheckCircleOutlined,
   CloseCircleOutlined,
+  FileTextOutlined,
 } from '@ant-design/icons'
 import ReactMarkdown from 'react-markdown'
 import api from '@/services/api'
@@ -23,11 +24,9 @@ interface ReportViewProps {
   visible: boolean
   onClose: () => void
   vcfFileId: number
-  hpoJobUid?: string
-  ppiJobId?: string
   hpoTerms: string[]
-  symptomText?: string
-  selectedGenes?: string[]
+  diagnosisDescription?: string
+  medicalHistory?: string
   onReportGenerated?: (report: { run_id: string; pdf_url: string; markdown: string; meta?: ReportMeta }) => void
 }
 
@@ -37,11 +36,9 @@ const ReportView: React.FC<ReportViewProps> = ({
   visible,
   onClose,
   vcfFileId,
-  hpoJobUid,
-  ppiJobId,
   hpoTerms,
-  symptomText,
-  selectedGenes,
+  diagnosisDescription,
+  medicalHistory,
   onReportGenerated,
 }) => {
   const [status, setStatus] = useState<ReportStatus>('idle')
@@ -71,13 +68,10 @@ const ReportView: React.FC<ReportViewProps> = ({
     await api.streamReport(
       {
         vcf_file_id: vcfFileId,
-        hpo_job_uid: hpoJobUid,
-        ppi_job_id: ppiJobId,
         hpo_terms: hpoTerms,
-        symptom_text: symptomText,
-        genes: selectedGenes,
         top_n: 10,
-        k: 5,
+        diagnosis_description: diagnosisDescription,
+        medical_history: medicalHistory,
       },
       (event: unknown) => {
         const e = event as { type: string; [key: string]: unknown }
@@ -94,11 +88,11 @@ const ReportView: React.FC<ReportViewProps> = ({
           setMarkdown(prev => prev + text)
           setProgress(prev => Math.min(prev + 2, 90))
         } else if (eventType === 'done') {
-          const doneEvent = e as unknown as { run_id: string; pdf_url: string }
+          const doneEvent = e as unknown as { run_id: string; pdf_url: string; md_url: string }
           setRunId(doneEvent.run_id || runId)
-          setPdfUrl(doneEvent.pdf_url || '')
-          setProgress(100)
-          setStatus('completed')
+          setPdfUrl(doneEvent.pdf_url || doneEvent.md_url || '')
+          setProgress(90)
+          fetchAndSaveFullMarkdown(doneEvent.run_id || runId)
         } else if (eventType === 'error') {
           const message = (e as unknown as { message: string }).message
           setError(message)
@@ -122,27 +116,47 @@ const ReportView: React.FC<ReportViewProps> = ({
       onReportGenerated({
         run_id: runId,
         pdf_url: pdfUrl,
+        md_url: pdfUrl,
         markdown: markdown,
         meta: meta || undefined,
       })
     }
   }, [status, runId])
 
-  const handleDownloadPdf = async () => {
+  const fetchAndSaveFullMarkdown = async (id: string) => {
+    if (!id) {
+      setProgress(100)
+      setStatus('completed')
+      return
+    }
+    try {
+      const fullMd = await api.downloadReportMd(id)
+      setMarkdown(fullMd)
+      setProgress(100)
+      setStatus('completed')
+    } catch (err) {
+      console.error('Failed to fetch full markdown:', err)
+      setProgress(100)
+      setStatus('completed')
+    }
+  }
+
+  const handleDownloadMd = async () => {
     if (!runId) return
 
     try {
-      const blob = await api.downloadReportPdf(runId)
+      const mdContent = markdown || await api.downloadReportMd(runId)
+      const blob = new Blob([mdContent], { type: 'text/markdown;charset=utf-8' })
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `report_${runId}.pdf`
+      a.download = `report_${runId}.md`
       document.body.appendChild(a)
       a.click()
       window.URL.revokeObjectURL(url)
       document.body.removeChild(a)
     } catch (err) {
-      console.error('Failed to download PDF:', err)
+      console.error('Failed to download markdown:', err)
     }
   }
 
@@ -218,10 +232,10 @@ const ReportView: React.FC<ReportViewProps> = ({
           <div style={{ textAlign: 'right', marginBottom: 16 }}>
             <Button
               type="primary"
-              icon={<DownloadOutlined />}
-              onClick={handleDownloadPdf}
+              icon={<FileTextOutlined />}
+              onClick={handleDownloadMd}
             >
-              Download PDF
+              Download Report
             </Button>
           </div>
 

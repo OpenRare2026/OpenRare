@@ -1,0 +1,64 @@
+## SNV/INDEL Detection Implementation - Task 8
+
+### Implementation Summary
+Created `backend/services/variant_detector.py` with SNV/INDEL detection functionality.
+
+### Files Created
+- `backend/services/variant_detector.py` (378 lines)
+- `tests/test_variant_detector.py` (216 lines)
+
+### Features Implemented
+
+#### SNV Detection
+- Detects single nucleotide variants (single base changes)
+- Uses `variant_type` property from VCFVariant to classify SNVs
+- Filters by QUAL threshold (default: 30)
+
+#### INDEL Detection
+- Detects insertions and deletions
+- Distinguishes INDELs from SNVs and structural variants
+- Supports variable-length REF/ALT alleles
+
+#### Quality Filtering
+- Default QUAL threshold: 30.0 (configurable)
+- Filter by PASS status (configurable)
+- Depth filtering (min_depth, max_depth)
+- Allele frequency filtering
+
+#### VCF Output
+- `write_vcf()` method generates standard VCF format
+- Includes proper header generation
+- Supports custom headers from input VCF
+
+#### Batch Processing
+- `detect_batch()` processes multiple VCF files
+- Returns dictionary mapping file paths to detected variants
+
+#### Annotation Support
+- Extracts rs IDs from variant ID field
+- Extracts depth (DP) from INFO field
+- Extracts allele frequency (AF, VAF, MAF)
+- Preserves genotype information
+
+### Test Results
+```
+tests/test_variant_detector.py: 23 passed in 0.22s
+```
+
+All tests pass:
+- Configuration tests (2)
+- Variant classification tests (3)
+- Detection tests (10)
+- Convenience function tests (5)
+- VCF output tests (2)
+- Batch processing test (1)
+
+### Integration
+- Uses existing `VCFParser` from `vcf_parser.py`
+- Compatible with `VCFVariant` dataclass
+- Ready for integration with database models
+
+### Verification Commands
+```bash
+python -m pytest tests/test_variant_detector.py -v
+```

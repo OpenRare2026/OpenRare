@@ -1,18 +1,17 @@
 import axios, { AxiosError, AxiosInstance, AxiosRequestConfig, CancelTokenSource } from 'axios'
 import type {
-  Variant,
   ACMGClassification,
   Patient,
   ClinicalReport,
   ResearchReport,
   AnalysisSession,
-  FilterOptions,
-  PaginationParams,
-  PaginatedResponse,
   ChatMessage,
   ChatReference,
   PathwayAnalysisResponse,
   PathwayDetailResponse,
+  DynamicVariantListResponse,
+  DynamicVariantDetailResponse,
+  VEPJobStatus,
 } from '@/types'
 
 const API_BASE = '/api'
@@ -236,13 +235,11 @@ class APIService {
       hpo_terms?: Array<{ phrase: string; hpo_id: string }>
     },
     vepOptions?: {
-      hgvs?: boolean
-      no_pick?: boolean
-      format?: string
       fork?: number
+      chromosomes?: string
     },
     hpoJobId?: string
-  ): Promise<{ vcf_file_id: string; patient_id: string; total_variants: number; message: string; vep_status: string; vep_job_id: string | null; vep_job_db_id: number | null }> {
+  ): Promise<{ vcf_file_id: string; patient_id: string; message: string; vep_status: string; vep_job_id: string | null; vep_job_db_id: number | null }> {
     const formData = new FormData()
     formData.append('file', file)
     formData.append('patient_id', patientId)
@@ -254,10 +251,8 @@ class APIService {
     if (patientInfo?.medical_history) formData.append('medical_history', patientInfo.medical_history)
     if (patientInfo?.hpo_terms) formData.append('hpo_terms', JSON.stringify(patientInfo.hpo_terms))
     if (vepOptions) {
-      formData.append('vep_hgvs', vepOptions.hgvs !== false ? 'true' : 'false')
-      formData.append('vep_no_pick', vepOptions.no_pick ? 'true' : 'false')
-      formData.append('vep_format', vepOptions.format || 'vcf')
       formData.append('vep_fork', String(vepOptions.fork || 1))
+      if (vepOptions.chromosomes) formData.append('vep_chromosomes', vepOptions.chromosomes)
     }
     if (hpoJobId) {
       formData.append('hpo_job_id', hpoJobId)
@@ -280,10 +275,12 @@ class APIService {
 
   async getVariants(
     vcfFileId: string,
-    filters?: FilterOptions,
-    pagination?: PaginationParams
-  ): Promise<PaginatedResponse<Variant>> {
-    const params = { ...filters, ...pagination }
+    page: number = 1,
+    pageSize: number = 50,
+    search?: string
+  ): Promise<DynamicVariantListResponse> {
+    const params: Record<string, string | number> = { page, page_size: pageSize }
+    if (search) params.search = search
     return this.request({
       method: 'GET',
       url: `/variants/${vcfFileId}`,
@@ -291,10 +288,13 @@ class APIService {
     })
   }
 
-  async getVariant(variantId: string): Promise<Variant> {
+  async getVariantDetail(
+    vcfFileId: string,
+    rowIndex: number
+  ): Promise<DynamicVariantDetailResponse> {
     return this.request({
       method: 'GET',
-      url: `/variants/detail/${variantId}`,
+      url: `/variants/detail/${vcfFileId}/${rowIndex}`,
     })
   }
 
@@ -665,24 +665,27 @@ class APIService {
     })
   }
 
-  async getVEPJobStatus(jobId: string): Promise<{
-    job_id: string
-    status: string
-    input_filename: string | null
-    input_bytes: number | null
-    options: Record<string, unknown> | null
-    status_url: string | null
-    result_url: string | null
-    log_url: string | null
-    rows: number | null
-    error: string | null
-    created_at: string | null
-    updated_at: string | null
-    vep_annotated_count: number | null
-  }> {
+  async getVEPJobStatus(jobId: string): Promise<VEPJobStatus> {
     return this.request({
       method: 'GET',
       url: `/vep/jobs/${jobId}/status`,
+    })
+  }
+
+  async submitVEPForVcf(
+    vcfFileId: number,
+    hpoTerms: string[],
+    options?: { fork?: number; chromosomes?: string }
+  ): Promise<{ vep_job_id: string | null; vep_status: string; vep_job_db_id: number | null }> {
+    return this.request({
+      method: 'POST',
+      url: `/variants/${vcfFileId}/submit-vep`,
+      data: {
+        hpo_terms: hpoTerms,
+        vep_fork: options?.fork || 1,
+        vep_chromosomes: options?.chromosomes,
+      },
+      timeout: 120000,
     })
   }
 
@@ -747,28 +750,47 @@ class APIService {
   async submitPhenotypeHpoJob(
     vcfFileId: number,
     hpoTerms: string[]
-  ): Promise<{ uid: string; status: string; message: string }> {
+  ): Promise<{
+    scores: Array<{
+      gene_symbol: string
+      hgnc_id: string
+      gene_score: number
+      conclusion_code: string
+      best_disease_score: number
+      best_disease_name: string
+      best_omim_id: string
+      best_orpha_id: string
+      best_mondo_id: string
+      best_disease_source_dbs: string
+      best_disease_match_status: string
+      mapping_basis: string
+      second_best_disease_score: number
+      score_gap_to_second_best: number
+      disease_profile_count: number
+      input_hpo_count: number
+      scoring_hpo_count: number
+      matched_hpo_count: number
+      unmatched_hpo_count: number
+      mean_input_hpo_ic: number
+      candidate_variant_count_in_gene: number
+      gene_sources: string
+      best_term_evidence_summary: string
+      db_versions: string
+      warning: string
+      sample_id: string
+      gene_rank: number
+    }>
+    total: number
+  }> {
     return this.request({
       method: 'POST',
       url: '/phenotype-hpo/submit',
       data: { vcf_file_id: vcfFileId, hpo_terms: hpoTerms },
-      timeout: 60000,
+      timeout: 300000,
     })
   }
 
-  async getPhenotypeHpoJobStatus(uid: string): Promise<{
-    uid: string
-    status: string
-    phase: string
-    message: string
-  }> {
-    return this.request({
-      method: 'GET',
-      url: `/phenotype-hpo/status/${uid}`,
-    })
-  }
-
-  async getPhenotypeHpoResults(uid: string): Promise<{
+  async getPhenotypeHpoResults(vcfFileId: number): Promise<{
     scores: Array<{
       gene_symbol: string
       hgnc_id: string
@@ -802,35 +824,39 @@ class APIService {
   }> {
     return this.request({
       method: 'GET',
-      url: `/phenotype-hpo/results/${uid}`,
+      url: `/phenotype-hpo/results/${vcfFileId}`,
     })
   }
 
   async submitPpiJob(
     vcfFileId: number,
-    hpoJobUid: string,
-    hpoTerms: string[]
-  ): Promise<{ job_id: string; status: string; message: string }> {
+    hpoTerms: string[],
+    forceRefresh: boolean = false
+  ): Promise<{
+    scores: Array<{
+      gene: string
+      disease_score: number
+      tissue_score: number
+      topology_score: number
+      final_score: number
+      rank: number
+      disease_evidence: string
+      tissue_evidence: string
+      topology_evidence: string
+      neighbor_genes: string
+      hpo_match_count: number
+    }>
+    total: number
+  }> {
     return this.request({
       method: 'POST',
       url: '/ppi-score/submit',
-      data: { vcf_file_id: vcfFileId, hpo_job_uid: hpoJobUid, hpo_terms: hpoTerms },
-      timeout: 60000,
+      data: { vcf_file_id: vcfFileId, hpo_terms: hpoTerms, force_refresh: forceRefresh },
+      timeout: 300000,
     })
   }
 
-  async getPpiJobStatus(jobId: string): Promise<{
-    job_id: string
-    status: string
-    message: string
-  }> {
-    return this.request({
-      method: 'GET',
-      url: `/ppi-score/status/${jobId}`,
-    })
-  }
-
-  async getPpiResults(jobId: string): Promise<{
+  async getPpiResults(vcfFileId: number): Promise<{
     scores: Array<{
       gene: string
       disease_score: number
@@ -848,20 +874,71 @@ class APIService {
   }> {
     return this.request({
       method: 'GET',
-      url: `/ppi-score/results/${jobId}`,
+      url: `/ppi-score/results/${vcfFileId}`,
+    })
+  }
+
+  async submitRankingJob(
+    vcfFileId: number,
+  ): Promise<{
+    scores: Array<{
+      gene: string
+      combined_score: number
+      rank: number
+      gene_score: number
+      ppi_final: number
+      disease_score: number
+      tissue_score: number
+      topology_score: number
+      conclusion_code: string
+      best_disease_name: string
+      best_disease_score: number
+      in_network: boolean
+      score_mode: string
+      mapped_tissues: string
+    }>
+    total: number
+  }> {
+    return this.request({
+      method: 'POST',
+      url: '/ranking/submit',
+      data: { vcf_file_id: vcfFileId },
+      timeout: 300000,
+    })
+  }
+
+  async getRankingResults(vcfFileId: number): Promise<{
+    scores: Array<{
+      gene: string
+      combined_score: number
+      rank: number
+      gene_score: number
+      ppi_final: number
+      disease_score: number
+      tissue_score: number
+      topology_score: number
+      conclusion_code: string
+      best_disease_name: string
+      best_disease_score: number
+      in_network: boolean
+      score_mode: string
+      mapped_tissues: string
+    }>
+    total: number
+  }> {
+    return this.request({
+      method: 'GET',
+      url: `/ranking/results/${vcfFileId}`,
     })
   }
 
   async streamReport(
     request: {
       vcf_file_id: number
-      hpo_job_uid?: string
-      ppi_job_id?: string
       hpo_terms?: string[]
-      symptom_text?: string
-      genes?: string[]
       top_n?: number
-      k?: number
+      diagnosis_description?: string
+      medical_history?: string
     },
     onEvent: (event: unknown) => void,
     onError: (error: Error) => void,
@@ -919,12 +996,12 @@ class APIService {
     }
   }
 
-  async downloadReportPdf(runId: string): Promise<Blob> {
-    const response = await fetch(`${API_BASE}/report/${runId}/pdf`)
+  async downloadReportMd(runId: string): Promise<string> {
+    const response = await fetch(`${API_BASE}/report/${runId}/md`)
     if (!response.ok) {
-      throw new Error(`Failed to download PDF: ${response.status}`)
+      throw new Error(`Failed to download markdown: ${response.status}`)
     }
-    return response.blob()
+    return response.text()
   }
 }
 

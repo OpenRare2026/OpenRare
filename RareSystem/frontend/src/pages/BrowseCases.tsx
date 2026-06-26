@@ -195,7 +195,7 @@ const BrowseCases: React.FC<BrowseCasesProps> = ({ onOpenCase, activePatientId, 
       width: 140,
       fixed: 'right' as const,
       render: (_: unknown, record: CaseSummary) => {
-        const latestVcf = record.vcf_files[0]
+        const bestVcf = record.vcf_files.find(v => v.variant_count > 0) || record.vcf_files[0]
         const isActive = record.patient_id === activePatientId
         const isDeleting = deletingId === record.patient_id
 
@@ -204,7 +204,7 @@ const BrowseCases: React.FC<BrowseCasesProps> = ({ onOpenCase, activePatientId, 
             <Button
               type="primary"
               size="small"
-              onClick={() => onOpenCase(record.patient_id, latestVcf?.id || 0)}
+              onClick={() => onOpenCase(record.patient_id, bestVcf?.id || 0)}
               disabled={record.vcf_files.length === 0}
             >
               {t('browse.open')}

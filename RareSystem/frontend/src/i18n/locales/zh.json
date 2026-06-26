@@ -43,7 +43,11 @@
     "readyDesc": "VCF 文件上传成功，变异已准备好进行 ACMG 分类分析。",
     "patientIdLabel": "患者编号：",
     "vcfFileIdLabel": "VCF 文件编号：",
-    "startAnalysisBtn": "开始分析"
+    "startAnalysisBtn": "开始分析",
+    "hpoInputLabel": "HPO 术语（可选）",
+    "hpoInputTooltip": "如果已知 HPO 术语，可直接输入（如 HP:0001250），系统将跳过 HPO 提取，直接接入 VEP 注释。如不输入，系统将从临床描述中自动提取 HPO。",
+    "hpoInputExtra": "输入 HPO ID（如 HP:0001250），用逗号或空格分隔。如不输入，将从临床描述中自动提取。",
+    "hpoInputPlaceholder": "输入 HPO ID，如 HP:0001250, HP:0000256"
   },
   "browse": {
     "title": "浏览病例",
@@ -186,7 +190,15 @@
     "headerLines": "头部行数：",
     "sampleLines": "样本数据行：",
     "startUpload": "开始上传并分析",
-    "uploadComplete": "上传完成"
+    "uploadComplete": "上传完成",
+    "hpoDirectLabel": "已输入 HPO 术语，将跳过 HPO 提取直接接入 VEP",
+    "hpoExtractionPending": "HPO 提取进行中",
+    "hpoExtractionPendingDesc": "上传 VCF 后，系统将等待 HPO 提取完成再接入 VEP 注释服务。",
+    "hpoWaitingTitle": "等待 HPO 提取完成",
+    "hpoStatus": "HPO 状态",
+    "elapsed": "已用时",
+    "hpoWaitingProgress": "等待 HPO 提取...",
+    "hpoWaitingBtn": "等待 HPO 提取..."
   },
   "basicInfo": {
     "loadError": "患者数据加载失败",
@@ -387,6 +399,14 @@
     "compartments": "亚细胞定位",
     "enrichmentAnalysis": "富集分析",
     "definition": "定义",
-    "viewInReactome": "在Reactome中查看"
+    "viewInReactome": "在Reactome中查看",
+    "enrichmentTitle": "通路富集分析",
+    "genesMapped": "个基因已映射",
+    "geneInputPlaceholder": "输入目标基因，多个基因用逗号或空格分隔",
+    "geneInputHint": "输入目标基因符号（如 BRCA1, TP53, CFTR），点击分析按钮进行通路富集分析",
+    "analyzeBtn": "分析",
+    "noGenesWarning": "请输入至少一个基因符号",
+    "loadFailed": "通路分析请求失败",
+    "emptyDescription": "请在上方输入目标基因进行通路富集分析"
   }
 }

@@ -11,7 +11,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
-from database import get_db, Patient, VCFFile, Variant, ACMGClassification, VEPJob
+from database import get_db, Patient, VCFFile, ACMGClassification, VEPJob
 from database.case_models import CaseDocument, ChatSession, LLMSettings
 
 logger = logging.getLogger(__name__)
@@ -55,6 +55,21 @@ class CaseSummary(BaseModel):
     class Config:
         from_attributes = True
 
+    @staticmethod
+    def _normalize_hpo_terms(hpo_terms):
+        """Normalize HPO terms to list-of-dict format.
+        Database may store either List[str] (e.g. ["HP:0001324"]) or
+        List[dict] (e.g. [{"hpo_id": "HP:0001324", ...}])."""
+        if not hpo_terms:
+            return None
+        normalized = []
+        for term in hpo_terms:
+            if isinstance(term, str):
+                normalized.append({"hpo_id": term, "display_category": "primary"})
+            elif isinstance(term, dict):
+                normalized.append(term)
+        return normalized
+
 
 class CaseListResponse(BaseModel):
     cases: List[CaseSummary]
@@ -78,15 +93,12 @@ async def list_cases(
         total_classified = 0
 
         for vcf in vcf_files:
-            variant_count = db.query(func.count(Variant.id)).filter(
-                Variant.vcf_file_id == vcf.id
-            ).scalar() or 0
+            vep_job = db.query(VEPJob).filter(
+                VEPJob.vcf_file_id == vcf.id
+            ).order_by(VEPJob.created_at.desc()).first()
+            variant_count = vep_job.rows if vep_job and vep_job.rows else 0
 
-            classified_count = db.query(func.count(ACMGClassification.id)).join(
-                Variant, Variant.id == ACMGClassification.variant_id
-            ).filter(
-                Variant.vcf_file_id == vcf.id
-            ).scalar() or 0
+            classified_count = 0
 
             total_variants += variant_count
             total_classified += classified_count
@@ -107,7 +119,7 @@ async def list_cases(
             ethnicity=patient.ethnicity,
             diagnosis_description=patient.diagnosis_description,
             medical_history=patient.medical_history,
-            hpo_terms=patient.hpo_terms,
+            hpo_terms=CaseSummary._normalize_hpo_terms(patient.hpo_terms),
             vcf_files=vcf_summaries,
             total_variants=total_variants,
             total_classified=total_classified,
@@ -134,15 +146,12 @@ async def get_case(
     total_classified = 0
 
     for vcf in vcf_files:
-        variant_count = db.query(func.count(Variant.id)).filter(
-            Variant.vcf_file_id == vcf.id
-        ).scalar() or 0
+        vep_job = db.query(VEPJob).filter(
+            VEPJob.vcf_file_id == vcf.id
+        ).order_by(VEPJob.created_at.desc()).first()
+        variant_count = vep_job.rows if vep_job and vep_job.rows else 0
 
-        classified_count = db.query(func.count(ACMGClassification.id)).join(
-            Variant, Variant.id == ACMGClassification.variant_id
-        ).filter(
-            Variant.vcf_file_id == vcf.id
-        ).scalar() or 0
+        classified_count = 0
 
         total_variants += variant_count
         total_classified += classified_count
@@ -163,7 +172,7 @@ async def get_case(
         ethnicity=patient.ethnicity,
         diagnosis_description=patient.diagnosis_description,
         medical_history=patient.medical_history,
-        hpo_terms=patient.hpo_terms,
+        hpo_terms=CaseSummary._normalize_hpo_terms(patient.hpo_terms),
         vcf_files=vcf_summaries,
         total_variants=total_variants,
         total_classified=total_classified,

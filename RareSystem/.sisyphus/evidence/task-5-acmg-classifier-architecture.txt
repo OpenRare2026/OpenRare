@@ -1,0 +1,78 @@
+# ACMG Classifier Rule Engine Architecture - Implementation Evidence
+
+## Files Created
+- backend/services/acmg_criteria.py - Criteria interfaces and base classes
+- backend/services/acmg_classifier.py - Rule engine and classifier
+- config/acmg_config.json - Configuration file structure
+
+## Criteria Registry
+Total registered criteria: 28
+
+### Pathogenic Criteria
+- PVS1 (Very Strong) - Null variant in gene where LOF is known mechanism
+- PS1-PS4 (Strong) - Same AA change, de novo, functional studies, prevalence
+- PM1-PM6 (Moderate) - Hotspot, absent from pop DB, trans variant, protein length, novel missense, assumed de novo
+- PP1-PP5 (Supporting) - Co-segregation, missense constraint, computational, phenotype specificity, reputable source
+
+### Benign Criteria
+- BA1 (Standalone) - Allele frequency >5%
+- BS1-BS4 (Strong) - High AF, healthy adult, functional studies, lack of segregation
+- BP1-BP7 (Supporting) - Missense in LOF gene, trans/cis, repeat region, computational, alternate basis, source report, synonymous
+
+## Architecture Components
+
+### BaseCriterion (Abstract Class)
+- code, name, description attributes
+- evidence_strength, direction enums
+- evaluate(variant, context) -> CriterionResult
+- get_score(), is_enabled() methods
+
+### ACMGClassifier
+- classify(variant) -> ClassificationResult
+- get_evidence(variant) -> Dict[str, CriterionResult]
+- get_classification_summary(result) -> str
+- register_custom_criterion(criterion)
+- get_registered_criteria() -> List[str]
+
+### Evidence Scoring
+- Pathogenic Very Strong: 8.0 points
+- Pathogenic Strong: 4.0 points
+- Pathogenic Moderate: 2.0 points
+- Pathogenic Supporting: 1.0 point
+- Benign Standalone: -8.0 points
+- Benign Strong: -4.0 points
+- Benign Supporting: -1.0 point
+
+### Classification Thresholds
+- Pathogenic: >= 10.0 points
+- Likely Pathogenic: >= 6.0 points
+- Uncertain Significance: between -6.0 and 6.0
+- Likely Benign: <= -6.0 points
+- Benign: <= -10.0 points
+
+### Combining Rules (Implemented)
+- PVS1 + PS1/2xPM/PM+PP/2xPP = Pathogenic
+- 2x PS = Pathogenic
+- PS + 3xPM/2xPM+2xPP/PM+4xPP = Pathogenic
+- PS + PM = Likely Pathogenic
+- 3x PM = Likely Pathogenic
+- BA1 alone = Benign
+- 2x BS = Likely Benign
+
+## Test Results
+```
+Classification: Variant of Uncertain Significance
+Pathogenic score: 0
+Benign score: 0
+Confidence: 50.00%
+Registered criteria: 28
+Import successful!
+```
+
+## Configuration Structure (config/acmg_config.json)
+- version: Configuration version
+- thresholds: Classification thresholds
+- enabled_criteria: List of active criteria
+- criteria: Per-criterion configuration
+- databases: Population and clinical database references
+- scoring_weights: Point values by evidence strength

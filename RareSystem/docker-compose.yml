@@ -6,11 +6,10 @@ services:
     container_name: rare-disease-app
     ports:
       - "8181:8181"
+    env_file:
+      - ./backend/.env
     environment:
-      - DATABASE_URL=sqlite:////app/data/rare_disease_diagnosis.db
-      - LOG_LEVEL=INFO
       - API_HOST=0.0.0.0
-      - API_PORT=8000
       # Uncomment to use PostgreSQL instead of SQLite
       # - DATABASE_URL=postgresql://postgres:password@db:5432/rare_disease_db
       # LLM Configuration (optional - configure your LLM provider)

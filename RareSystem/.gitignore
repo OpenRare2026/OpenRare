@@ -128,12 +128,3 @@ celerybeat.pid
 
 # Redis dump
 dump.rdb
-
-# Pixi
-.pixi/
-
-.sisyphus/
-.opencode/
-*.db
-*.sqlite
-.pubmed_cache/

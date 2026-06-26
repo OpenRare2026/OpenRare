@@ -9,8 +9,9 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from database import get_db
-from database.models import Variant
+from database.models import VEPJob
 from services.pathway_service import reactome_service, PathwayResult
+from services.parquet_service import ParquetService
 
 logger = logging.getLogger(__name__)
 
@@ -217,40 +218,68 @@ async def analyze_vcf_pathways(
     db: Session = Depends(get_db)
 ):
     """
-    Perform pathway enrichment analysis using genes from a VCF file.
+    Perform pathway enrichment analysis using genes from VEP Parquet results.
     
-    Extracts all unique gene symbols from the variants in the VCF file
+    Extracts all unique gene symbols from the VEP Parquet file
     and performs pathway enrichment analysis.
     """
+    from pathlib import Path as FilePath
+    
     try:
-        variants = db.query(Variant).filter(
-            Variant.vcf_file_id == vcf_file_id
-        ).all()
-        
-        genes = set()
-        for variant in variants:
-            if variant.gene:
-                genes.add(variant.gene)
-            if variant.all_genes:
-                for g in variant.all_genes.split(','):
+        vcf_id = int(vcf_file_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid VCF file ID")
+
+    vep_job = db.query(VEPJob).filter(
+        VEPJob.vcf_file_id == vcf_id,
+        VEPJob.parquet_path.isnot(None)
+    ).order_by(VEPJob.created_at.desc()).first()
+
+    if not vep_job or not vep_job.parquet_path:
+        raise HTTPException(
+            status_code=400,
+            detail="No VEP results available for this VCF file"
+        )
+
+    parquet_path = FilePath(vep_job.parquet_path)
+    if not parquet_path.exists():
+        raise HTTPException(
+            status_code=400,
+            detail="VEP Parquet file not found"
+        )
+
+    service = ParquetService()
+    result = service.read_parquet(str(parquet_path), page=1, page_size=100000)
+
+    # Extract gene symbols from whatever VEP column provides them
+    gene_cols = [c for c in result.columns if c in ("Gene", "gene_symbol", "SYMBOL", "Gene_symbol")]
+    
+    genes = set()
+    for row in result.items:
+        for col in gene_cols:
+            val = row.get(col, "")
+            if val:
+                # Some VEP outputs have comma-separated gene lists
+                for g in val.split(","):
                     g = g.strip()
                     if g:
                         genes.add(g)
-        
-        if not genes:
-            raise HTTPException(
-                status_code=400,
-                detail="No genes found in VCF file"
-            )
-        
+
+    if not genes:
+        raise HTTPException(
+            status_code=400,
+            detail="No genes found in VEP results"
+        )
+
+    try:
         result = await reactome_service.analyze_genes(list(genes))
-        
+
         if result is None:
             raise HTTPException(
                 status_code=500,
                 detail="Pathway analysis failed"
             )
-        
+
         pathways = [
             PathwayResponse(
                 st_id=p.st_id,
@@ -267,14 +296,14 @@ async def analyze_vcf_pathways(
             )
             for p in result.pathways
         ]
-        
+
         return PathwayAnalysisResponse(
             token=result.token,
             pathways=pathways,
             genes_analyzed=len(genes),
             genes_not_found=result.genes_not_found
         )
-        
+
     except HTTPException:
         raise
     except Exception as e:

@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { Button, Space, Tabs, Spin, message, Segmented } from 'antd'
+import { Button, Space, Tabs, Segmented } from 'antd'
 import { ArrowLeftOutlined } from '@ant-design/icons'
 import { useTranslation } from 'react-i18next'
 import VariantList from '@/components/VariantList'
 import GeneView from '@/components/GeneView'
-import PathwayView, { PathwayViewRef } from '@/components/PathwayView'
+import PathwayView from '@/components/PathwayView'
 import DualTrackReport from '@/components/DualTrackReport'
 import ChatInterface from '@/components/ChatInterface'
 import VariantVisualization from '@/components/VariantVisualization'
@@ -12,7 +12,7 @@ import BasicInfoPanel from '@/components/BasicInfoPanel'
 import VariantDetailPage from '@/components/VariantDetailPage'
 import { useAppStore } from '@/store'
 import api from '@/services/api'
-import type { Variant, ChatMessage, ACMGClassification, GeneVariant, PathwayAnalysisResponse } from '@/types'
+import type { ChatMessage, ACMGClassification } from '@/types'
 
 const { TabPane } = Tabs
 
@@ -35,7 +35,6 @@ const AnalysisPage: React.FC<AnalysisPageProps> = ({ patientId, vcfFileId, hpoJo
   const { t } = useTranslation()
   const patientIdNum = parseInt(patientId, 10) || 1
   const [variantDetailVisible, setVariantDetailVisible] = useState(false)
-  const [loading, setLoading] = useState(true)
   const [chatMessages] = useState<ChatMessage[]>([])
   const [leftWidth, setLeftWidth] = useState(70)
   const [basicInfoHeight, setBasicInfoHeight] = useState(DEFAULT_BASIC_INFO_HEIGHT)
@@ -44,24 +43,19 @@ const AnalysisPage: React.FC<AnalysisPageProps> = ({ patientId, vcfFileId, hpoJo
   const [geneFilter, setGeneFilter] = useState<string | undefined>(undefined)
   const [hpoStatus, setHpoStatus] = useState<string | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
-  const [pathwayPreloading, setPathwayPreloading] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const leftPanelRef = useRef<HTMLDivElement>(null)
   const draggingRef = useRef(false)
   const verticalDraggingRef = useRef(false)
-  const pathwayViewRef = useRef<PathwayViewRef>(null)
 
   const {
-    variants,
     selectedVariant,
-    setVariants,
+    selectedVcfFileId,
+    selectedRowIndex,
     setSelectedVariant,
+    setSelectedVariantKeys,
     setClassification,
   } = useAppStore()
-
-  useEffect(() => {
-    loadVariants()
-  }, [vcfFileId])
 
   useEffect(() => {
     if (!hpoJobId) return
@@ -96,63 +90,9 @@ const AnalysisPage: React.FC<AnalysisPageProps> = ({ patientId, vcfFileId, hpoJo
     }
   }, [hpoJobId])
 
-  const loadVariants = async () => {
-    setLoading(true)
-    try {
-      const response = await api.getVariants(vcfFileId)
-      setVariants(response.items)
-      preloadPathwayAnalysis()
-    } catch (error) {
-      message.error(t('analysis.loadVariantsFailed'))
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const preloadPathwayAnalysis = async () => {
-    const cacheKey = `pathway_cache_${vcfFileId}`
-    const cached = localStorage.getItem(cacheKey)
-    if (cached) return
-    
-    setPathwayPreloading(true)
-    try {
-      const response: PathwayAnalysisResponse = await api.analyzeVcfPathways(vcfFileId)
-      const filteredPathways = response.pathways.filter(p => 
-        p.mapped_genes && p.mapped_genes.length > 0
-      )
-      
-      localStorage.setItem(cacheKey, JSON.stringify({
-        pathways: filteredPathways,
-        genes: Array.from(new Set(filteredPathways.flatMap(p => p.mapped_genes || []))),
-        timestamp: Date.now()
-      }))
-      
-      if (pathwayViewRef.current?.reloadPathways) {
-        pathwayViewRef.current.reloadPathways()
-      }
-    } catch (error) {
-      console.error('Failed to preload pathway analysis:', error)
-    } finally {
-      setPathwayPreloading(false)
-    }
-  }
-
-  const handleVariantSelect = (variant: Variant | GeneVariant) => {
-    const fullVariant: Variant = 'vcf_file_id' in variant 
-      ? variant 
-      : {
-          id: variant.id,
-          chromosome: variant.chromosome,
-          position: variant.position,
-          ref: variant.ref,
-          alt: variant.alt,
-          variant_type: variant.variant_type as any,
-          quality: variant.quality ?? undefined,
-          vcf_file_id: vcfFileId,
-          info_field: {},
-          gnomad_af: variant.gnomad_af,
-        }
-    setSelectedVariant(fullVariant)
+  const handleVariantSelect = (variant: Record<string, string>, rowIndex?: number) => {
+    setSelectedVariant(variant)
+    setSelectedVariantKeys(vcfFileId, rowIndex ?? 0)
     setVariantDetailVisible(true)
   }
 
@@ -223,16 +163,6 @@ const AnalysisPage: React.FC<AnalysisPageProps> = ({ patientId, vcfFileId, hpoJo
       document.removeEventListener('mouseup', handleMouseUp)
     }
   }, [])
-
-  const classifications: ACMGClassification[] = []
-
-  if (loading) {
-    return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <Spin size="large" tip={t('analysis.loading')} />
-      </div>
-    )
-  }
 
   const rightWidth = 100 - leftWidth
 
@@ -344,12 +274,6 @@ const AnalysisPage: React.FC<AnalysisPageProps> = ({ patientId, vcfFileId, hpoJo
                       { label: t('analysis.byPathway'), value: 'pathway' },
                     ]}
                   />
-                  {pathwayPreloading && (
-                    <Space>
-                      <Spin size="small" />
-                      <span style={{ color: '#999', fontSize: 12 }}>{t('analysis.preloadingPathways')}</span>
-                    </Space>
-                  )}
                   {geneFilter && (
                     <Space>
                       <span style={{ color: '#666' }}>{t('analysis.filteredByGene')}</span>
@@ -374,19 +298,15 @@ const AnalysisPage: React.FC<AnalysisPageProps> = ({ patientId, vcfFileId, hpoJo
                       onGeneFilter={handleGeneFilter}
                     />
                   ) : (
-                    <PathwayView
-                      ref={pathwayViewRef}
-                      vcfFileId={vcfFileId}
-                      onVariantSelect={handleVariantSelect}
-                    />
+                    <PathwayView />
                   )}
                 </div>
               </div>
             </TabPane>
             <TabPane tab={t('analysis.tabVisualization')} key="visualization" style={{ flex: 1, overflow: 'auto' }}>
               <VariantVisualization
-                variants={variants}
-                classifications={classifications}
+                variants={[]}
+                classifications={[]}
               />
             </TabPane>
             <TabPane tab={t('analysis.tabReports')} key="reports" style={{ flex: 1, overflow: 'auto' }}>
@@ -435,6 +355,8 @@ const AnalysisPage: React.FC<AnalysisPageProps> = ({ patientId, vcfFileId, hpoJo
       <VariantDetailPage
         visible={variantDetailVisible}
         variant={selectedVariant}
+        vcfFileId={selectedVcfFileId}
+        rowIndex={selectedRowIndex}
         patientId={patientIdNum}
         onClose={handleVariantDetailClose}
         onClassify={handleClassificationUpdate}

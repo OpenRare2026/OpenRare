@@ -38,6 +38,42 @@ export interface VCFFile {
   patient_id: string
 }
 
+export interface DynamicVariantListResponse {
+  columns: string[]
+  items: Record<string, string>[]
+  total: number
+  page: number
+  page_size: number
+  total_pages: number
+  vep_job_id?: string
+  message: string
+}
+
+export interface DynamicVariantDetailResponse {
+  row_index: number
+  columns: string[]
+  row: Record<string, string>
+}
+
+export interface VEPJobStatus {
+  job_id: string
+  status: string
+  input_filename?: string
+  input_bytes?: number
+  options?: Record<string, unknown>
+  status_url?: string
+  result_url?: string
+  log_url?: string
+  rows?: number
+  vep_annotated_count?: number | null
+  error?: string
+  created_at?: string
+  updated_at?: string
+  csv_path?: string
+  parquet_path?: string
+  parquet_available: boolean
+}
+
 export type VariantType = 'SNV' | 'INDEL' | 'STR' | 'CNV'
 
 export type ClassificationCategory = 'Pathogenic' | 'Likely Pathogenic' | 'VUS' | 'Likely Benign' | 'Benign'
@@ -573,6 +609,28 @@ export interface PpiGeneScoresResponse {
   total: number
 }
 
+export interface RankedGeneScore {
+  gene: string
+  combined_score: number
+  rank: number
+  gene_score: number
+  ppi_final: number
+  disease_score: number
+  tissue_score: number
+  topology_score: number
+  conclusion_code: string
+  best_disease_name: string
+  best_disease_score: number
+  in_network: boolean
+  score_mode: string
+  mapped_tissues: string
+}
+
+export interface RankedGeneScoresResponse {
+  scores: RankedGeneScore[]
+  total: number
+}
+
 export interface ReportMeta {
   run_id: string
   genes: string[]
@@ -589,6 +647,7 @@ export interface ReportMdChunk {
 export interface ReportDone {
   type: 'done'
   pdf_url: string
+  md_url?: string
 }
 
 export interface ReportError {
@@ -620,6 +679,7 @@ export interface GeneAnalysisReport {
   id: string
   run_id: string
   pdf_url: string
+  md_url?: string
   markdown: string
   meta?: ReportMeta
   created_at: string

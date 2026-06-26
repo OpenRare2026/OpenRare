@@ -1,0 +1,27 @@
+{
+  "schema_version": 2,
+  "active_work_id": "vep-csv-parser-fix",
+  "works": {
+    "vep-csv-parser-fix": {
+      "work_id": "vep-csv-parser-fix",
+      "active_plan": "/mnt/zzb/peixunban/hujie/hanjianbing/.sisyphus/plans/vep-csv-parser-fix.md",
+      "plan_name": "vep-csv-parser-fix",
+      "status": "active",
+      "started_at": "2026-05-30T00:00:00.000Z",
+      "updated_at": "2026-05-30T00:00:00.000Z",
+      "session_ids": [],
+      "session_origins": {},
+      "agent": "atlas",
+      "task_sessions": {}
+    }
+  },
+  "active_plan": "/mnt/zzb/peixunban/hujie/hanjianbing/.sisyphus/plans/vep-csv-parser-fix.md",
+  "started_at": "2026-05-30T00:00:00.000Z",
+  "status": "active",
+  "updated_at": "2026-05-30T00:00:00.000Z",
+  "session_ids": [],
+  "session_origins": {},
+  "plan_name": "vep-csv-parser-fix",
+  "agent": "atlas",
+  "task_sessions": {}
+}

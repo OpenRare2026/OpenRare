@@ -1,20 +1,26 @@
 """
 VEP Job Status API endpoints.
+
+When VEP completes, downloads all key output files via VEP API,
+converts main CSV to Parquet, updates VEPJob record.
 """
 import logging
+import os
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from database import get_db, VEPJob, Variant
+from database import get_db, VEPJob
 from services.vep_service import VEPService
-from services.vep_csv_parser import VEPCSVParser
+from services.parquet_service import ParquetService
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/vep", tags=["vep"])
+
+DATA_DIR = os.environ.get("VEP_DATA_DIR", os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "vep_results"))
 
 
 class VEPJobResponse(BaseModel):
@@ -30,120 +36,78 @@ class VEPJobResponse(BaseModel):
     error: Optional[str]
     created_at: Optional[str]
     updated_at: Optional[str]
-    vep_annotated_count: Optional[int] = None
+    csv_path: Optional[str] = None
+    parquet_path: Optional[str] = None
+    gene_phenotype_score_path: Optional[str] = None
+    variant_phenotype_score_path: Optional[str] = None
+    ppi_score_path: Optional[str] = None
+    phenotype_path: Optional[str] = None
+    parquet_available: bool = False
 
-    class Config:
-        from_attributes = True
 
+async def _fetch_and_save_vep_results(job: VEPJob, db: Session) -> int:
+    """
+    Download all key files from VEP service, convert main CSV to Parquet,
+    update VEPJob record. Returns number of rows in the result.
+    """
+    vep_service = VEPService()
+    save_dir = os.path.join(DATA_DIR, job.job_id)
 
-def apply_vep_results_to_variants(vep_rows: list, vcf_file_id: int, db: Session) -> int:
-    vep_lookup = {}
-    for vv in vep_rows:
-        chrom = vv.get("chrom", "")
-        if chrom and chrom.lower().startswith("chr"):
-            chrom = chrom[3:]
-        if not chrom:
-            location = vv.get("Location", "")
-            if ":" in location:
-                chrom = location.split(":")[0]
-                if chrom.lower().startswith("chr"):
-                    chrom = chrom[3:]
+    downloaded = await vep_service.download_key_files(job.job_id, save_dir)
 
-        pos = vv.get("pos", "")
-        if not pos:
-            location = vv.get("Location", "")
-            if ":" in location:
-                pos = location.split(":")[1]
+    result_csv_path = downloaded.get("result_csv")
+    gene_score_path = downloaded.get("gene_phenotype_score_csv")
+    variant_score_path = downloaded.get("variant_phenotype_score_csv")
+    phenotype_path = downloaded.get("phenotype_csv")
 
-        ref = vv.get("ref", "")
-        alt = vv.get("alt", "")
+    row_count = 0
+    parquet_path = None
 
-        if not ref or not alt:
-            uploaded_var = vv.get("Uploaded_variation", vv.get("#Uploaded_variation", vv.get("Uploaded variation", "")))
-            parts = uploaded_var.split("_")
-            if not chrom and len(parts) > 0:
-                chrom = parts[0]
-                if chrom.lower().startswith("chr"):
-                    chrom = chrom[3:]
-            if not pos and len(parts) > 1:
-                pos = parts[1]
-            if not ref and len(parts) > 2:
-                ref = parts[2]
-            if not alt and len(parts) > 3:
-                alt = parts[3]
+    if result_csv_path and os.path.exists(result_csv_path):
+        service = ParquetService()
+        csv_content = open(result_csv_path, "r", encoding="utf-8").read()
+        csv_saved, parquet_path = service.csv_to_parquet(csv_content, job.job_id)
+        row_count = service.row_count(parquet_path)
+        job.csv_path = csv_saved
+        job.parquet_path = parquet_path
+        job.rows = row_count
 
-        key = f"{chrom}:{pos}:{ref}:{alt}"
-        vep_lookup[key] = vv
-
-    logger.info(f"VEP lookup built with {len(vep_lookup)} entries")
-
-    def get_float(d, key, default=None):
-        val = d.get(key, "")
-        if val == "" or val == "-" or val is None:
-            return default
-        try:
-            return float(val)
-        except (ValueError, TypeError):
-            return default
-
-    def get_int(d, key, default=None):
-        val = d.get(key, "")
-        if val == "" or val == "-" or val is None:
-            return default
-        try:
-            return int(val)
-        except (ValueError, TypeError):
-            return default
-
-    updated_count = 0
-    for variant in db.query(Variant).filter(Variant.vcf_file_id == vcf_file_id).all():
-        v_chrom = variant.chromosome
-        if v_chrom.lower().startswith("chr"):
-            v_chrom = v_chrom[3:]
-
-        key = f"{v_chrom}:{variant.position}:{variant.ref}:{variant.alt}"
-        vep_data = vep_lookup.get(key)
-        if vep_data:
-            variant.hgvs_c = vep_data.get("hgvsc", "")
-            variant.hgvs_p = vep_data.get("hgvsp", "")
-            variant.consequence = vep_data.get("consequence", "")
-            variant.impact = vep_data.get("impact", "")
-            variant.transcript = vep_data.get("transcript_id", "")
-            gene_symbol = vep_data.get("gene_symbol", "")
-            if gene_symbol:
-                variant.all_genes = gene_symbol
-                if not variant.gene:
-                    variant.gene = gene_symbol
-            variant.cdna_position = vep_data.get("cdna_position", "")
-            variant.cds_position = vep_data.get("cds_position", "")
-            variant.protein_position = vep_data.get("protein_position", "")
-            variant.amino_acids = vep_data.get("amino_acids", "")
-            variant.codons = vep_data.get("codons", "")
-            variant.exon = vep_data.get("exon", "")
-            variant.intron = vep_data.get("intron", "")
-            variant.strand = vep_data.get("strand", "")
-            variant.protein_domains = vep_data.get("protein_domains", "")
-            variant.revel_score = get_float(vep_data, "revel_score")
-            variant.cadd = get_float(vep_data, "cadd_phred")
-            variant.gnomad_popmax_af = get_float(vep_data, "gnomAD_popmax_AF")
-            variant.gnomad_eas_af = get_float(vep_data, "gnomAD_eas_AF")
-            variant.gnomad_nhomalt = get_int(vep_data, "gnomAD_nhomalt")
-            variant.spliceai_ds_max = get_float(vep_data, "spliceAI_ds_max")
-            variant.spliceai_type = vep_data.get("spliceAI_type", "")
-            variant.loftee_lof_flag = vep_data.get("loftee_lof_flag", "")
-            variant.loftee_lof_filter = vep_data.get("loftee_lof_filter", "")
-            variant.clinvar_significance = vep_data.get("clinvar_significance", "")
-            variant.clinvar_review_status = vep_data.get("clinvar_review_status", "")
-            variant.clinvar_star_rating = get_int(vep_data, "clinvar_star_rating")
-            variant.pathogenic_rank = get_int(vep_data, "pathogenic_rank")
-            variant.evidence_summary = vep_data.get("evidence_summary", "")
-            variant.sift = vep_data.get("sift", "")
-            variant.polyphen = vep_data.get("polyphen", "")
-            variant.vep_annotated = True
-            updated_count += 1
-
+    job.gene_phenotype_score_path = gene_score_path
+    job.variant_phenotype_score_path = variant_score_path
+    job.phenotype_path = phenotype_path
+    job.status = "completed"
     db.commit()
-    return updated_count
+
+    logger.info(
+        f"VEP job {job.job_id}: saved results "
+        f"(rows={row_count}, gene_score={gene_score_path is not None}, "
+        f"variant_score={variant_score_path is not None})"
+    )
+    return row_count
+
+
+def _build_job_response(job: VEPJob, parquet_available: bool = False) -> VEPJobResponse:
+    return VEPJobResponse(
+        job_id=job.job_id,
+        status=job.status,
+        input_filename=job.input_filename,
+        input_bytes=job.input_bytes,
+        options=job.options,
+        status_url=job.status_url,
+        result_url=job.result_url,
+        log_url=job.log_url,
+        rows=job.rows,
+        error=job.error,
+        created_at=str(job.created_at) if job.created_at else None,
+        updated_at=str(job.updated_at) if job.updated_at else None,
+        csv_path=job.csv_path,
+        parquet_path=job.parquet_path,
+        gene_phenotype_score_path=job.gene_phenotype_score_path,
+        variant_phenotype_score_path=job.variant_phenotype_score_path,
+        ppi_score_path=job.ppi_score_path,
+        phenotype_path=job.phenotype_path,
+        parquet_available=parquet_available,
+    )
 
 
 @router.get("/jobs/{job_id}/status", response_model=VEPJobResponse)
@@ -152,121 +116,40 @@ async def get_vep_job_status(job_id: str, db: Session = Depends(get_db)):
     if not job:
         raise HTTPException(status_code=404, detail=f"VEP job {job_id} not found")
 
-    vep_annotated_count = db.query(Variant).filter(
-        Variant.vcf_file_id == job.vcf_file_id,
-        Variant.vep_annotated == True
-    ).count()
+    completed_statuses = ("completed", "completion", "success", "succeeded", "finished", "done")
+    parquet_available = bool(job.parquet_path) and job.status in completed_statuses
 
-    if vep_annotated_count > 0:
-        job.status = "completed"
-        if job.rows is None or job.rows == 0:
-            job.rows = vep_annotated_count
-        db.commit()
-        logger.info(f"Job {job_id}: already annotated ({vep_annotated_count} variants), returning completed")
-        return VEPJobResponse(
-            job_id=job.job_id,
-            status="completed",
-            input_filename=job.input_filename,
-            input_bytes=job.input_bytes,
-            options=job.options,
-            status_url=job.status_url,
-            result_url=job.result_url,
-            log_url=job.log_url,
-            rows=job.rows,
-            error=job.error,
-            created_at=str(job.created_at) if job.created_at else None,
-            updated_at=str(job.updated_at) if job.updated_at else None,
-            vep_annotated_count=vep_annotated_count,
-        )
+    if parquet_available:
+        return _build_job_response(job, parquet_available=True)
 
     if job.status in ("failed", "timeout", "error"):
-        return VEPJobResponse(
-            job_id=job.job_id,
-            status=job.status,
-            input_filename=job.input_filename,
-            input_bytes=job.input_bytes,
-            options=job.options,
-            status_url=job.status_url,
-            result_url=job.result_url,
-            log_url=job.log_url,
-            rows=job.rows,
-            error=job.error,
-            created_at=str(job.created_at) if job.created_at else None,
-            updated_at=str(job.updated_at) if job.updated_at else None,
-            vep_annotated_count=0,
-        )
+        return _build_job_response(job, parquet_available=False)
 
+    # Still in progress — poll remote VEP service
     vep_service = VEPService()
     try:
         remote_status = await vep_service.get_status(job_id)
-        logger.info(f"Job {job_id}: remote status = {remote_status.status}, result_url = {remote_status.result_url}")
+        logger.info(f"Job {job_id}: remote={remote_status.status}")
+
         job.status = remote_status.status
-        if remote_status.result_url:
-            job.result_url = remote_status.result_url
-        if remote_status.rows is not None:
-            job.rows = remote_status.rows
+        if remote_status.files_url:
+            job.result_url = remote_status.files_url
         if remote_status.error:
             job.error = remote_status.error
         db.commit()
     except Exception as e:
         logger.error(f"Failed to fetch VEP remote status for {job_id}: {e}")
-        return VEPJobResponse(
-            job_id=job.job_id,
-            status=job.status or "queued",
-            input_filename=job.input_filename,
-            input_bytes=job.input_bytes,
-            options=job.options,
-            status_url=job.status_url,
-            result_url=job.result_url,
-            log_url=job.log_url,
-            rows=job.rows,
-            error=job.error,
-            created_at=str(job.created_at) if job.created_at else None,
-            updated_at=str(job.updated_at) if job.updated_at else None,
-            vep_annotated_count=0,
-        )
+        return _build_job_response(job, parquet_available=False)
 
-    completed_statuses = ("completed", "completion", "success", "finished", "done")
-    if job.status in completed_statuses and job.result_url:
-        import time
-        time.sleep(3)
+    if job.status in completed_statuses:
         try:
-            csv_content = await vep_service.get_result(job.result_url)
-            if csv_content:
-                parser = VEPCSVParser()
-                vep_result = parser.parse(csv_content)
-                logger.info(f"VEP returned {len(vep_result.rows)} annotated variants for job {job_id}")
-
-                if len(vep_result.rows) > 0:
-                    updated_count = apply_vep_results_to_variants(vep_result.rows, job.vcf_file_id, db)
-                    job.rows = len(vep_result.rows)
-                    job.status = "completed"
-                    db.commit()
-                    vep_annotated_count = updated_count
-                    logger.info(f"VEP annotation completed: {updated_count} variants updated for job {job_id}")
-                else:
-                    job.rows = 0
-                    job.status = "completed"
-                    db.commit()
-                    logger.info(f"VEP returned 0 variants for job {job_id}")
+            row_count = await _fetch_and_save_vep_results(job, db)
+            parquet_available = row_count > 0
+            logger.info(f"VEP annotation completed for job {job_id}: {row_count} rows")
         except Exception as e:
-            logger.error(f"Failed to fetch VEP results for {job_id}: {e}")
+            logger.error(f"Failed to fetch/save VEP results for {job_id}: {e}")
 
-    return VEPJobResponse(
-        job_id=job.job_id,
-        status=job.status,
-        input_filename=job.input_filename,
-        input_bytes=job.input_bytes,
-        options=job.options,
-        status_url=job.status_url,
-        result_url=job.result_url,
-        log_url=job.log_url,
-        rows=job.rows,
-        error=job.error,
-        created_at=str(job.created_at) if job.created_at else None,
-        updated_at=str(job.updated_at) if job.updated_at else None,
-        vep_annotated_count=vep_annotated_count,
-    )
+    return _build_job_response(job, parquet_available=parquet_available)
 
 
 @router.get("/jobs/{job_id}", response_model=VEPJobResponse)
@@ -275,26 +158,10 @@ async def get_vep_job(job_id: str, db: Session = Depends(get_db)):
     if not job:
         raise HTTPException(status_code=404, detail=f"VEP job {job_id} not found")
 
-    vep_annotated_count = db.query(Variant).filter(
-        Variant.vcf_file_id == job.vcf_file_id,
-        Variant.vep_annotated == True
-    ).count()
+    completed_statuses = ("completed", "completion", "success", "succeeded", "finished", "done")
+    parquet_available = bool(job.parquet_path) and job.status in completed_statuses
 
-    return VEPJobResponse(
-        job_id=job.job_id,
-        status=job.status,
-        input_filename=job.input_filename,
-        input_bytes=job.input_bytes,
-        options=job.options,
-        status_url=job.status_url,
-        result_url=job.result_url,
-        log_url=job.log_url,
-        rows=job.rows,
-        error=job.error,
-        created_at=str(job.created_at) if job.created_at else None,
-        updated_at=str(job.updated_at) if job.updated_at else None,
-        vep_annotated_count=vep_annotated_count,
-    )
+    return _build_job_response(job, parquet_available=parquet_available)
 
 
 @router.get("/jobs/vcf/{vcf_file_id}", response_model=VEPJobResponse)
@@ -308,26 +175,10 @@ async def get_vep_job_by_vcf(vcf_file_id: int, db: Session = Depends(get_db)):
     if not job:
         raise HTTPException(status_code=404, detail=f"No VEP job found for VCF file {vcf_file_id}")
 
-    vep_annotated_count = db.query(Variant).filter(
-        Variant.vcf_file_id == job.vcf_file_id,
-        Variant.vep_annotated == True
-    ).count()
+    completed_statuses = ("completed", "completion", "success", "succeeded", "finished", "done")
+    parquet_available = bool(job.parquet_path) and job.status in completed_statuses
 
-    return VEPJobResponse(
-        job_id=job.job_id,
-        status=job.status,
-        input_filename=job.input_filename,
-        input_bytes=job.input_bytes,
-        options=job.options,
-        status_url=job.status_url,
-        result_url=job.result_url,
-        log_url=job.log_url,
-        rows=job.rows,
-        error=job.error,
-        created_at=str(job.created_at) if job.created_at else None,
-        updated_at=str(job.updated_at) if job.updated_at else None,
-        vep_annotated_count=vep_annotated_count,
-    )
+    return _build_job_response(job, parquet_available=parquet_available)
 
 
 @router.get("/jobs/{job_id}/log")
@@ -335,11 +186,9 @@ async def get_vep_job_log(job_id: str, db: Session = Depends(get_db)):
     job = db.query(VEPJob).filter(VEPJob.job_id == job_id).first()
     if not job:
         raise HTTPException(status_code=404, detail=f"VEP job {job_id} not found")
-    if not job.log_url:
-        return {"log": None, "message": "No log URL available for this job"}
     try:
         vep_service = VEPService()
-        log_content = await vep_service.get_log(job.log_url)
+        log_content = await vep_service.get_log(job_id)
         return {"log": log_content}
     except Exception as e:
         logger.error(f"Failed to fetch VEP job log: {e}")

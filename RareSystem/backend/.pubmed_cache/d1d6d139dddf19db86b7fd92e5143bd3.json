@@ -1,0 +1,28 @@
+{
+  "articles": [
+    {
+      "pmid": "28870973",
+      "title": "Primary hyperparathyroidism in young patients in Russia: high frequency of hyperparathyroidism-jaw tumor syndrome.",
+      "authors": [
+        "Mamedova E",
+        "Mokrysheva N",
+        "Vasilyev E",
+        "Petrov V",
+        "Pigarova E",
+        "Kuznetsov S",
+        "Kuznetsov N",
+        "Rozhinskaya L",
+        "Melnichenko G",
+        "Dedov I",
+        "Tiulpakov A"
+      ],
+      "journal": "Endocrine connections",
+      "year": "2017",
+      "abstract": "",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/28870973/",
+      "doi": "10.1530/EC-17-0126"
+    }
+  ],
+  "total_count": 1,
+  "query_used": "CDKN2D gene mutation pathogenic variant"
+}
