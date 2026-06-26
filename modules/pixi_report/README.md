@@ -159,7 +159,7 @@ data/
 | 来源 | [药物临床试验登记与信息公示平台](http://www.chinadrugtrials.org.cn/) |
 | 获取 | 平台无官方全量 CSV，需从登记库导出或爬取后整理 |
 | 字段 | `drug_name`、`indication`、`title`、`applicant`、`main_leader`、`company` 等（见 `tools/china_trials_local.py`） |
-| Git | ✅ 公开登记数据，可提交 |
+
 
 ```bash
 mkdir -p data/ChinaDrug
@@ -174,7 +174,7 @@ mkdir -p data/ChinaDrug
 | 来源 | [Chinese Clinical Trial Registry](https://www.chictr.org.cn/) |
 | 获取 | 官网检索或批量导出后整理为 CSV |
 | 字段 | `public_title`、`intervention`、`study_ailment`、`applicant`、`study_leader` 等 |
-| Git | ✅ 可提交 |
+
 
 ```bash
 mkdir -p data/Chictr
@@ -185,16 +185,16 @@ mkdir -p data/Chictr
 
 | 项 | 内容 |
 |----|------|
-| 文件 | `data/omim/omim_20250411.sqlite3`（文件名可自定） |
+| 文件 | `data/omim/omim.sqlite3`（文件名可自定） |
 | 来源 | [OMIM](https://www.omim.org/)，需遵守使用条款；通常由团队从授权渠道构建 SQLite 快照 |
 | 用途 | 报告 §3.x.1 **遗传模式**；NCBI 无摘要时 **基因功能回退** |
-| Git | ❌ 体积大 / 许可限制，已 gitignore |
+
 
 `.env` 配置：
 
 ```bash
 OMIM_ENABLED=1
-OMIM_DB_PATH=./data/omim/omim_20250411.sqlite3
+OMIM_DB_PATH=./data/omim/omim.sqlite3
 GENE_FUNCTION_FALLBACK_OMIM=1
 ```
 
@@ -210,7 +210,7 @@ mkdir -p data/omim
 | 文件 | `data/MONDO/mondo-rare.json` |
 | 来源 | [MONDO Disease Ontology](https://github.com/monarch-initiative/mondo) release JSON 或 rare 子集 |
 | 用途 | 仅 `python main.py --gene ... --mondo-ids MONDO_...`；**报告 API 不读取** |
-| Git | ❌ 建议忽略 |
+
 
 ```bash
 mkdir -p data/MONDO
@@ -225,7 +225,7 @@ mkdir -p data/MONDO
 | 来源 | [ClinPGx Downloads](https://www.clinpgx.org/downloads) |
 | 用途 | 本地 `get_gene_pgx_profile`（用药指南、证据等级等）；**报告 API 不使用** |
 | 何时需要 | 基因检索 CLI 且 `OPEN_TARGETS_ONLY=0` |
-| Git | ❌ zip 体积大，已 gitignore |
+
 
 目录结构：
 
@@ -278,17 +278,9 @@ docker run -d -p 8010:8000 \
 | 外部服务 | Open Targets MCP | enrichment 降级，可能部分章节简略 |
 | 不需要 | PharmGKB、MONDO | 报告 API 不读取 |
 
-用 `fixtures/` 做冒烟测试时，至少准备 **LLM**；OMIM 与试验 CSV 建议补齐以得到完整报告。
 
-### Git 提交建议
+### 数据说明
 
-| 路径 | 提交 |
-|------|------|
-| `data/ChinaDrug/chinadrugtrials.csv` | ✅ |
-| `data/Chictr/chictr.csv` | ✅ |
-| `data/omim/*.sqlite3` | ❌ |
-| `data/MONDO/*` | ❌ |
-| `data/pharmGKB/**` | ❌ |
 
 更细的字段说明与许可备注见 **[data/README.md](data/README.md)**。
 
