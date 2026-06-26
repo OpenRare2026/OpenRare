@@ -46,6 +46,8 @@ PPI 模块可独立运行：`cd modules/pixi_ppi_score && pixi install && pixi r
 ## Pipeline 模块
 
 主流程代码位于 [`modules/pipeline/`](modules/pipeline/README.md)。详见 [modules/pipeline/README.md](modules/pipeline/README.md)。  
+
+## 表型关联模块
 表型关联评分模块代码位于[`modules/pixi_phenotype_score`](modules/pixi_phenotype_score/README.md)。详见 [modules/pixi_phenotype_score/README.md](modules/pixi_phenotype_score/README.md)。
 
 ## PPI 评分模块
