@@ -74,8 +74,9 @@ cp .env.example .env
 | 04 | `04_vep/vep_output.base.csv` | VEP 基础 CSV |
 | 04 | `04_vep/raw_vep.tsv` | 原始 VEP TSV |
 | 04 | `04_vep/vep.log` | VEP 日志 |
-| 05 | `05_vcf_info_to_csv/vep_output.with_info.csv` | 合并 VCF INFO |
-| 06 | `06_result_sorting/vep_output.sorted.csv` | **最终输出** |
+| 05 | `05_vcf_info_to_csv/vep_output.with_info.csv` | 合并 VCF INFO/FORMAT |
+| 06 | `06_genos_evee_annotation/vep_output.with_genos_evee.csv` | GENOS-EVEE 宽表 |
+| 07 | `07_hla_filter/vep_output.no_hla.csv` | **最终输出**（默认 `hla_filter=yes`） |
 | 汇总 | `full_pipeline.outputs.tsv` | 各步路径索引 |
 | 日志 | `logs/full_pipeline.log` | 全流程日志 |
 
@@ -134,6 +135,10 @@ ${OPENRARE_DATA_ROOT}/
 pixi install
 pixi run pipeline-test    # CLI 回归
 pixi run api-test         # API 集成测试
+pixi run mock-smoke-test  # mock 库 + 全开关 dry-run
+pixi run hla-filter-test  # HLA 过滤单测
 ```
+
+迷你 mock 数据库（仅联调/smoke）：[`resource_mock/README.md`](resource_mock/README.md)
 
 本地临时输出默认在 `modules/pipeline/tmp/`（已 gitignore）。

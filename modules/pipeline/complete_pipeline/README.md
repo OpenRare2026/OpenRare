@@ -3,7 +3,7 @@
 > 完整架构和数据资源下载说明见上一层 `../README.md`。本文件保留主程序/API 的详细调用说明。
 
 
-本目录包含 FastAPI 服务（`full_pipeline_api.py`）与 API 任务目录，负责把 phasing、VCF 前处理、假基因注释、VEP runner、VCF INFO 回填 CSV、最终排序串成一个完整流程。
+本目录包含 FastAPI 服务（`full_pipeline_api.py`）与 API 任务目录，负责把 liftover（可选）、phasing、VCF 前处理、假基因注释、VEP runner、VCF INFO 回填、GENOS-EVEE 注释、HLA 过滤串成一个完整流程。
 
 主程序：
 
@@ -32,37 +32,41 @@ pixi run bash scripts/run_full_pipeline.sh \
 
 ## 流程顺序
 
-1. `01_phasing`
+1. `00_liftover`（可选）
+   - 脚本：`modules/vcf_preprocessing/liftover_grch37/scripts/liftover_vcf.py`
+   - 触发：`--input-assembly GRCh37` 或 `auto` 检测到 GRCh37
+   - 输出：`00_liftover/output/output.grch38.norm.vcf.gz`
+
+2. `01_phasing`（可 `--phasing no` 跳过）
    - 脚本：`modules/phasing_beagle_refsupport/scripts/run_beagle_refsupport_pipeline.sh`
-   - 功能：Beagle + 1000G CHN reference panel phasing/ref-support。
+   - 功能：Beagle + CHN reference panel phasing/ref-support。
    - 输出：`*.original_sites.beagle_phase_merged.refsupport.vcf.gz`
 
-2. `02_vcf_preprocessing`
+3. `02_vcf_preprocessing`（`--vaf` / `--regulatory-annotation` / `--ncrna-annotation` 可单独 `no`）
    - 脚本：`modules/vcf_preprocessing/run_vcf_preprocessing.sh`
-   - 功能：VAF 写入 INFO、ENCODE SCREEN cCRE/CRE 注释、GENCODE ncRNA 注释。
+   - 功能：VAF 写入 INFO、ENCODE SCREEN cCRE 注释、GENCODE ncRNA 注释。
    - 输出：`preprocessed.regulatory.vcf.gz`
 
-3. `03_pseudogene_annotation`
+4. `03_pseudogene_annotation`（可 `--pseudogene-annotation no` 跳过）
    - 脚本：`modules/pseudogene_annotation/scripts/annotate_pseudogene.py`
    - 功能：假基因注释，增加 `is_pseudogene`、`pseudogene_name`、`pseudogene_source` INFO 字段。
-   - 说明：该步骤由主程序直接调用，不再单独包 wrapper。
 
-4. `04_vep`
+5. `04_vep`
    - 脚本：`modules/vep_runner/scripts/run_vep_to_csv.py`
-   - 功能：运行 VEP runner，生成基础 VEP CSV。
-   - 说明：在 V3 总流程中，VEP runner 内置的 regulatory/pseudogene/VCF INFO 回填/最终排序都关闭，分别由前置模块和 05/06 处理。
    - 输出：`04_vep/vep_output.base.csv`
 
-5. `05_vcf_info_to_csv`
+6. `05_vcf_info_to_csv`
    - 脚本：`modules/vcf_info_to_csv/scripts/add_vcf_info_to_vep_csv.py`
-   - 功能：解析进入 04 VEP runner 的 VCF，把所有 INFO 字段追加到 VEP CSV，列名格式为 `vcf_info_<INFO_ID>`。
-   - 坐标规则：SNV 按原始 VCF 坐标匹配；indel 兼容 VEP 常见 POS+1 表达；多 ALT 行会合并对应 INFO 值。
    - 输出：`05_vcf_info_to_csv/vep_output.with_info.csv`
 
-6. `06_result_sorting`
-   - 脚本：`modules/result_sorting/scripts/sort_vep_csv.py`
-   - 功能：按 OpenRare 致病性评分逻辑排序，生成最终 CSV。
-   - 输出：`06_result_sorting/vep_output.sorted.csv`
+7. `06_genos_evee_annotation`
+   - 脚本：`modules/genos_evee_annotation/scripts/add_genos_evee_to_csv.py`
+   - 输出：`06_genos_evee_annotation/vep_output.with_genos_evee.csv`
+
+8. `07_hla_filter`（可 `--hla-filter no` 跳过）
+   - 脚本：`modules/hla_filter/scripts/filter_hla_region_csv.py`
+   - 功能：删除 GRCh38 HLA/MHC 区（`chr6:28477797-33448354`）行
+   - 输出：`07_hla_filter/vep_output.no_hla.csv`（**默认最终 CSV**）
 
 ## 推荐最小调用
 
@@ -92,9 +96,16 @@ bash scripts/run_full_pipeline.sh \
 | 参数 | 是否常用 | 默认值 | 说明 |
 |---|---:|---|---|
 | `--input-vcf FILE` | 是，必填 | 无 | 输入患者 VCF。支持 `.vcf` 和 `.vcf.gz`；未压缩 `.vcf` 会自动 bgzip 压缩并建索引。 |
-| `--out-dir DIR` | 是，必填 | 无 | 输出目录。主程序会在其中创建 `00_input` 到 `06_result_sorting` 等子目录。 |
+| `--out-dir DIR` | 是，必填 | 无 | 输出目录。主程序会在其中创建 `00_input` 到 `07_hla_filter` 等子目录。 |
 | `--fork N` | 是，可选 | `1` | VEP fork 数。大样本可适当调高，例如 `4`、`8`、`16`。 |
-| `--hpo-id ID` | 是，可选 | 空 | 患者 HPO ID，例如 `HP:0001250`。支持逗号分隔多个 ID。用于 HPO → tissue → GTEx 表达加权，从而影响转录本选择。 |
+| `--hpo-id ID` | 是，可选 | 空 | 患者 HPO ID，例如 `HP:0001250`。支持逗号分隔多个 ID。 |
+| `--phasing yes\|no` | 是，可选 | `yes` | 是否运行 Beagle phasing。 |
+| `--vaf yes\|no` | 是，可选 | `yes` | 是否计算 VAF/REF_DP/ALT_DP。 |
+| `--regulatory-annotation yes\|no` | 是，可选 | `yes` | 是否运行 cCRE 调控区注释。 |
+| `--ncrna-annotation yes\|no` | 是，可选 | `yes` | 是否运行 ncRNA 注释。 |
+| `--pseudogene-annotation yes\|no` | 是，可选 | `yes` | 是否运行假基因注释。 |
+| `--hla-filter yes\|no` | 是，可选 | `yes` | 是否从最终宽表删除 HLA/MHC 区行。 |
+| `--input-assembly SPEC` | 高级覆盖 | `auto` | `auto` / `GRCh37` / `GRCh38`；GRCh37 时在 phasing 前 liftover。 |
 | `--sample-id ID` | 高级覆盖 | `auto` | 样本名。默认由 phasing 模块自动识别；特殊情况下可手动指定。 |
 | `--chromosomes SPEC` | 高级覆盖 | `1-22` | 要运行的染色体。示例：`22`、`1`、`1-22`、`1,3,5`。测试小 VCF 时常用 `1` 或 `22`。 |
 | `--ref-dir DIR` | 高级覆盖 | `$FULL_PIPELINE_REF_DIR`（默认见主 README） | Beagle CHN reference panel 目录。 |
@@ -275,6 +286,13 @@ API 的字段和主程序参数一一对应。常规字段和高级覆盖字段�
 | `output_dir` | `--out-dir` | 是，可选 | 输出目录；不传则使用 API job 默认输出目录。 |
 | `fork` | `--fork` | 是，可选 | VEP fork 数，默认 1。 |
 | `hpo_id` | `--hpo-id` | 是，可选 | 患者 HPO ID，支持逗号分隔多个 ID。 |
+| `phasing` | `--phasing` | 是，可选 | 是否运行 Beagle phasing，默认 `yes`。 |
+| `vaf` | `--vaf` | 是，可选 | 是否计算 VAF，默认 `yes`。 |
+| `regulatory_annotation` | `--regulatory-annotation` | 是，可选 | 是否运行 cCRE 注释，默认 `yes`。 |
+| `ncrna_annotation` | `--ncrna-annotation` | 是，可选 | 是否运行 ncRNA 注释，默认 `yes`。 |
+| `pseudogene_annotation` | `--pseudogene-annotation` | 是，可选 | 是否运行假基因注释，默认 `yes`。 |
+| `hla_filter` | `--hla-filter` | 是，可选 | 是否删除 HLA/MHC 区行，默认 `yes`。 |
+| `input_assembly` | `--input-assembly` | 高级覆盖 | `auto` / `GRCh37` / `GRCh38`。 |
 | `hpo_file` | `--hpo-id` | 是，可选 | 仅 `/run-upload` 支持，上传 TXT 后自动解析并合并到 `hpo_id`。 |
 | `sample_id` | `--sample-id` | 高级覆盖 | 样本名，默认 `auto`。 |
 | `chromosomes` | `--chromosomes` | 高级覆盖 | 覆盖默认 `1-22`。例如测试 VCF 只有 chr1 时传 `"1"`。 |
@@ -289,6 +307,7 @@ API 的字段和主程序参数一一对应。常规字段和高级覆盖字段�
 | `top_k_transcripts` | `--top-k-transcripts` | 高级覆盖 | 每个 variant-gene 保留的转录本数量。 |
 | `clinical_tissue` | `--clinical-tissue` | 高级覆盖 | 手动传 GTEx tissue。 |
 | `keep_raw_vep` | `--keep-raw-vep` | 高级覆盖 | `true` 对应 `yes`，`false` 对应 `no`。 |
+| `genos_evee_db` | `--genos-evee-db` | 高级覆盖 | GENOS-EVEE CPRA 数据库路径。 |
 | `dry_run` | `--dry-run` | 调试 | 只打印命令，不实际运行。 |
 
 示例：API 只跑 chr1：
@@ -323,7 +342,7 @@ curl -X POST http://127.0.0.1:18081/run \
 主输出文件：
 
 ```text
-<out-dir>/06_result_sorting/vep_output.sorted.csv
+<out-dir>/07_hla_filter/vep_output.no_hla.csv
 ```
 
 关键输出：
@@ -337,7 +356,7 @@ curl -X POST http://127.0.0.1:18081/run \
 | `<out-dir>/04_vep/vep_output.base.csv` | 04 VEP runner 基础 CSV，不含 VCF INFO 展开列。 |
 | `<out-dir>/04_vep/raw_vep.tsv` | VEP 原始 TSV，默认保留。 |
 | `<out-dir>/05_vcf_info_to_csv/vep_output.with_info.csv` | 追加 VCF INFO 字段后的 CSV。 |
-| `<out-dir>/06_result_sorting/vep_output.sorted.csv` | 最终排序 CSV。 |
+| `<out-dir>/07_hla_filter/vep_output.no_hla.csv` | 最终宽表（默认 `hla_filter=yes`）。 |
 | `<out-dir>/full_pipeline.outputs.tsv` | 汇总每一步关键产物路径。 |
 | `<out-dir>/logs/full_pipeline.log` | 全流程日志。 |
 
