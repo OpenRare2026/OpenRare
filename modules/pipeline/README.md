@@ -1,6 +1,6 @@
-# OpenRare Pipeline — 罕见病变异注释与排序全流程
+# OpenRare Pipeline — 罕见病变异注释与宽表输出全流程
 
-从患者 VCF 出发，串联 Beagle phasing、VCF 前置处理、假基因注释、VEP 多插件注释、INFO 回填与致病性排序，一键产出可解读的排序 CSV；支持命令行与 FastAPI 两种调用方式。
+从患者 VCF 出发，串联 Beagle phasing、VCF 前置处理、假基因注释、VEP 多插件注释、INFO 回填、GENOS-EVEE 注释与 HLA 过滤，一键产出可解读的宽表 CSV；支持命令行与 FastAPI 两种调用方式。
 
 ## 目录
 
@@ -69,7 +69,7 @@ pixi run vep-verify-plugins         # 校验数据文件与 tabix 索引
 pixi run pipeline-test    # P001 样本、chr1、约 2 分钟量级（视机器而定）
 ```
 
-成功标志：生成 `tmp/openrare_pipeline_test/06_result_sorting/vep_output.sorted.csv`。
+成功标志：生成 `tmp/openrare_pipeline_test/07_hla_filter/vep_output.no_hla.csv`（默认 `hla_filter=yes`）。
 
 ### 常用 Pixi Task
 
@@ -81,6 +81,8 @@ pixi run pipeline-test    # P001 样本、chr1、约 2 分钟量级（视机器�
 | `pixi run pipeline-test` | P001 + chr1 全流程回归 |
 | `pixi run api` | 启动 FastAPI（默认 `127.0.0.1:18901`） |
 | `pixi run api-test` | 测试 `/health`、`/run`、`/run-upload` |
+| `pixi run mock-smoke-test` | mock 库 + 全开关 dry-run 连通性 |
+| `pixi run hla-filter-test` | HLA 区域行过滤单测 |
 
 ---
 
@@ -114,15 +116,15 @@ pixi run bash scripts/run_full_pipeline.sh \
 step                          path
 original_input_vcf            /path/to/patient.vcf.gz
 ...
-vep_csv                       /path/to/output/06_result_sorting/vep_output.sorted.csv
+vep_csv                       /path/to/output/07_hla_filter/vep_output.no_hla.csv
 full_log                      /path/to/output/logs/full_pipeline.log
 ```
 
 最终 CSV 表头示例（列较多，此处仅示意）：
 
 ```text
-#CHROM,POS,REF,ALT,...,Gene,Consequence,CLIN_SIG,...,rank_score,rank_reason
-chr1,1197557,G,A,...,TTLL10,missense_variant,...,selected,...,consequence=missense_variant(+15); ...
+#CHROM,POS,REF,ALT,...,Gene,Consequence,CLIN_SIG,...,GENOS-EVEE,...
+chr1,1197557,G,A,...,TTLL10,missense_variant,...,0.42,...
 ```
 
 ### 启动 API 服务
@@ -177,11 +179,15 @@ curl -s http://127.0.0.1:18901/jobs/<job_id>/log
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| `GET` | `/health` | 服务状态、默认资源路径、入口脚本是否存在 |
+| `GET` | `/health` | 服务状态、默认资源路径、队列信息 |
 | `POST` | `/run` | JSON 提交任务；`input_vcf` 为服务器上的路径 |
 | `POST` | `/run-upload` | multipart 上传 VCF 并提交任务 |
+| `GET` | `/queue` | 查看 FIFO 队列 |
 | `GET` | `/jobs/{job_id}` | 查询任务状态、命令、输出目录 |
+| `GET` | `/jobs/{job_id}/files` | 列出任务输出目录中的文件 |
+| `GET` | `/jobs/{job_id}/files/{path}` | 下载指定输出文件 |
 | `GET` | `/jobs/{job_id}/log` | 查看任务运行日志 |
+| `GET` | `/jobs/{job_id}/api-log/download` | 下载 API 运行日志 |
 
 ### `POST /run` 请求体（`RunRequest`）
 
@@ -191,6 +197,13 @@ curl -s http://127.0.0.1:18901/jobs/<job_id>/log
 | `output_dir` | string | 否 | `api_jobs/<job_id>/output` | 流水线输出目录 |
 | `fork` | int | 否 | `1` | VEP `--fork` |
 | `hpo_id` | string | 否 | `""` | HPO ID，逗号分隔多个 |
+| `phasing` | string | 否 | `yes` | 是否运行 Beagle phasing |
+| `vaf` | string | 否 | `yes` | 是否计算 VAF/REF_DP/ALT_DP |
+| `regulatory_annotation` | string | 否 | `yes` | 是否运行 cCRE 调控区注释 |
+| `ncrna_annotation` | string | 否 | `yes` | 是否运行 ncRNA 注释 |
+| `pseudogene_annotation` | string | 否 | `yes` | 是否运行假基因注释 |
+| `hla_filter` | string | 否 | `yes` | 是否从最终宽表删除 HLA/MHC 区行 |
+| `input_assembly` | string | 否 | `auto` | `auto` / `GRCh37` / `GRCh38` |
 | `sample_id` | string | 否 | 自动 | 样本名 |
 | `chromosomes` | string | 否 | `1-22` | 染色体范围，如 `1`、`1,3,5` |
 | `ref_dir` | string | 否 | `.env` | Beagle CHN 参考 panel |
@@ -207,7 +220,9 @@ curl -s http://127.0.0.1:18901/jobs/<job_id>/log
 | `job_id` | string | 任务 ID |
 | `status` | string | 初始为 `queued`，随后 `running` / `succeeded` / `failed` |
 | `status_url` | string | 状态查询路径，如 `/jobs/<job_id>` |
+| `files_url` | string | 文件列表路径，如 `/jobs/<job_id>/files` |
 | `output_dir` | string | 本次流水线 `--out-dir` |
+| `queue_position` | int | 队列位置；运行中为 `0`，排队从 `1` 起 |
 
 示例：
 
@@ -216,7 +231,9 @@ curl -s http://127.0.0.1:18901/jobs/<job_id>/log
   "job_id": "a1b2c3d4e5f6...",
   "status": "queued",
   "status_url": "/jobs/a1b2c3d4e5f6...",
-  "output_dir": "/path/to/OpenRare/modules/pipeline/complete_pipeline/api_jobs/a1b2c3d4.../output"
+  "files_url": "/jobs/a1b2c3d4e5f6.../files",
+  "output_dir": "/path/to/OpenRare/modules/pipeline/complete_pipeline/api_jobs/a1b2c3d4.../output",
+  "queue_position": 1
 }
 ```
 
@@ -239,10 +256,20 @@ modules/pipeline/complete_pipeline/api_jobs/<job_id>/
 ├── api_run.log
 ├── input/          # /run-upload 上传的 VCF
 └── output/         # 流水线输出（结构同 CLI --out-dir）
-    └── 06_result_sorting/vep_output.sorted.csv
+    └── 07_hla_filter/vep_output.no_hla.csv
 ```
 
 可通过 `.env` 设置 `FULL_PIPELINE_API_JOBS_DIR` 修改 jobs 根目录。
+
+### Mock 数据（联调 / smoke）
+
+迷你 mock 库位于 `resource_mock/`，配合 `--phasing no` 与 mock BED/DB 路径可快速验证流程连通性：
+
+```bash
+pixi run mock-smoke-test
+```
+
+详见 [`resource_mock/README.md`](resource_mock/README.md)。
 
 ---
 
@@ -256,6 +283,12 @@ modules/pipeline/complete_pipeline/api_jobs/<job_id>/
 | `--out-dir DIR` | 是 | — | 输出根目录 |
 | `--fork N` | 是 | `1` | VEP fork 数 |
 | `--hpo-id ID` | 是 | 空 | HPO ID，逗号分隔 |
+| `--phasing yes\|no` | 否 | `yes` | 是否运行 Beagle phasing |
+| `--vaf yes\|no` | 否 | `yes` | 是否计算 VAF |
+| `--regulatory-annotation yes\|no` | 否 | `yes` | 是否运行 cCRE 注释 |
+| `--ncrna-annotation yes\|no` | 否 | `yes` | 是否运行 ncRNA 注释 |
+| `--pseudogene-annotation yes\|no` | 否 | `yes` | 是否运行假基因注释 |
+| `--hla-filter yes\|no` | 否 | `yes` | 是否删除 HLA/MHC 区行 |
 | `--sample-id ID` | 否 | `auto` | 样本名 |
 | `--chromosomes SPEC` | 否 | `1-22` | 如 `1`、`1,3,5` |
 | `--ref-dir DIR` | 否 | `$FULL_PIPELINE_REF_DIR` | Beagle 参考 panel |
@@ -277,28 +310,36 @@ pixi run bash scripts/run_full_pipeline.sh --help
 |------|------|------|--------|
 | 00 | `00_input/` | 输入 VCF 规范化（bgzip + 索引） | `*.vcf.gz` |
 | 00b | `00_liftover/` | GRCh37→GRCh38 liftover（`--input-assembly` 触发） | `output.grch38.norm.vcf.gz` |
-| 01 | `01_phasing/` | Beagle + CHN 参考 phasing/ref-support | `*.refsupport.vcf.gz` |
-| 02 | `02_vcf_preprocessing/` | VAF、cCRE、ncRNA 注释 | `preprocessed.regulatory.vcf.gz` |
-| 03 | `03_pseudogene_annotation/` | 假基因 INFO 注释 | `preprocessed.pseudogene_annotated.vcf.gz` |
+| 01 | `01_phasing/` | Beagle + CHN 参考 phasing/ref-support（可 `--phasing no` 跳过） | `*.refsupport.vcf.gz` |
+| 02 | `02_vcf_preprocessing/` | VAF、cCRE、ncRNA 注释（各步可 `no` 跳过） | `preprocessed.regulatory.vcf.gz` |
+| 03 | `03_pseudogene_annotation/` | 假基因 INFO 注释（可跳过） | `preprocessed.pseudogene_annotated.vcf.gz` |
 | 04 | `04_vep/` | VEP + CADD/SpliceAI/dbNSFP/LoFTEE/ClinVar 等 | `vep_output.base.csv` |
-| 05 | `05_vcf_info_to_csv/` | VCF INFO 回填到 CSV | `vep_output.with_info.csv` |
-| 06 | `06_result_sorting/` | 致病性评分排序 | **`vep_output.sorted.csv`** |
+| 05 | `05_vcf_info_to_csv/` | VCF INFO/FORMAT 回填到 CSV | `vep_output.with_info.csv` |
+| 06 | `06_genos_evee_annotation/` | GENOS-EVEE 疾病预测分数 | `vep_output.with_genos_evee.csv` |
+| 07 | `07_hla_filter/` | 删除 GRCh38 HLA/MHC 区行（可 `--hla-filter no` 跳过） | **`vep_output.no_hla.csv`** |
 
 ---
 
 ## 输出文件
 
-主结果：
+主结果（默认 `hla_filter=yes`）：
 
 ```text
-<out-dir>/06_result_sorting/vep_output.sorted.csv
+<out-dir>/07_hla_filter/vep_output.no_hla.csv
+```
+
+若 `--hla-filter no`，主结果为：
+
+```text
+<out-dir>/06_genos_evee_annotation/vep_output.with_genos_evee.csv
 ```
 
 | 路径 | 说明 |
 |------|------|
 | `<out-dir>/04_vep/vep_output.base.csv` | VEP 基础 CSV |
 | `<out-dir>/04_vep/raw_vep.tsv` | VEP 原始 TSV（默认保留） |
-| `<out-dir>/05_vcf_info_to_csv/vep_output.with_info.csv` | 含 VCF INFO 列 |
+| `<out-dir>/06_genos_evee_annotation/vep_output.with_genos_evee.csv` | GENOS-EVEE 宽表（HLA 过滤前） |
+| `<out-dir>/07_hla_filter/vep_output.no_hla.csv` | **最终宽表**（默认） |
 | `<out-dir>/full_pipeline.outputs.tsv` | 各步产物路径索引 |
 | `<out-dir>/logs/full_pipeline.log` | 全流程日志 |
 
@@ -321,6 +362,7 @@ modules/pipeline/                    # 本模块（pixi 项目根）
 ├── config/
 │   ├── paths.sh
 │   └── path_utils.py
+├── resource_mock/                   # 迷你 mock 注释库（联调/smoke）
 ├── complete_pipeline/
 │   ├── full_pipeline_api.py         # FastAPI 服务
 │   └── api_jobs/                    # API 任务目录（gitignore）
@@ -330,7 +372,9 @@ modules/pipeline/                    # 本模块（pixi 项目根）
 │   ├── pseudogene_annotation/
 │   ├── vep_runner/
 │   ├── vcf_info_to_csv/
-│   └── result_sorting/
+│   ├── genos_evee_annotation/
+│   ├── hla_filter/
+│   └── result_sorting/              # 排序模块保留，当前主流程默认不启用
 └── test/
     ├── input/P001.genotyper10000.vcf
     ├── prepare_sites_vcf_with_sample.sh
@@ -363,6 +407,10 @@ VEP 配置 [`modules/vep_runner/config/vep_runner_config.json`](modules/vep_runn
 |------|------|
 | [complete_pipeline/README.md](complete_pipeline/README.md) | API 与 CLI 详细参数 |
 | [modules/vep_runner/README.md](modules/vep_runner/README.md) | VEP 插件与注释库安装 |
+| [modules/genos_evee_annotation/README.md](modules/genos_evee_annotation/README.md) | GENOS-EVEE 注释与数据库构建 |
+| [modules/hla_filter/README.md](modules/hla_filter/README.md) | HLA/MHC 区行过滤 |
+| [modules/result_sorting/README.md](modules/result_sorting/README.md) | 可选致病性排序（主流程默认不启用） |
+| [resource_mock/README.md](resource_mock/README.md) | 联调用迷你 mock 库 |
 | [EXTERNAL_PATHS.md](EXTERNAL_PATHS.md) | 外部路径与中间文件说明 |
 
 ### HPO 说明

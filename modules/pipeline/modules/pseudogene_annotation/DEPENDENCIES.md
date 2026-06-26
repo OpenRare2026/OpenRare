@@ -25,9 +25,9 @@
 - Pseudogene.org Human90：`/mnt/workspace/xiongliwen/00.PublicData/Pseudogene/Pseudogene.org/Human90/Human90.txt`
 - HGNC：`/mnt/workspace/xiongliwen/00.PublicData/phenotype_hpo_v1/hgnc_complete_set.txt`
 
-## V3 接入方式
+## 主流程接入方式
 
-总流程在 `complete_pipeline/run_full_pipeline.sh` 的第三步直接调用此模块。总入口内部会：
+总流程在 `scripts/run_full_pipeline.sh` 的第 03 步直接调用此模块（可通过 `--pseudogene-annotation no` 跳过）。总入口内部会：
 
 1. 调用 `annotate_pseudogene.py --input tmp.vcf --output tmp.pseudogene.vcf --log-json ...`
 2. 使用 `bgzip` 压缩为 `.vcf.gz`

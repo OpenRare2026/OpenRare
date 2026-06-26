@@ -52,6 +52,12 @@ class RunRequest(BaseModel):
     output_dir: Optional[str] = Field(None, description="Output directory; default is api_jobs/<job_id>/output")
     fork: int = Field(1, description="VEP fork count, default: 1")
     hpo_id: str = Field("", description="Optional patient HPO ID(s), e.g. HP:0001250 or comma-separated IDs")
+    phasing: str = Field("yes", description="Run Beagle phasing before preprocessing: yes or no")
+    vaf: str = Field("yes", description="Add VAF/REF_DP/ALT_DP before VEP: yes or no")
+    regulatory_annotation: str = Field("yes", description="Run ENCODE cCRE regulatory annotation before VEP: yes or no")
+    ncrna_annotation: str = Field("yes", description="Run GENCODE ncRNA annotation before VEP: yes or no")
+    pseudogene_annotation: str = Field("yes", description="Run pseudogene annotation before VEP: yes or no")
+    hla_filter: str = Field("yes", description="Remove GRCh38 HLA/MHC region rows from final wide CSV: yes or no")
     input_assembly: Optional[str] = Field(
         None,
         description="Input VCF assembly: auto, GRCh37, or GRCh38; GRCh37 triggers liftover before phasing",
@@ -215,7 +221,7 @@ async def lifespan(_app: FastAPI):
 
 app = FastAPI(
     title="OpenRare V3 Queued Pipeline API",
-    version="0.2.0",
+    version="0.4.0",
     lifespan=lifespan,
 )
 
@@ -273,6 +279,12 @@ def build_command(req: RunRequest, output_dir: Path) -> list[str]:
         cmd.extend([name, str(value)])
 
     add_option("--hpo-id", req.hpo_id)
+    add_option("--phasing", req.phasing)
+    add_option("--vaf", req.vaf)
+    add_option("--regulatory-annotation", req.regulatory_annotation)
+    add_option("--ncrna-annotation", req.ncrna_annotation)
+    add_option("--pseudogene-annotation", req.pseudogene_annotation)
+    add_option("--hla-filter", req.hla_filter)
     add_option("--input-assembly", req.input_assembly)
     add_option("--sample-id", req.sample_id)
     add_option("--chromosomes", req.chromosomes)
@@ -341,7 +353,18 @@ def health() -> dict:
         "run_script": str(RUN_SCRIPT),
         "run_script_exists": RUN_SCRIPT.is_file(),
         "minimal_required_request_fields": ["input_vcf"],
-        "common_optional_request_fields": ["output_dir", "fork", "hpo_id"],
+        "common_optional_request_fields": [
+            "output_dir",
+            "fork",
+            "hpo_id",
+            "phasing",
+            "vaf",
+            "regulatory_annotation",
+            "ncrna_annotation",
+            "pseudogene_annotation",
+            "hla_filter",
+            "input_assembly",
+        ],
         "execution": {
             "mode": "single_worker_fifo_queue",
             **queue,
@@ -424,6 +447,12 @@ def submit_upload(
     output_dir: Optional[str] = Form(None),
     fork: int = Form(1),
     hpo_id: str = Form(""),
+    phasing: str = Form("yes"),
+    vaf: str = Form("yes"),
+    regulatory_annotation: str = Form("yes"),
+    ncrna_annotation: str = Form("yes"),
+    pseudogene_annotation: str = Form("yes"),
+    hla_filter: str = Form("yes"),
     input_assembly: Optional[str] = Form(None),
     hpo_file: UploadFile | None = File(None, description="Optional TXT file containing HPO IDs; one per line or separated by comma/space/semicolon"),
     sample_id: Optional[str] = Form(None),
@@ -453,6 +482,12 @@ def submit_upload(
         output_dir=output_dir,
         fork=fork,
         hpo_id=merged_hpo_id,
+        phasing=phasing,
+        vaf=vaf,
+        regulatory_annotation=regulatory_annotation,
+        ncrna_annotation=ncrna_annotation,
+        pseudogene_annotation=pseudogene_annotation,
+        hla_filter=hla_filter,
         input_assembly=input_assembly,
         sample_id=sample_id,
         chromosomes=chromosomes,

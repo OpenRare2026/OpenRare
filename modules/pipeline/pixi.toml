@@ -42,5 +42,7 @@ api = { cmd = [
   "FULL_PIPELINE_API_HOST=${FULL_PIPELINE_API_HOST:-0.0.0.0} FULL_PIPELINE_API_PORT=${FULL_PIPELINE_API_PORT:-18901} exec bash scripts/start_full_pipeline_api.sh",
 ]}
 api-test = { cmd = ["bash", "test/run_api_integration_test.sh"] }
+mock-smoke-test = { cmd = ["bash", "test/run_mock_smoke_dryrun.sh"] }
+hla-filter-test = { cmd = ["bash", "test/run_hla_filter_unit.sh"] }
 vep-setup-plugins = { cmd = ["bash", "modules/vep_runner/scripts/install_vep_plugins.sh"] }
 vep-verify-plugins = { cmd = ["bash", "modules/vep_runner/scripts/verify_vep_plugins.sh"] }
