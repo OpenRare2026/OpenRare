@@ -243,3 +243,10 @@ pkill -f "gateway.main"
 | 模块启动失败 (exit code 1) | 缺少数据或端口冲突 | 运行 `pixi run doctor` 检查 |
 | RAG-HPO 启动卡住 | 向量 DB 未构建或模型未缓存 | 运行 `pixi run build-db` |
 | 端口已被占用 | 其他进程占用 | 修改 `gateway/src/gateway/main.py` → MODULES 中的端口
+
+---
+
+## 联系我们
+
+- **邮箱**: openrare@163.com
+- **问题反馈**: [GitHub Issues](https://github.com/OpenRare2026/OpenRare/issues)
