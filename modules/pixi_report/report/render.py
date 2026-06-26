@@ -85,16 +85,25 @@ def _patient_phenotype_text(context: ReportContext) -> str:
 
 
 def _patient_phenotype_summary(context: ReportContext) -> str:
-    parts: list[str] = []
     if context.meta.clinical_info.strip():
         text = context.meta.clinical_info.strip()
-        parts.append(text[:77] + "..." if len(text) > 80 else text)
-    if context.meta.hpo_terms:
-        hpo = ", ".join(context.meta.hpo_terms[:6])
-        if len(context.meta.hpo_terms) > 6:
-            hpo += " 等"
-        parts.append(hpo)
-    return "；".join(parts) if parts else "未提供临床表型信息"
+        return text[:120] + "..." if len(text) > 123 else text
+
+    labeled_hpo: list[str] = []
+    for line in context.meta.hpo_raw.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        match = re.match(r"(HP:\d+)\s+(.+)", line)
+        if match:
+            labeled_hpo.append(f"{match.group(1)} {match.group(2)}")
+    if labeled_hpo:
+        summary = "；".join(labeled_hpo[:4])
+        if len(labeled_hpo) > 4:
+            summary += " 等"
+        return summary
+
+    return "未提供临床表型信息"
 
 
 def _gene_associated_phenotype(card: GeneCard) -> str:
@@ -112,41 +121,35 @@ def _best_phenotype_overlap(associated: str, patient_text: str) -> float:
     return max(_phenotype_overlap(part, patient_text) for part in parts)
 
 
-def _phenotype_match_label(overlap: float, associated: str, patient_text: str) -> str:
+def _phenotype_match_label(overlap: float) -> str:
     if overlap >= 0.35:
-        return "与患者临床/HPO 重叠较高"
+        return "与患者表型关联性较高"
     if overlap >= 0.15:
-        return "与患者临床/HPO 部分重叠"
-    has_latin = bool(re.search(r"[a-zA-Z]", associated))
-    has_cjk = bool(re.search(r"[\u4e00-\u9fff]", patient_text))
-    if has_latin and has_cjk:
-        return "关键词未直接重叠（疾病名为英文、临床为中文时可能低估匹配度，需结合临床判断）"
-    return "与患者临床/HPO 未见明显重叠"
+        return "与患者表型部分相关"
+    return "与患者表型未见明确关联"
 
 
 def _fallback_key_findings(context: ReportContext) -> list[str]:
     findings: list[str] = []
     patient_text = _patient_phenotype_text(context)
-    patient_summary = _patient_phenotype_summary(context)
 
     for card in context.gene_cards:
         associated = _gene_associated_phenotype(card)
         if associated:
             overlap = _best_phenotype_overlap(associated, patient_text)
-            match_label = _phenotype_match_label(overlap, associated, patient_text)
+            match_label = _phenotype_match_label(overlap)
             findings.append(
                 f"**{card.gene_symbol}**（致病性排名 #{card.best_pathogenic_rank}）："
-                f"主要关联疾病/表型为「{associated}」；{match_label}。"
-                f"患者表型：{patient_summary}。"
+                f"数据库关联表型为「{associated}」，{match_label}。"
             )
         else:
             findings.append(
                 f"**{card.gene_symbol}**（致病性排名 #{card.best_pathogenic_rank}）："
-                f"暂无 Open Targets 主要关联疾病/表型；需结合患者表型（{patient_summary}）与变异证据进一步评估。"
+                f"暂无明确关联表型记录，需结合临床与变异证据评估。"
             )
 
     if not context.gene_cards:
-        findings.append(f"当前无 Top 基因；患者表型：{patient_summary}。")
+        findings.append(f"当前无 Top 基因；患者表型：{_patient_phenotype_summary(context)}。")
 
     return findings
 

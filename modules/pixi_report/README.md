@@ -29,8 +29,8 @@ FastAPI（`POST /report/stream`）需要三个输入文件。路径可为绝对�
 由上游 **VCF 注释与排序服务** 产出（典型流程：VCF → VEP/功能注释 → 打分排序 → 导出 CSV）。本模块不负责生成宽表，只消费其结果。
 
 - 编码：UTF-8（支持 BOM）
-- 格式：首行为表头，每行一条 **变异 × 转录本** 记录；同一变异（`chrom,pos,ref,alt`）可有多行，流水线会按 `vep_pick`、`tx_rank_within_variant`、`mane_select`、`pathogenic_rank` 等规则选代表转录本
-- **Top 基因**按各基因变异的最小 `pathogenic_rank` 升序选取（`top_n` 参数）
+- 格式：首行为表头，每行一条 **基因 × 变异 × 已选转录本** 记录；上游已完成转录本选择，本模块不再按位点去重或二次选转录本
+- 同一变异（`chrom,pos,ref,alt`）可因多基因注释出现多行，Top 基因按各基因的 `pathogenic_rank_1` 最小值升序选取（`top_n` 参数）；若宽表无 `pathogenic_rank_1` 列则回退 `pathogenic_rank`
 
 **必选列**（表头名需一致）：
 
@@ -40,7 +40,8 @@ FastAPI（`POST /report/stream`）需要三个输入文件。路径可为绝对�
 | `pos` | 位置 |
 | `ref` / `alt` | 参考 / 变异等位基因 |
 | `gene_symbol` | 基因符号 |
-| `pathogenic_rank` | 致病性排序分（整数，越小越优先） |
+| `pathogenic_rank_1` | 致病性排序名次（整数，越小越优先；新宽表主排序字段） |
+| `pathogenic_rank` | 旧版致病性排序（仅当宽表无 `pathogenic_rank_1` 列时使用） |
 
 **报告展示常用列**（缺失时报告中显示为 `-`）：
 
@@ -56,7 +57,8 @@ FastAPI（`POST /report/stream`）需要三个输入文件。路径可为绝对�
 | `vcf_info_VAF` / `vcf_info_DP` 等 `vcf_info_*` | 样本 VCF INFO |
 | `clinical_best_tissue` / `gtex_transcript_top5_tissues` | 表达组织 |
 | `evidence_summary` | 证据摘要 |
-| `GENOS-EVEE` | GENOS-EVEE 评分（可选） |
+| `ppi_final` | 变异级 PPI 得分（Gene Card 展示回退来源） |
+| `GENOS-EVEE` | Genos-Mutation 评分（可选；宽表列名仍为 `GENOS-EVEE`，报告中展示为 Genos-Mutation） |
 
 完整列表示例见 `examples/demo_case/wide_table.csv` 或 `fixtures/wide_table.csv`。
 
@@ -93,7 +95,12 @@ HP:0001250 癫痫/Epilepsy
 
 ### 4. PPI 文件（`ppi_path`，可选）
 
-保留字段，当前报告流水线 **不做处理**，可传空字符串。
+基因级 PPI 得分查找表，用于 Gene Card **PPI 得分**展示（优先于宽表 `ppi_final` 列）。
+
+- 编码：UTF-8（支持 BOM）
+- **必选列**：`gene`（基因符号）、`ppi_final`（PPI 得分，0–1 浮点）
+- 示例：`test_data/new_case/ppi_score.csv`
+- 若未提供或基因无匹配，回退宽表 `ppi_final`；仍无则显示 `-`
 
 ### API 请求示例
 
@@ -104,6 +111,7 @@ curl -N -X POST http://127.0.0.1:8800/report/stream \
     "wide_path": "fixtures/wide_table.csv",
     "phenotype_path": "fixtures/phenotype.csv",
     "hpo_path": "fixtures/hpo_terms.txt",
+    "ppi_path": "",
     "top_n": 5
   }'
 ```

@@ -12,8 +12,7 @@ from report.models import (
     TopGeneSummary,
     VariantRecord,
 )
-
-_VARIANT_KEY_FIELDS = ("chrom", "pos", "ref", "alt")
+from report.ppi_lookup import load_ppi_lookup, resolve_gene_ppi_score
 
 
 def _display(value: str | None) -> str:
@@ -31,7 +30,19 @@ def _parse_int(value: str | None) -> int | None:
         return None
 
 
-def _row_to_variant(row: dict[str, str]) -> VariantRecord:
+def _detect_pathogenic_rank_1_column(rows: list[dict[str, str]]) -> bool:
+    if not rows:
+        return False
+    return "pathogenic_rank_1" in rows[0]
+
+
+def _resolve_pathogenic_rank(row: dict[str, str], *, use_rank_1: bool) -> int | None:
+    if use_rank_1:
+        return _parse_int(row.get("pathogenic_rank_1"))
+    return _parse_int(row.get("pathogenic_rank"))
+
+
+def _row_to_variant(row: dict[str, str], *, use_rank_1: bool) -> VariantRecord:
     return VariantRecord(
         chrom=_display(row.get("chrom")),
         pos=_display(row.get("pos")),
@@ -82,27 +93,11 @@ def _row_to_variant(row: dict[str, str]) -> VariantRecord:
         clinical_best_tissue=_display(row.get("clinical_best_tissue")),
         clinical_transcript_tpm=_display(row.get("clinical_transcript_tpm")),
         gtex_transcript_top5_tissues=_display(row.get("gtex_transcript_top5_tissues")),
-        pathogenic_rank=_parse_int(row.get("pathogenic_rank")),
+        pathogenic_rank=_resolve_pathogenic_rank(row, use_rank_1=use_rank_1),
+        ppi_final=_display(row.get("ppi_final")),
         evidence_summary=_display(row.get("evidence_summary")),
         genos_evee=_display(row.get("GENOS-EVEE")),
     )
-
-
-def _variant_key(row: dict[str, str]) -> tuple[str, str, str, str]:
-    return tuple(_display(row.get(field)) for field in _VARIANT_KEY_FIELDS)  # type: ignore[return-value]
-
-
-def _transcript_score(row: dict[str, str]) -> tuple[int, int, int, int, int]:
-    vep_pick = 1 if (row.get("vep_pick") or "").strip() == "1" else 0
-    tx_rank = _parse_int(row.get("tx_rank_within_variant")) or 999
-    mane_select = 1 if (row.get("mane_select") or "").strip() not in ("", "-") else 0
-    pathogenic_rank = _parse_int(row.get("pathogenic_rank")) or 999999
-    tx_rank_score = -tx_rank
-    return (vep_pick, tx_rank_score, mane_select, -pathogenic_rank, -tx_rank)
-
-
-def _select_best_row(rows: list[dict[str, str]]) -> dict[str, str]:
-    return max(rows, key=_transcript_score)
 
 
 def load_wide_table_rows(path: str | Path) -> list[dict[str, str]]:
@@ -112,15 +107,14 @@ def load_wide_table_rows(path: str | Path) -> list[dict[str, str]]:
 
 
 def select_variants(rows: list[dict[str, str]]) -> list[VariantRecord]:
-    grouped: dict[tuple[str, str, str, str], list[dict[str, str]]] = defaultdict(list)
-    for row in rows:
-        grouped[_variant_key(row)].append(row)
+    """Convert wide-table rows to variant records.
 
-    selected: list[VariantRecord] = []
-    for variant_rows in grouped.values():
-        selected.append(_row_to_variant(_select_best_row(variant_rows)))
-
-    selected.sort(
+    New-format wide tables already contain one selected transcript per
+    gene × variant row; no per-locus transcript deduplication is applied.
+    """
+    use_rank_1 = _detect_pathogenic_rank_1_column(rows)
+    variants = [_row_to_variant(row, use_rank_1=use_rank_1) for row in rows]
+    variants.sort(
         key=lambda item: (
             item.pathogenic_rank if item.pathogenic_rank is not None else 999999,
             item.gene_symbol,
@@ -128,10 +122,15 @@ def select_variants(rows: list[dict[str, str]]) -> list[VariantRecord]:
             int(item.pos) if item.pos.isdigit() else item.pos,
         )
     )
-    return selected
+    return variants
 
 
-def build_gene_cards(variants: list[VariantRecord], top_n: int) -> tuple[list[GeneCard], ReportSummary]:
+def build_gene_cards(
+    variants: list[VariantRecord],
+    top_n: int,
+    *,
+    ppi_lookup: dict[str, str] | None = None,
+) -> tuple[list[GeneCard], ReportSummary]:
     by_gene: dict[str, list[VariantRecord]] = defaultdict(list)
     for variant in variants:
         by_gene[variant.gene_symbol].append(variant)
@@ -155,6 +154,7 @@ def build_gene_cards(variants: list[VariantRecord], top_n: int) -> tuple[list[Ge
         )
         primary = gene_variants[0]
         top_clinvar = primary.clinvar_significance if primary.clinvar_significance != "-" else ""
+        ppi_score = resolve_gene_ppi_score(gene, gene_variants, ppi_lookup=ppi_lookup)
         card = GeneCard(
             rank=index,
             gene_symbol=gene,
@@ -168,6 +168,7 @@ def build_gene_cards(variants: list[VariantRecord], top_n: int) -> tuple[list[Ge
             if primary.clinical_best_tissue != "-"
             else "",
             genos_evee=primary.genos_evee,
+            ppi_score=ppi_score,
             evidence_summary=primary.evidence_summary,
             variants=gene_variants,
         )
@@ -182,6 +183,7 @@ def build_gene_cards(variants: list[VariantRecord], top_n: int) -> tuple[list[Ge
                 main_consequence=primary.consequence,
                 main_pathway="-",
                 main_associated_phenotype="-",
+                ppi_score=ppi_score,
                 evidence_summary=primary.evidence_summary,
             )
         )
@@ -201,7 +203,8 @@ def build_report_context(meta: SampleMeta, top_n: int = 5) -> ReportContext:
 
     rows = load_wide_table_rows(meta.wide_table_path)
     variants = select_variants(rows)
-    gene_cards, summary = build_gene_cards(variants, top_n=top_n)
+    ppi_lookup = load_ppi_lookup(meta.ppi_path) if meta.ppi_path.strip() else None
+    gene_cards, summary = build_gene_cards(variants, top_n=top_n, ppi_lookup=ppi_lookup)
 
     return ReportContext(
         meta=meta,
