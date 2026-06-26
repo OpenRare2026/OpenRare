@@ -5,7 +5,7 @@
 
 
 <div align="center">
-  <img src="./OpenRare.JPG" alt="OpenRare 标志" width="500">
+  <img src="./OpenRare.png" alt="OpenRare 标志" width="500">
 </div>
 
 [🇨🇳 中文版本](README_zh.md) | [🇬🇧 English Version](README.md)
