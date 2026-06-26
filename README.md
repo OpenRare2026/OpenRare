@@ -180,16 +180,13 @@ pkill -f "gateway.main"
 | Service | Port | Notes |
 |---------|------|-------|
 | gateway | 8100 | Public entry point |
-| pipeline | 15001 | VEP annotation API |
-| ppi_score | 15002 | PPI scoring API |
-| phenotype_score | 7773 | Phenotype scoring API |
-| RAG-HPO | 8010 | HPO extraction API |
-| rare_sort | 5010 | Variant ranking API |
-| report | 8800 | Report generation API |
+| RAG-HPO | 5001 | HPO extraction API |
+| pipeline | 5002 | VEP annotation API |
+| phenotype_score | 5003 | Phenotype scoring API |
+| ppi_score | 5004 | PPI scoring API |
+| rare_sort | 5005 | Variant ranking API |
+| report | 5006 | Report generation API |
 | RareSystem | 18000 | Full-stack diagnosis (backend) |
-
-Ports above 1024 avoid conflicts with common system services.
-Adjust in `gateway/src/gateway/main.py` → `MODULES` if needed.
 
 ---
 
