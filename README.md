@@ -154,3 +154,40 @@ curl http://127.0.0.1:8100/m/rare_sort/jobs
 - **gateway dying after SSH exits**: use `setsid` not `nohup`
 - **HTTP 502 from httpx**: check `HTTP_PROXY` env var, add `trust_env=False`
 - **RAG-HPO stuck at startup**: pre-build vector DB with `pixi run -m modules/pixi_RAG-HPO/pixi.toml build-db`
+
+## Progress Summary (2026-06-26)
+
+### What works
+
+| Layer | Status | Notes |
+|-------|--------|-------|
+| **doctor** | ✅ | `pixi run doctor` — 7 modules, zero false positives |
+| **gateway** | ✅ | `pixi run -e gateway up` — subprocess launch + dispatch |
+| **pipeline runner** | ✅ | `--remote` (112/113) and local mode, 6-step chain |
+| **pipeline module** | ✅ 113-tested | VCF→phasing→VEP→csv, needs `.env` data paths |
+| **ppi_score module** | ✅ 113-tested | Service starts, 23 data files missing but API responds |
+| **phenotype_score** | ⚠️ 113-tested | Service starts, needs `external_data/` symlinks |
+| **rare_sort** | ✅ 113-tested | Zero-config, tested on both macOS and Linux |
+| **report** | ✅ 113-tested | Zero-config service start |
+| **RAG-HPO** | ⚠️ | Code OK, needs vector DB + SapBERT model (2.5GB) |
+| **RareSystem** | ⚠️ | Code OK, needs DATABASE_URL + full service config |
+
+### 113 deployment fixes (reference for first-time setup)
+
+| # | Problem | Fix |
+|---|---------|-----|
+| 1 | `platforms = ["osx-arm64"]` only | Add `"linux-64"` to rare_sort pixi.toml |
+| 2 | Port 18901/9000 conflict with prod | Use 15001/15002 in gateway MODULES |
+| 3 | `nohup` kills gateway on SSH exit | Use `setsid ... & disown` |
+| 4 | Pipeline missing `.env` → silent fail | Create `.env` with data paths |
+| 5 | `OPENRARE_PUBLIC_DATA_ROOT` wrong | Point to data with `Pseudogene/` + `phenotype_hpo_v1/` |
+| 6 | Phenotype needs `external_data/` | Symlink from existing data or download |
+| 7 | RAG-HPO needs HF model + vector DB | Copy from 112 cache or `pixi run build-db` |
+| 8 | `HTTP_PROXY` breaks httpx to 172.27.x | `trust_env=False` in AsyncClient |
+
+### What's left
+
+- Full local pipeline end-to-end test on 113 (phenotype→ppi→rank→report chain)
+- RAG-HPO model transfer to 113 and service start
+- RareSystem configuration and startup
+- Docker Compose for one-command deployment
