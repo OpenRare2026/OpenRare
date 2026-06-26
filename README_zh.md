@@ -100,12 +100,12 @@ Gateway 会为每个模块启动独立的 pixi 子进程，各模块可使用不
 | 服务 | 端口 | 说明 |
 |------|------|------|
 | gateway | 8100 | 统一入口 |
-| pipeline | 15001 | VEP 注释 API |
-| ppi_score | 15002 | PPI 评分 API |
-| phenotype_score | 7773 | 表型评分 API |
-| RAG-HPO | 8010 | HPO 提取 API |
-| rare_sort | 5010 | 变异排序 API |
-| report | 8800 | 报告生成 API |
+| RAG-HPO | 5001 | HPO 提取 API |
+| pipeline | 5002 | VEP 注释 API |
+| phenotype_score | 5003 | 表型评分 API |
+| ppi_score | 5004 | PPI 评分 API |
+| rare_sort | 5005 | 变异排序 API |
+| report | 5006 | 报告生成 API |
 | RareSystem | 18000 | 全栈诊断系统 |
 
 ---

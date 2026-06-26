@@ -46,47 +46,45 @@ REPO_ROOT = find_root(Path(__file__).resolve())
 # shell-script setup (pipeline, phenotype_score).
 
 MODULES = {
+    "RAG-HPO": {
+        "manifest": "modules/pixi_RAG-HPO/pixi.toml",
+        "port": 5001,
+        "health": "/api/v1/health",
+        "cmd": ["uvicorn", "server:app", "--host", "127.0.0.1", "--port", "5001"],
+        "cwd": "modules/pixi_RAG-HPO/src",
+    },
     "pipeline": {
         "manifest": "modules/pipeline/pixi.toml",
-        "port": 15001,
+        "port": 5002,
         "health": "/health",
-        # shell script handles cwd + env
         "task": "api",
-    },
-    "ppi_score": {
-        "manifest": "modules/pixi_ppi_score/pixi.toml",
-        "port": 15002,
-        "health": "/health",
-        "cmd": ["uvicorn", "app.api:app", "--host", "127.0.0.1", "--port", "15002"],
-        "cwd": "modules/pixi_ppi_score",
-        "env": {"PYTHONPATH": "app"},
     },
     "phenotype_score": {
         "manifest": "modules/pixi_phenotype_score/pixi.toml",
-        "port": 7773,
+        "port": 5003,
         "health": "/health",
-        # uses start_api.py for logging/runtime path setup
         "task": "serve",
     },
-    "RAG-HPO": {
-        "manifest": "modules/pixi_RAG-HPO/pixi.toml",
-        "port": 8010,  # shifted from 8000 to avoid common conflicts
-        "health": "/api/v1/health",
-        "cmd": ["uvicorn", "server:app", "--host", "127.0.0.1", "--port", "8010"],
-        "cwd": "modules/pixi_RAG-HPO/src",
+    "ppi_score": {
+        "manifest": "modules/pixi_ppi_score/pixi.toml",
+        "port": 5004,
+        "health": "/health",
+        "cmd": ["uvicorn", "app.api:app", "--host", "127.0.0.1", "--port", "5004"],
+        "cwd": "modules/pixi_ppi_score",
+        "env": {"PYTHONPATH": "app"},
     },
     "rare_sort": {
         "manifest": "modules/pixi_rare_sort_fastapi/pixi.toml",
-        "port": 5010,  # shifted from 5000 (macOS AirPlay)
-        "health": "/jobs",  # no dedicated /health, /jobs returns 200 when alive
-        "cmd": ["uvicorn", "main:app", "--host", "127.0.0.1", "--port", "5010"],
+        "port": 5005,
+        "health": "/jobs",
+        "cmd": ["uvicorn", "main:app", "--host", "127.0.0.1", "--port", "5005"],
         "cwd": "modules/pixi_rare_sort_fastapi",
     },
     "report": {
         "manifest": "modules/pixi_report/pixi.toml",
-        "port": 8800,
+        "port": 5006,
         "health": "/health",
-        "cmd": ["uvicorn", "api.main:app", "--host", "127.0.0.1", "--port", "8800"],
+        "cmd": ["uvicorn", "api.main:app", "--host", "127.0.0.1", "--port", "5006"],
         "cwd": "modules/pixi_report",
     },
     "RareSystem": {
