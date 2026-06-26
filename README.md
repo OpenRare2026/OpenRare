@@ -12,63 +12,54 @@
 
 **An Explainable AI System for Rare Disease Variant Prioritization**
 
-Rare Disease Agent is an open-source genetic analysis system designed for rare disease diagnosis scenarios.
-
-Our goal is not to replace clinical doctors in diagnosis, but to help physicians more efficiently identify candidate pathogenic variants that are most likely to explain patient phenotypes from massive genomic variation data, while providing a traceable, interpretable, and auditable evidence chain.
-
-The system integrates patient clinical manifestations, gene sequencing data, biomedical knowledge bases, and AI Agent technology to construct a complete analysis pipeline from symptom understanding, variant annotation, pathogenicity prioritization, to report generation.
+OpenRare integrates patient clinical manifestations, gene sequencing data,
+biomedical knowledge bases, and AI Agent technology into a complete analysis
+pipeline: symptom understanding → variant annotation → pathogenicity
+prioritization → report generation.
 
 ---
 
-## Environment (Pixi)
+## Architecture
 
-Install once in the repository root directory to uniformly manage all modules:
-
-```bash
-cp modules/pipeline/.env.example modules/pipeline/.env   # Configure external data paths
-pixi install
-pixi run pipeline-test    # or pixi run api
+```
+pixi_openrare_test/
+├── pixi.toml                    # Root workspace + shared tasks
+├── doctor/                      # Module health check CLI
+├── gateway/                     # Single-entry orchestrator
+├── pipeline/                    # End-to-end pipeline runner
+└── modules/
+    ├── pipeline/                # VCF → VEP annotation → pathogenic sorting
+    ├── pixi_ppi_score/          # Protein-protein interaction network scoring
+    ├── pixi_phenotype_score/    # HPO semantic similarity scoring
+    ├── pixi_RAG-HPO/            # Clinical phenotype → HPO term extraction (LLM+RAG)
+    ├── pixi_rare_sort_fastapi/  # Variant-level scoring and ranking
+    ├── pixi_report/             # Genetic testing report generation (DeepAgents)
+    └── RareSystem/              # Full-stack genetic diagnosis system (FastAPI+React)
 ```
 
-Common tasks (root `pixi.toml`):
+Each module runs in its **own isolated Pixi environment** — independent Python
+versions and dependency trees. The **gateway** launches modules as subprocesses
+and serves as the single public entry point. A **pipeline runner** coordinates
+data flow across all six analysis steps.
 
-| Task | Description |
-|------|-------------|
-| `pipeline-test` | Full pipeline smoke test |
-| `api` | Start Full Pipeline API |
-| `api-test` | API integration test |
-| `vep-dry-run` | VEP configuration dry-run |
-| `vep-setup-plugins` / `vep-verify-plugins` | VEP plugin installation and verification |
+---
 
-You can also develop within the pipeline subdirectory: `cd modules/pipeline && pixi install && pixi run pipeline-test`.
-The PPI module can run independently: `cd modules/pixi_ppi_score && pixi install && pixi run serve`.
+## Prerequisites
 
-## Pipeline Module
+- **Pixi** ≥ 0.68 — [install guide](https://pixi.sh/latest/#installation)
+- **Linux x86_64** (most modules require conda-forge/bioconda packages)
+- **Disk space**: ~50 GB for VEP cache and reference data (pipeline module)
 
-Main pipeline code is located at [`modules/pipeline/`](modules/pipeline/README.md). See [modules/pipeline/README.md](modules/pipeline/README.md) for details.
+---
 
-## PPI Scoring Module
+## Quick Start
 
-The PPI scoring service is located at [`modules/pixi_ppi_score/`](modules/pixi_ppi_score/README.md), supporting phenotype-gene CSV, VEP CSV, and HPO input, outputting PPI scoring tables and fused final scores.
-
-## Verified Deployment (Linux, pixi 0.68+)
-
-Tested on 172.27.206.113 (Ubuntu 24.04, x86_64). All commands from repo root.
-
-### Prerequisites
-
-```bash
-# Install pixi if not present
-curl -fsSL https://pixi.sh/install.sh | bash
-# Or use the shared binary: /mnt/workspace/hujie/pixi
-```
-
-### Quick Install
+### 1. Clone and install
 
 ```bash
 git clone <repo-url> && cd pixi_openrare_test
 
-# Install all module environments (one-time, ~10 min)
+# Install all module environments (~10 min, requires network)
 for m in pipeline pixi_ppi_score pixi_phenotype_score pixi_RAG-HPO \
          pixi_rare_sort_fastapi pixi_report RareSystem; do
     pixi install -m modules/$m/pixi.toml
@@ -76,118 +67,204 @@ done
 pixi install -e gateway
 ```
 
-### Configure Data Paths
+### 2. Configure data paths
 
-Three modules need external data. Point them to existing data or download:
+Three modules require external data. Copy example configs and fill in paths:
+
+**pipeline** — VEP cache, reference genome, annotation databases (~50 GB):
 
 ```bash
-# pipeline — VEP cache + reference + plugins (~50 GB)
-cat > modules/pipeline/.env << EOF
-OPENRARE_DATA_ROOT=/path/to/vep_runner_resource
-OPENRARE_PUBLIC_DATA_ROOT=/path/to/public_data
-FULL_PIPELINE_REF_DIR=/path/to/beagle/CHN_ref
-FULL_PIPELINE_BEAGLE_JAR=/path/to/beagle.27Feb25.75f.jar
-FULL_PIPELINE_GENOS_EVEE_DB=/path/to/genos_evee.cpra.tsv.gz
-FULL_PIPELINE_API_PORT=15001
-EOF
+cp modules/pipeline/.env.example modules/pipeline/.env
+# Edit modules/pipeline/.env and set:
+#   OPENRARE_DATA_ROOT      — VEP cache + plugin directory
+#   OPENRARE_PUBLIC_DATA_ROOT — public reference data (HGNC, pseudogene DB)
+#   FULL_PIPELINE_REF_DIR   — Beagle phasing reference panel
+#   FULL_PIPELINE_BEAGLE_JAR — Beagle JAR path
+#   FULL_PIPELINE_GENOS_EVEE_DB — genos_evee database
+```
 
-# ppi_score — HGNC, HPO, OMIM, StringDB (~5 GB)
-cat > modules/pixi_ppi_score/.env << EOF
-RARE_PPI_HOST=0.0.0.0
-RARE_PPI_PORT=15002
-RARE_PPI_DATA_DIR=/path/to/ppi_data
-EOF
+OPENRARE_PUBLIC_DATA_ROOT must contain these subdirectories:
 
-# phenotype_score — symlink or env var to external_data/
+```
+$OPENRARE_PUBLIC_DATA_ROOT/
+├── phenotype_hpo_v1/
+│   └── hgnc_complete_set.txt
+└── Pseudogene/
+    ├── GENCODE/release_49/gencode.v49.2wayconspseudos.gtf.gz
+    └── Pseudogene.org/Human90/Human90.txt
+```
+
+VEP plugins and annotation databases are configured separately in
+`modules/pipeline/modules/vep_runner/config/vep_runner_config.json`.
+
+**ppi_score** — HGNC, HPO ontology, OMIM, StringDB (~5 GB):
+
+```bash
+cp modules/pixi_ppi_score/.env.example modules/pixi_ppi_score/.env
+# Edit modules/pixi_ppi_score/.env and set:
+#   RARE_PPI_DATA_DIR — directory containing hgnc_complete_set.txt,
+#                       hp.obo, mim2gene.txt, genemap2.txt, etc.
+```
+
+Required files under RARE_PPI_DATA_DIR: `hgnc_complete_set.txt`, `hp.obo`,
+`mim2gene.txt`, `genemap2.txt`, plus StringDB, GTEx, HPA, and DEPMAP data.
+See [modules/pixi_ppi_score/docs/DEPENDENCIES.md](modules/pixi_ppi_score/docs/DEPENDENCIES.md).
+
+**phenotype_score** — HPO ontology, HGNC, OMIM, Orphanet:
+
+```bash
+cd modules/pixi_phenotype_score
+# Option A: symlink to existing data
+ln -sf /path/to/external_data external_data
+
+# Option B: set environment variable
 export PHENOTYPE_DATA_DIR=/path/to/external_data
 ```
 
-### Start All Services
+Required structure under external_data:
+`hpo/{hp.obo,phenotype.hpoa,genes_to_disease.txt}`,
+`hgnc/hgnc_complete_set.txt`, `mondo/mondo-rare.obo`,
+`omim/omim_20250411.sqlite3`, `orphanet/Orphapackets`,
+`indexes/orpha_gene_profiles.pkl`.
+
+**RAG-HPO** — LLM API key, pre-built FAISS vector database:
 
 ```bash
-# Daemonize (survives SSH disconnect):
-setsid pixi run -e gateway up > /tmp/gateway.log 2>&1 & disown
+cp modules/pixi_RAG-HPO/.env.example modules/pixi_RAG-HPO/.env
+# Edit modules/pixi_RAG-HPO/.env and set:
+#   RAG_HPO_API_KEY     — LLM API key
+#   RAG_HPO_BASE_URL    — LLM endpoint
+#   RAG_HPO_MODEL       — model name
+
+# Build the FAISS vector database (requires internet for SapBERT model)
+cd modules/pixi_RAG-HPO && pixi run build-db
+```
+
+### 3. Start all services
+
+```bash
+# Start all modules via the gateway (daemon):
+setsid pixi run -e gateway up > /tmp/openrare_gateway.log 2>&1 & disown
 
 # Check status:
 curl http://127.0.0.1:8100/health
 pixi run doctor
 ```
 
-### Port Map
-
-| Module | Default Port | Notes |
-|--------|-------------|-------|
-| gateway | 8100 | Public entry |
-| pipeline | 15001 | Avoids prod 18901 |
-| ppi_score | 15002 | Avoids prod 9000 |
-| phenotype_score | 7773 | |
-| RAG-HPO | 8010 | Avoids prod 8000/9003 |
-| rare_sort | 5010 | Avoids macOS AirPlay 5000 |
-| report | 8800 | |
-| RareSystem | 18000 | Needs full DB config |
-
-### Verified: 5/7 modules start clean on Linux
-
-```
-✅ pipeline          — with .env → VEP data
-✅ ppi_score         — with .env → luqi/data
-✅ phenotype_score   — zero config
-✅ rare_sort         — zero config (needs linux-64 in platforms)
-✅ report            — zero config
-❌ RAG-HPO           — needs pre-built FAISS vector DB (run pixi run build-db)
-❌ RareSystem        — needs DATABASE_URL + downstream service URLs
-```
-
-### Smoke Test (local mode)
+### 4. Run the analysis pipeline
 
 ```bash
-# Health check all modules via gateway dispatch
-curl http://127.0.0.1:8100/health
-curl http://127.0.0.1:8100/m/pipeline/health
-curl http://127.0.0.1:8100/m/rare_sort/jobs
+# Full 6-step pipeline (HPO→VEP→Phenotype→PPI→Rank→Report):
+pixi run -e gateway pipeline-full \
+  -v /path/to/sample.vcf \
+  -t "patient symptom description" \
+  -o ./output_dir \
+  --chromosomes 1-22
+
+# Or run individual module tasks:
+pixi run api                    # Start pipeline API standalone
+pixi run pipeline-test          # Smoke-test the pipeline
 ```
 
-### Troubleshooting
+### 5. Stop
 
-- **Port conflicts**: production services on 18901/9000/8000 → use ports above
-- **rare_sort "unsupported platform"**: add `linux-64` to its pixi.toml platforms
-- **gateway dying after SSH exits**: use `setsid` not `nohup`
-- **HTTP 502 from httpx**: check `HTTP_PROXY` env var, add `trust_env=False`
-- **RAG-HPO stuck at startup**: pre-build vector DB with `pixi run -m modules/pixi_RAG-HPO/pixi.toml build-db`
+```bash
+# Ctrl-C if running in foreground, or:
+pkill -f "gateway.main"
+```
 
-## Progress Summary (2026-06-26)
+---
 
-### What works
+## Port Map
 
-| Layer | Status | Notes |
-|-------|--------|-------|
-| **doctor** | ✅ | `pixi run doctor` — 7 modules, zero false positives |
-| **gateway** | ✅ | `pixi run -e gateway up` — subprocess launch + dispatch |
-| **pipeline runner** | ✅ | `--remote` (112/113) and local mode, 6-step chain |
-| **pipeline module** | ✅ 113-tested | VCF→phasing→VEP→csv, needs `.env` data paths |
-| **ppi_score module** | ✅ 113-tested | Service starts, 23 data files missing but API responds |
-| **phenotype_score** | ⚠️ 113-tested | Service starts, needs `external_data/` symlinks |
-| **rare_sort** | ✅ 113-tested | Zero-config, tested on both macOS and Linux |
-| **report** | ✅ 113-tested | Zero-config service start |
-| **RAG-HPO** | ⚠️ | Code OK, needs vector DB + SapBERT model (2.5GB) |
-| **RareSystem** | ⚠️ | Code OK, needs DATABASE_URL + full service config |
+| Service | Port | Notes |
+|---------|------|-------|
+| gateway | 8100 | Public entry point |
+| pipeline | 15001 | VEP annotation API |
+| ppi_score | 15002 | PPI scoring API |
+| phenotype_score | 7773 | Phenotype scoring API |
+| RAG-HPO | 8010 | HPO extraction API |
+| rare_sort | 5010 | Variant ranking API |
+| report | 8800 | Report generation API |
+| RareSystem | 18000 | Full-stack diagnosis (backend) |
 
-### 113 deployment fixes (reference for first-time setup)
+Ports above 1024 avoid conflicts with common system services.
+Adjust in `gateway/src/gateway/main.py` → `MODULES` if needed.
 
-| # | Problem | Fix |
-|---|---------|-----|
-| 1 | `platforms = ["osx-arm64"]` only | Add `"linux-64"` to rare_sort pixi.toml |
-| 2 | Port 18901/9000 conflict with prod | Use 15001/15002 in gateway MODULES |
-| 3 | `nohup` kills gateway on SSH exit | Use `setsid ... & disown` |
-| 4 | Pipeline missing `.env` → silent fail | Create `.env` with data paths |
-| 5 | `OPENRARE_PUBLIC_DATA_ROOT` wrong | Point to data with `Pseudogene/` + `phenotype_hpo_v1/` |
-| 6 | Phenotype needs `external_data/` | Symlink from existing data or download |
-| 7 | RAG-HPO needs HF model + vector DB | Copy from 112 cache or `pixi run build-db` |
-| 8 | `HTTP_PROXY` breaks httpx to 172.27.x | `trust_env=False` in AsyncClient |
+---
 
-### What's left
+## Module Overview
 
-- Full local pipeline end-to-end test on 113 (phenotype→ppi→rank→report chain)
-- RAG-HPO model transfer to 113 and service start
-- RareSystem configuration and startup
-- Docker Compose for one-command deployment
+| Module | Description | Docs |
+|--------|-------------|------|
+| pipeline | VCF → phasing → VEP annotation → pathogenic sorting | [README](modules/pipeline/README.md) |
+| pixi_ppi_score | PPI network scoring with StringDB | [README](modules/pixi_ppi_score/README.md) |
+| pixi_phenotype_score | HPO semantic similarity scoring | [README](modules/pixi_phenotype_score/README.md) |
+| pixi_RAG-HPO | LLM+RAG phenotype extraction | [README](modules/pixi_RAG-HPO/README.md) |
+| pixi_rare_sort_fastapi | Variant-level scoring and ranking | [README](modules/pixi_rare_sort_fastapi/README.md) |
+| pixi_report | Genetic testing report (DeepAgents+MCP) | [README](modules/pixi_report/README.md) |
+| RareSystem | Full-stack diagnosis (FastAPI+React+Neo4j) | [README](modules/RareSystem/README.md) |
+
+---
+
+## Development Tools
+
+### doctor — module health check
+
+```bash
+pixi run doctor
+```
+
+Reports readiness of all 7 modules: environment variables, data file existence,
+code importability. No modules are modified — read-only diagnostics.
+
+### Pipeline runner
+
+```bash
+# Local mode (services must be running via gateway):
+pixi run -e gateway pipeline-full -v sample.vcf -t "symptoms"
+
+# Remote mode (use existing services without starting locally):
+pixi run -e gateway pipeline-full --remote -v sample.vcf -t "symptoms"
+
+# Limit chromosomes (faster for test data):
+pixi run -e gateway pipeline-full --chromosomes 1 -v sample.vcf -t "symptoms"
+```
+
+---
+
+## Troubleshooting
+
+| Symptom | Likely cause | Solution |
+|---------|-------------|----------|
+| `unsupported-platform` on install | Module pixi.toml missing your platform | Add platform via `pixi workspace platform add linux-64` |
+| Pipeline job fails immediately | `.env` not configured | Create `.env` from `.env.example`, verify paths exist |
+| `FileNotFoundError` in pipeline job | Missing data under OPENRARE_PUBLIC_DATA_ROOT | Ensure Pseudogene/ and phenotype_hpo_v1/ subdirectories exist |
+| Gateway exits after SSH disconnect | `nohup` doesn't shield pixi subprocesses | Use `setsid ... & disown` |
+| Module exits with code 1 on start | Missing data path or port conflict | Run `pixi run doctor`, check port availability |
+| RAG-HPO server hangs at startup | Vector DB not built, model not cached | Run `pixi run build-db` in RAG-HPO module directory |
+| HTTP 502 from pipeline runner | HTTP_PROXY intercepts local traffic | Unset HTTP_PROXY or use `trust_env=False` |
+| Port already in use | Another process on that port | Change port in `gateway/src/gateway/main.py` → MODULES |
+
+---
+
+## Data Sources
+
+Most external data files referenced above can be obtained from:
+
+- **VEP cache & plugins**: [Ensembl VEP installation](https://useast.ensembl.org/info/docs/tools/vep/script/vep_cache.html)
+- **HGNC complete set**: <https://www.genenames.org/download/>
+- **HPO ontology (hp.obo)**: <https://github.com/obophenotype/human-phenotype-ontology>
+- **OMIM**: <https://www.omim.org/downloads> (requires license)
+- **Orphanet**: <https://www.orphadata.com/>
+- **StringDB**: <https://string-db.org/>
+- **ClinVar**: <https://ftp.ncbi.nlm.nih.gov/pub/clinvar/>
+- **dbNSFP**: <https://sites.google.com/site/jpopgen/dbNSFP>
+- **CADD**: <https://cadd.gs.washington.edu/download>
+- **SpliceAI**: <https://github.com/Illumina/SpliceAI>
+- **AlphaMissense**: <https://github.com/google-deepmind/alphamissense>
+- **GTEx**: <https://gtexportal.org/home/datasets>
+- **SapBERT model**: <https://huggingface.co/pritamdeka/SapBERT-mnli-snli-scinli-scitail-mednli-stsb>
+
+For the full list of required files per module, see each module's README and
+configuration files (`.env.example`, `paths.example.toml`, `config/paths.toml`).
