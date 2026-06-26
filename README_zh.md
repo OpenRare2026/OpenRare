@@ -80,7 +80,7 @@ LLM + RAG 驱动的临床表型自动提取系统，从任意语言病历中提�
 
 ## 统一入口（Gateway）
 
-所有模块通过 Gateway 统一启动和管理，对外暴露单一端口（8100）。
+所有模块通过 Gateway 统一启动和管理，对外暴露单一端口（8000）。
 
 ```bash
 # 安装 gateway 环境
@@ -90,7 +90,7 @@ pixi install -e gateway
 setsid pixi run -e gateway up > /tmp/openrare_gateway.log 2>&1 & disown
 
 # 检查状态：
-curl http://127.0.0.1:8100/health
+curl http://127.0.0.1:8000/health
 ```
 
 Gateway 会为每个模块启动独立的 pixi 子进程，各模块可使用不同的 Python 版本和依赖，互不冲突。
@@ -99,14 +99,14 @@ Gateway 会为每个模块启动独立的 pixi 子进程，各模块可使用不
 
 | 服务 | 端口 | 说明 |
 |------|------|------|
-| gateway | 8100 | 统一入口 |
-| RAG-HPO | 5001 | HPO 提取 API |
-| pipeline | 5002 | VEP 注释 API |
-| phenotype_score | 5003 | 表型评分 API |
-| ppi_score | 5004 | PPI 评分 API |
-| rare_sort | 5005 | 变异排序 API |
-| report | 5006 | 报告生成 API |
-| RareSystem | 18000 | 全栈诊断系统 |
+| gateway | 8000 | 统一入口 |
+| RAG-HPO | 8001 | HPO 提取 API |
+| pipeline | 8002 | VEP 注释 API |
+| phenotype_score | 8003 | 表型评分 API |
+| ppi_score | 8004 | PPI 评分 API |
+| rare_sort | 8005 | 变异排序 API |
+| report | 8006 | 报告生成 API |
+| RareSystem | 8007 | 全栈诊断系统 |
 
 ---
 
@@ -202,7 +202,7 @@ cd modules/pixi_RAG-HPO && pixi run build-db
 
 ```bash
 setsid pixi run -e gateway up > /tmp/openrare_gateway.log 2>&1 & disown
-curl http://127.0.0.1:8100/health
+curl http://127.0.0.1:8000/health
 pixi run doctor
 ```
 
