@@ -23,6 +23,28 @@ The system integrates patient clinical manifestations, gene sequencing data, bio
 
 ---
 
+## System Requirements
+
+### Minimum Configuration
+
+| Component | Specification |
+|-----------|---------------|
+| CPU | 8 cores |
+| Memory | 32 GB |
+| Disk | 1 TB available space |
+| OS | Linux |
+
+### Recommended Configuration
+
+| Component | Specification |
+|-----------|---------------|
+| CPU | 16 cores or more |
+| Memory | 64 GB or more |
+| Disk | 2 TB SSD available space |
+| OS | Linux |
+
+---
+
 ## Environment Setup (Pixi)
 
 Install once in the repository root directory to uniformly manage all modules:
