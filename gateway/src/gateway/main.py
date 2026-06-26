@@ -48,50 +48,50 @@ REPO_ROOT = find_root(Path(__file__).resolve())
 MODULES = {
     "RAG-HPO": {
         "manifest": "modules/pixi_RAG-HPO/pixi.toml",
-        "port": 5001,
+        "port": 8001,
         "health": "/api/v1/health",
-        "cmd": ["uvicorn", "server:app", "--host", "127.0.0.1", "--port", "5001"],
+        "cmd": ["uvicorn", "server:app", "--host", "127.0.0.1", "--port", "8001"],
         "cwd": "modules/pixi_RAG-HPO/src",
     },
     "pipeline": {
         "manifest": "modules/pipeline/pixi.toml",
-        "port": 5002,
+        "port": 8002,
         "health": "/health",
         "task": "api",
     },
     "phenotype_score": {
         "manifest": "modules/pixi_phenotype_score/pixi.toml",
-        "port": 5003,
+        "port": 8003,
         "health": "/health",
         "task": "serve",
     },
     "ppi_score": {
         "manifest": "modules/pixi_ppi_score/pixi.toml",
-        "port": 5004,
+        "port": 8004,
         "health": "/health",
-        "cmd": ["uvicorn", "app.api:app", "--host", "127.0.0.1", "--port", "5004"],
+        "cmd": ["uvicorn", "app.api:app", "--host", "127.0.0.1", "--port", "8004"],
         "cwd": "modules/pixi_ppi_score",
         "env": {"PYTHONPATH": "app"},
     },
     "rare_sort": {
         "manifest": "modules/pixi_rare_sort_fastapi/pixi.toml",
-        "port": 5005,
+        "port": 8005,
         "health": "/jobs",
-        "cmd": ["uvicorn", "main:app", "--host", "127.0.0.1", "--port", "5005"],
+        "cmd": ["uvicorn", "main:app", "--host", "127.0.0.1", "--port", "8005"],
         "cwd": "modules/pixi_rare_sort_fastapi",
     },
     "report": {
         "manifest": "modules/pixi_report/pixi.toml",
-        "port": 5006,
+        "port": 8006,
         "health": "/health",
-        "cmd": ["uvicorn", "api.main:app", "--host", "127.0.0.1", "--port", "5006"],
+        "cmd": ["uvicorn", "api.main:app", "--host", "127.0.0.1", "--port", "8006"],
         "cwd": "modules/pixi_report",
     },
     "RareSystem": {
         "manifest": "modules/RareSystem/pixi.toml",
-        "port": 18000,
+        "port": 8007,
         "health": "/api/health",
-        "cmd": ["uvicorn", "main:app", "--host", "127.0.0.1", "--port", "18000"],
+        "cmd": ["uvicorn", "main:app", "--host", "127.0.0.1", "--port", "8007"],
         "cwd": "modules/RareSystem/backend",
     },
 }
@@ -192,7 +192,7 @@ async def lifespan(app: FastAPI):
     ready = await wait_healthy()
     app.state.ready_modules = ready
     app.state.client = httpx.AsyncClient(timeout=120.0)
-    print(f"[gateway] ready on http://0.0.0.0:8100 — {len(ready)}/{len(MODULES)} modules up", flush=True)
+    print(f"[gateway] ready on http://0.0.0.0:8000 — {len(ready)}/{len(MODULES)} modules up", flush=True)
     yield
     await app.state.client.aclose()
     stop_modules()
@@ -266,7 +266,7 @@ async def pipeline_status():
 
 
 def main() -> None:
-    uvicorn.run(app, host="0.0.0.0", port=8100)
+    uvicorn.run(app, host="0.0.0.0", port=8000)
 
 
 if __name__ == "__main__":

@@ -22,18 +22,18 @@ import httpx
 # ── Local config ──────────────────────────────────────────────────────
 
 _LOCAL = {
-    "RAG-HPO":          ("127.0.0.1", 5001),
-    "pipeline":         ("127.0.0.1", 5002),
-    "phenotype_score":  ("127.0.0.1", 5003),
-    "ppi_score":        ("127.0.0.1", 5004),
-    "rare_sort":        ("127.0.0.1", 5005),
-    "report":           ("127.0.0.1", 5006),
+    "RAG-HPO":          ("127.0.0.1", 8001),
+    "pipeline":         ("127.0.0.1", 8002),
+    "phenotype_score":  ("127.0.0.1", 8003),
+    "ppi_score":        ("127.0.0.1", 8004),
+    "rare_sort":        ("127.0.0.1", 8005),
+    "report":           ("127.0.0.1", 8006),
 }
 
 _active_targets = _LOCAL
 
 GATEWAY_HOST = "127.0.0.1"
-GATEWAY_PORT = 8100
+GATEWAY_PORT = 8000
 _use_gateway: bool | None = None
 
 

@@ -147,7 +147,7 @@ cd modules/pixi_RAG-HPO && pixi run build-db
 setsid pixi run -e gateway up > /tmp/openrare_gateway.log 2>&1 & disown
 
 # Check status:
-curl http://127.0.0.1:8100/health
+curl http://127.0.0.1:8000/health
 pixi run doctor
 ```
 
@@ -179,14 +179,14 @@ pkill -f "gateway.main"
 
 | Service | Port | Notes |
 |---------|------|-------|
-| gateway | 8100 | Public entry point |
-| RAG-HPO | 5001 | HPO extraction API |
-| pipeline | 5002 | VEP annotation API |
-| phenotype_score | 5003 | Phenotype scoring API |
-| ppi_score | 5004 | PPI scoring API |
-| rare_sort | 5005 | Variant ranking API |
-| report | 5006 | Report generation API |
-| RareSystem | 18000 | Full-stack diagnosis (backend) |
+| gateway | 8000 | Public entry point |
+| RAG-HPO | 8001 | HPO extraction API |
+| pipeline | 8002 | VEP annotation API |
+| phenotype_score | 8003 | Phenotype scoring API |
+| ppi_score | 8004 | PPI scoring API |
+| rare_sort | 8005 | Variant ranking API |
+| report | 8006 | Report generation API |
+| RareSystem | 8007 | Full-stack diagnosis (backend) |
 
 ---
 
