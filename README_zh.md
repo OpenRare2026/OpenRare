@@ -1,4 +1,8 @@
-# OpenRare
+# OpenRare 
+![last commit](https://img.shields.io/badge/last_commit-2026.06.26-blue)
+![License: MIT](https://img.shields.io/badge/License-MIT-red.svg)
+![Badge](https://hitscounter.dev/api/hit?url=https%3A%2F%2Fgithub.com%2FOpenRare2026%2FOpenRare&label=Visitors&icon=github&color=%23198754&message=&style=flat&tz=UTC)
+
 
 <div align="center">
   <img src="./OpenRare.JPG" alt="OpenRare 标志" width="500">
@@ -53,6 +57,8 @@ PPI 模块可独立运行：`cd modules/pixi_ppi_score && pixi install && pixi r
 ## PPI 评分模块
 
 PPI 评分服务位于 [`modules/pixi_ppi_score/`](modules/pixi_ppi_score/README.md)，支持 phenotype-gene CSV、VEP CSV 和 HPO 输入，输出 PPI 评分表与融合后的 final score。
+
+PPI 外部数据库可从仓库根目录一键准备：`pixi run ppi-download-data && pixi run ppi-check-data`。需要交给其他 Agent 执行时，可直接使用 [`modules/pixi_ppi_score/docs/DATA_SETUP_PROMPT.md`](modules/pixi_ppi_score/docs/DATA_SETUP_PROMPT.md)。
 
 ## 报告生成模块
 
