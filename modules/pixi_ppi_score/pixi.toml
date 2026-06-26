@@ -21,6 +21,8 @@ owlready2 = "*"
 [tasks]
 serve = "bash scripts/run_api.sh"
 health = "bash scripts/curl_health.sh"
+download-data = "bash app/download_data.sh"
+check-data = "python scripts/check_data_files.py"
 score = "bash scripts/curl_score.sh"
 clean-case = "bash scripts/curl_clean_case.sh"
 clean-case-upload = "bash scripts/curl_clean_case_upload.sh"

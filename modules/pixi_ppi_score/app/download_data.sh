@@ -7,10 +7,19 @@ DATA_DIR="${RARE_PPI_DATA_DIR:-${PROJECT_DIR}/../../../data}"
 LOG_DIR="${SCRIPT_DIR}/logs"
 GTEX_V11_SOURCE_DIR="${GTEX_V11_SOURCE_DIR:-${PROJECT_DIR}/../../../data/GTEx/v11}"
 GTEX_V11_GCT="GTEx_Analysis_v11_RSEMv1.3.3_gene_median_tpm.gct.gz"
-PYTHON_BIN="${RARE_PPI_PYTHON:-${PROJECT_DIR}/ppi_env/bin/python}"
+PYTHON_BIN="${RARE_PPI_PYTHON:-}"
+if [[ -z "$PYTHON_BIN" ]]; then
+  if command -v python >/dev/null 2>&1; then
+    PYTHON_BIN="$(command -v python)"
+  elif command -v python3 >/dev/null 2>&1; then
+    PYTHON_BIN="$(command -v python3)"
+  else
+    echo "[ERROR] python/python3 not found. Run through Pixi with: pixi run download-data" >&2
+    exit 1
+  fi
+fi
 if [[ ! -x "$PYTHON_BIN" ]]; then
-  echo "[ERROR] Python environment not found: $PYTHON_BIN" >&2
-  echo "[ERROR] Run ${SCRIPT_DIR}/setup_env.sh first, or set RARE_PPI_PYTHON." >&2
+  echo "[ERROR] Python executable not found: $PYTHON_BIN" >&2
   exit 1
 fi
 export DATA_DIR
