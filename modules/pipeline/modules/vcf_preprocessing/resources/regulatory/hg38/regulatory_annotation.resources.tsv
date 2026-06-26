@@ -1,0 +1,10 @@
+field	value
+source_name	ENCODE SCREEN candidate cis-Regulatory Elements cCREs
+source_file_accession	ENCFF420VPZ
+source_url	https://www.encodeproject.org/files/ENCFF420VPZ/@@download/ENCFF420VPZ.bed.gz
+genome_build	GRCh38/hg38
+raw_file	resources/regulatory/hg38/ENCFF420VPZ.bed.gz
+normalized_bed	resources/regulatory/hg38/encode_screen_v4_grch38_ccre.slim.bed.gz
+normalized_bed_columns	chrom,start,end,ccre_id,ccre_class
+source_tag_written_to_vcf	ENCODE_SCREEN_v4_GRCh38
+info_fields	REG_CCRE_ID,REG_CCRE_CLASS,REG_CCRE_COUNT,REG_CCRE_SOURCE

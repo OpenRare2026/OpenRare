@@ -1,0 +1,48 @@
+# Standalone manifest for modules/pipeline.
+# Monorepo default: install & run from repo root (../pixi.toml).
+#   cd OpenRare && pixi install && pixi run pipeline-test
+
+[workspace]
+name = "openrare-pipeline"
+version = "0.1.0"
+description = "OpenRare variant annotation pipeline with bioconda ensembl-vep"
+channels = ["conda-forge", "bioconda"]
+platforms = ["linux-64"]
+
+[dependencies]
+python = ">=3.11"
+ensembl-vep = "115.*"
+bcftools = "*"
+openjdk = ">=17"
+fastapi = "*"
+uvicorn = "*"
+pydantic = "*"
+numpy = "*"
+pandas = "*"
+duckdb = "*"
+
+[activation]
+scripts = ["scripts/load-env.sh"]
+
+[tasks]
+vep-dry-run = { cmd = [
+  "python",
+  "modules/vep_runner/scripts/run_vep_to_csv.py",
+  "-i", "test/input/P001.genotyper10000.vcf",
+  "-o", "tmp/openrare_vep_dryrun.csv",
+  "--dry-run",
+  "--hgvs",
+]}
+pipeline-test = { cmd = [
+  "bash", "-c",
+  "mkdir -p tmp && bash scripts/run_full_pipeline.sh --input-vcf test/input/P001.genotyper10000.vcf --out-dir tmp/openrare_pipeline_test --chromosomes 1 --fork 4 --keep-raw-vep yes --sample-id P001",
+]}
+api = { cmd = [
+  "bash", "-c",
+  "FULL_PIPELINE_API_HOST=${FULL_PIPELINE_API_HOST:-0.0.0.0} FULL_PIPELINE_API_PORT=${FULL_PIPELINE_API_PORT:-18901} exec bash scripts/start_full_pipeline_api.sh",
+]}
+api-test = { cmd = ["bash", "test/run_api_integration_test.sh"] }
+mock-smoke-test = { cmd = ["bash", "test/run_mock_smoke_dryrun.sh"] }
+hla-filter-test = { cmd = ["bash", "test/run_hla_filter_unit.sh"] }
+vep-setup-plugins = { cmd = ["bash", "modules/vep_runner/scripts/install_vep_plugins.sh"] }
+vep-verify-plugins = { cmd = ["bash", "modules/vep_runner/scripts/verify_vep_plugins.sh"] }
