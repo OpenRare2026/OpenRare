@@ -1,0 +1,112 @@
+# OpenRare monorepo — root Pixi workspace
+#
+# Install once at repo root:
+#   pixi install
+#
+# Module-specific tasks use cwd under modules/<name>/.
+# Each module may also keep its own pixi.toml for isolated development
+# (cd modules/pipeline && pixi run ...).
+#
+# Add a new module:
+#   1. Create modules/<name>/ with code + optional .env.example
+#   2. Add [tasks] below with cwd = "modules/<name>"
+#   3. Add module deps to [dependencies] or a dedicated feature table later
+
+[workspace]
+name = "openrare"
+version = "0.1.0"
+description = "OpenRare monorepo for rare-disease genomic analysis modules"
+channels = ["conda-forge", "bioconda"]
+platforms = ["linux-64", "osx-arm64"]
+
+[dependencies]
+# Shared runtime (pipeline module today; extend when adding modules)
+python = ">=3.11"
+openjdk = ">=17"
+bcftools = "*"
+# --- pipeline module ---
+ensembl-vep = "115.*"
+fastapi = "*"
+uvicorn = "*"
+pydantic = "*"
+numpy = "*"
+pandas = "*"
+duckdb = "*"
+
+[activation]
+scripts = ["scripts/load-env.sh"]
+
+# ---------------------------------------------------------------------------
+# modules/pipeline — variant annotation & sorting pipeline
+# See modules/pipeline/README.md
+# ---------------------------------------------------------------------------
+
+[tasks]
+doctor = "python -m doctor.main"
+pipeline-vep-dry-run = { cwd = "modules/pipeline", cmd = [
+  "python",
+  "modules/vep_runner/scripts/run_vep_to_csv.py",
+  "-i", "test/input/P001.genotyper10000.vcf",
+  "-o", "tmp/openrare_vep_dryrun.csv",
+  "--dry-run",
+  "--hgvs",
+]}
+pipeline-test = { cwd = "modules/pipeline", cmd = [
+  "bash", "-c",
+  "mkdir -p tmp && bash scripts/run_full_pipeline.sh --input-vcf test/input/P001.genotyper10000.vcf --out-dir tmp/openrare_pipeline_test --chromosomes 1 --fork 4 --keep-raw-vep yes --sample-id P001",
+]}
+pipeline-api = { cwd = "modules/pipeline", cmd = [
+  "bash", "-c",
+  "FULL_PIPELINE_API_HOST=${FULL_PIPELINE_API_HOST:-127.0.0.1} FULL_PIPELINE_API_PORT=${FULL_PIPELINE_API_PORT:-18901} exec bash scripts/start_full_pipeline_api.sh",
+]}
+pipeline-api-test = { cwd = "modules/pipeline", cmd = ["bash", "test/run_api_integration_test.sh"] }
+pipeline-vep-setup-plugins = { cwd = "modules/pipeline", cmd = ["bash", "modules/vep_runner/scripts/install_vep_plugins.sh"] }
+pipeline-vep-verify-plugins = { cwd = "modules/pipeline", cmd = ["bash", "modules/vep_runner/scripts/verify_vep_plugins.sh"] }
+
+# Short names (same commands as pipeline-* above)
+vep-dry-run = { cwd = "modules/pipeline", cmd = [
+  "python",
+  "modules/vep_runner/scripts/run_vep_to_csv.py",
+  "-i", "test/input/P001.genotyper10000.vcf",
+  "-o", "tmp/openrare_vep_dryrun.csv",
+  "--dry-run",
+  "--hgvs",
+]}
+api = { cwd = "modules/pipeline", cmd = [
+  "bash", "-c",
+  "FULL_PIPELINE_API_HOST=${FULL_PIPELINE_API_HOST:-127.0.0.1} FULL_PIPELINE_API_PORT=${FULL_PIPELINE_API_PORT:-18901} exec bash scripts/start_full_pipeline_api.sh",
+]}
+api-test = { cwd = "modules/pipeline", cmd = ["bash", "test/run_api_integration_test.sh"] }
+vep-setup-plugins = { cwd = "modules/pipeline", cmd = ["bash", "modules/vep_runner/scripts/install_vep_plugins.sh"] }
+vep-verify-plugins = { cwd = "modules/pipeline", cmd = ["bash", "modules/vep_runner/scripts/verify_vep_plugins.sh"] }
+
+# ---------------------------------------------------------------------------
+# modules/pixi_ppi_score — PPI scoring service
+# See modules/pixi_ppi_score/README.md
+# ---------------------------------------------------------------------------
+ppi-download-data = { cwd = "modules/pixi_ppi_score", cmd = ["bash", "app/download_data.sh"] }
+ppi-check-data = { cwd = "modules/pixi_ppi_score", cmd = ["python", "scripts/check_data_files.py"] }
+ppi-health = { cwd = "modules/pixi_ppi_score", cmd = ["bash", "scripts/curl_health.sh"] }
+
+# ---------------------------------------------------------------------------
+# modules/<future> — add tasks here, e.g.:
+# other-test = { cwd = "modules/other", cmd = ["bash", "scripts/test.sh"] }
+# ---------------------------------------------------------------------------
+
+# ---------- gateway / orchestrator ----------
+[feature.gateway.dependencies]
+python = ">=3.12"
+fastapi = "*"
+uvicorn = "*"
+httpx = "*"
+pydantic = ">=2"
+
+[feature.gateway.pypi-dependencies]
+gateway = { path = "gateway", editable = true }
+
+[feature.gateway.tasks]
+up = "python -m gateway.main"
+pipeline-full = "python -m pipeline.main"
+
+[environments]
+gateway = { features = ["gateway"], no-default-feature = true }

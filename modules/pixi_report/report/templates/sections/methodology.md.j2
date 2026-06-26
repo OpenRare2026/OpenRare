@@ -1,0 +1,42 @@
+## 4. 方法学与数据质量
+
+### 4.1 分析流程
+
+```
+原始 VCF
+    ↓
+GRCh37 → GRCh38 liftover（如适用）
+    ↓
+VEP 注释（转录本、功能后果、CADD、SpliceAI 等）
+    ↓
+gnomAD / ClinVar / GTEx 注释
+    ↓
+转录本选择与致病性规则排序
+    ↓
+排序宽表输出（{{ ctx.meta.wide_table_path }}）
+    ↓
+本报告渲染（v1.1 结构）
+```
+
+### 4.2 数据质量说明
+
+| 项目 | 状态 |
+|------|------|
+| 样本编号 | {{ ctx.meta.sample_id }} |
+| VCF 路径 | {{ ctx.meta.vcf_path or "未提供" }} |
+| Liftover 输出 | {{ ctx.meta.liftover_path or "未提供" }} |
+| 比对参考基因组 | GRCh38 |
+| 宽表总行数 | 注释展开行（含多转录本） |
+| 去重后变异数 | {{ ctx.summary.total_variants }} |
+| 注释基因数 | {{ ctx.summary.total_genes }} |
+| 已验证变异 | 无；所有候选均需 Sanger / 功能实验验证 |
+
+### 4.3 排序方法说明
+
+本报告基于排序宽表的 `pathogenic_rank_1`（或旧版 `pathogenic_rank`）与 `evidence_summary`，综合考虑：
+
+- 变异本身影响（CADD、SpliceAI、REVEL、VEP 后果）
+- 表型相关组织表达（GTEx / 临床 tissue 白名单）
+- 人群频率（gnomAD AF、纯合数）
+- 数据库证据（ClinVar 致病性、review status、星级）
+- 蛋白结构域与 LoF 预测（LOFTEE）
