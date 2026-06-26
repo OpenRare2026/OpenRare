@@ -81,6 +81,14 @@ vep-setup-plugins = { cwd = "modules/pipeline", cmd = ["bash", "modules/vep_runn
 vep-verify-plugins = { cwd = "modules/pipeline", cmd = ["bash", "modules/vep_runner/scripts/verify_vep_plugins.sh"] }
 
 # ---------------------------------------------------------------------------
+# modules/pixi_ppi_score — PPI scoring service
+# See modules/pixi_ppi_score/README.md
+# ---------------------------------------------------------------------------
+ppi-download-data = { cwd = "modules/pixi_ppi_score", cmd = ["bash", "app/download_data.sh"] }
+ppi-check-data = { cwd = "modules/pixi_ppi_score", cmd = ["python", "scripts/check_data_files.py"] }
+ppi-health = { cwd = "modules/pixi_ppi_score", cmd = ["bash", "scripts/curl_health.sh"] }
+
+# ---------------------------------------------------------------------------
 # modules/<future> — add tasks here, e.g.:
 # other-test = { cwd = "modules/other", cmd = ["bash", "scripts/test.sh"] }
 # ---------------------------------------------------------------------------

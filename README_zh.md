@@ -58,6 +58,8 @@ PPI 模块可独立运行：`cd modules/pixi_ppi_score && pixi install && pixi r
 
 PPI 评分服务位于 [`modules/pixi_ppi_score/`](modules/pixi_ppi_score/README.md)，支持 phenotype-gene CSV、VEP CSV 和 HPO 输入，输出 PPI 评分表与融合后的 final score。
 
+PPI 外部数据库可从仓库根目录一键准备：`pixi run ppi-download-data && pixi run ppi-check-data`。需要交给其他 Agent 执行时，可直接使用 [`modules/pixi_ppi_score/docs/DATA_SETUP_PROMPT.md`](modules/pixi_ppi_score/docs/DATA_SETUP_PROMPT.md)。
+
 ## 报告生成模块
 
 基因组变异分析报告服务位于 [`modules/pixi_report/`](modules/pixi_report/README.md)，基于排序宽表、临床表型与 HPO 术语，通过 FastAPI 流式或命令行生成可追溯的分析报告。
