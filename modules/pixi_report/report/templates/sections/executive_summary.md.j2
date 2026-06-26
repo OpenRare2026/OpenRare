@@ -4,10 +4,10 @@
 
 本次分析从排序宽表中提取 **Top {{ ctx.top_n }} 基因**，共涉及 {{ ctx.gene_cards | length }} 个基因、{{ ctx.summary.top_genes | sum(attribute='variant_count') }} 个关键变异位点。
 
-| 排名 | 基因 | 变异数 | 最高排序名次 | ClinVar | 主要关联表型 | 主要关联通路 |
-|------|------|--------|--------------|---------|--------------|--------------|
+| 排名 | 基因 | 变异数 | 最高排序名次 | PPI 得分 | ClinVar | 主要关联表型 | 主要关联通路 |
+|------|------|--------|--------------|----------|---------|--------------|--------------|
 {% for item in ctx.summary.top_genes %}
-| {{ item.rank }} | **{{ item.gene }}** | {{ item.variant_count }} | #{{ item.best_pathogenic_rank }} | {{ item.top_clinvar or "-" }} | {{ item.main_associated_phenotype or "-" }} | {{ item.main_pathway or "-" }} |
+| {{ item.rank }} | **{{ item.gene }}** | {{ item.variant_count }} | #{{ item.best_pathogenic_rank }} | {{ item.ppi_score or "-" }} | {{ item.top_clinvar or "-" }} | {{ item.main_associated_phenotype or "-" }} | {{ item.main_pathway or "-" }} |
 {% endfor %}
 
 ### 2.2 关键发现提示

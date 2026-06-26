@@ -18,7 +18,7 @@ class ReportStreamRequest(BaseModel):
     )
     ppi_path: str = Field(
         default="",
-        description="Path to PPI data file (reserved; not used in report pipeline yet).",
+        description="Path to PPI score CSV (gene + ppi_final columns). Used for gene card PPI display.",
     )
     top_n: int = Field(default=5, ge=1, le=50, description="Number of top genes to include.")
 

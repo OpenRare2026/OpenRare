@@ -65,7 +65,7 @@ def _validate_input_paths(request: ReportStreamRequest) -> None:
     ):
         if not _resolve_input_path(path_str).is_file():
             missing.append(f"{label}: {path_str}")
-    # if request.ppi_path.strip() and not Path(request.ppi_path).is_file():
+    # if request.ppi_path.strip() and not _resolve_input_path(request.ppi_path).is_file():
     #     missing.append(f"ppi_path: {request.ppi_path}")
     if missing:
         raise HTTPException(

@@ -237,6 +237,7 @@ class VariantRecord(BaseModel):
     clinical_transcript_tpm: str = ""
     gtex_transcript_top5_tissues: str = ""
     pathogenic_rank: int | None = None
+    ppi_final: str = "-"
     evidence_summary: str = ""
     genos_evee: str = ""
 
@@ -377,6 +378,7 @@ class GeneCard(BaseModel):
     omim_gene_function: str = "-"
     omim_inheritance_mode: str = "-"
     genos_evee: str = "-"
+    ppi_score: str = "-"
     evidence_summary: str = ""
     variants: list[VariantRecord] = Field(default_factory=list)
     drug_recommendations: list[StrictDrugRecommendation] = Field(default_factory=list)
@@ -394,6 +396,7 @@ class TopGeneSummary(BaseModel):
     main_consequence: str = ""
     main_pathway: str = "-"
     main_associated_phenotype: str = "-"
+    ppi_score: str = "-"
     evidence_summary: str = ""
 
 

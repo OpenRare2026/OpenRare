@@ -22,7 +22,36 @@ _report_gene_agent = None
 _report_clinical_agent = None
 
 
-def _extract_json(text: str) -> dict[str, Any]:
+def _coerce_text(value: Any) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value.strip()
+    if isinstance(value, dict):
+        parts: list[str] = []
+        for key in ("primary", "summary", "text", "description", "detail", "note"):
+            item = value.get(key)
+            if isinstance(item, str) and item.strip():
+                parts.append(item.strip())
+        if parts:
+            return " ".join(parts)
+        return json.dumps(value, ensure_ascii=False)
+    if isinstance(value, list):
+        return "; ".join(part for part in (_coerce_text(item) for item in value) if part)
+    return str(value).strip()
+
+
+def _coerce_text_list(value: Any) -> list[str]:
+    if value is None:
+        return []
+    if isinstance(value, str):
+        return [value.strip()] if value.strip() else []
+    if isinstance(value, list):
+        return [part for part in (_coerce_text(item) for item in value) if part]
+    text = _coerce_text(value)
+    return [text] if text else []
+
+
     cleaned = text.strip()
     if cleaned.startswith("```"):
         cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned)
@@ -154,23 +183,34 @@ async def enrich_gene_narrative(meta: SampleMeta, card: GeneCard) -> GeneNarrati
         for item in data.get("literature", [])
     ]
 
-    pathway_summary = data.get("pathway_summary") or ""
+    pathway_summary = _coerce_text(data.get("pathway_summary"))
     if not pathway_summary and card.main_pathway not in ("", "-"):
         pathway_summary = card.main_pathway
 
-    return GeneNarrative(
-        gene_function=card.script_gene_function
-        if card.script_gene_function not in ("", "-")
-        else data.get("gene_function", ""),
-        inheritance_mode=card.omim_inheritance_mode
-        if card.omim_inheritance_mode not in ("", "-")
-        else data.get("inheritance_mode", ""),
-        phenotype_association=data.get("phenotype_association", ""),
-        pathway_summary=pathway_summary,
-        literature=literature,
-        clinical_note=data.get("clinical_note", ""),
-        therapeutic_implication=data.get("therapeutic_implication", ""),
-    )
+    try:
+        return GeneNarrative(
+            gene_function=card.script_gene_function
+            if card.script_gene_function not in ("", "-")
+            else _coerce_text(data.get("gene_function")),
+            inheritance_mode=card.omim_inheritance_mode
+            if card.omim_inheritance_mode not in ("", "-")
+            else _coerce_text(data.get("inheritance_mode")),
+            phenotype_association=_coerce_text(data.get("phenotype_association")),
+            pathway_summary=pathway_summary,
+            literature=literature,
+            clinical_note=_coerce_text(data.get("clinical_note")),
+            therapeutic_implication=_coerce_text(data.get("therapeutic_implication")),
+        )
+    except Exception:
+        return GeneNarrative(
+            gene_function=card.script_gene_function
+            if card.script_gene_function not in ("", "-")
+            else "Agent 生成失败",
+            inheritance_mode=card.omim_inheritance_mode
+            if card.omim_inheritance_mode not in ("", "-")
+            else "",
+            pathway_summary=card.main_pathway if card.main_pathway != "-" else "",
+        )
 
 
 async def enrich_clinical_advice(context: ReportContext) -> ClinicalAdvice | None:
@@ -211,10 +251,10 @@ async def enrich_clinical_advice(context: ReportContext) -> ClinicalAdvice | Non
         return None
 
     advice = ClinicalAdvice(
-        immediate_recommendations=data.get("immediate_recommendations", []),
-        monitoring=data.get("monitoring", []),
-        communication_points=data.get("communication_points", []),
-        key_findings=data.get("key_findings", []),
+        immediate_recommendations=_coerce_text_list(data.get("immediate_recommendations")),
+        monitoring=_coerce_text_list(data.get("monitoring")),
+        communication_points=_coerce_text_list(data.get("communication_points")),
+        key_findings=_coerce_text_list(data.get("key_findings")),
     )
     if not (
         advice.immediate_recommendations
