@@ -96,7 +96,7 @@ def _row_to_variant(row: dict[str, str], *, use_rank_1: bool) -> VariantRecord:
         pathogenic_rank=_resolve_pathogenic_rank(row, use_rank_1=use_rank_1),
         ppi_final=_display(row.get("ppi_final")),
         evidence_summary=_display(row.get("evidence_summary")),
-        genos_evee=_display(row.get("GENOS-EVEE")),
+        genos_evee=_display(row.get("GENOS-VarRisk")),
     )
 
 

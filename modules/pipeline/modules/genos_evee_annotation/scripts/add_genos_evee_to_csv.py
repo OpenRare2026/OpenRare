@@ -9,7 +9,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-OUTPUT_COLUMN = "GENOS-EVEE"
+OUTPUT_COLUMN = "GENOS-VarRisk"
 
 
 def normalize_chrom(value: str) -> str:
@@ -70,7 +70,7 @@ def annotate(input_csv: Path, database: Path | None, output_csv: Path, log_json:
     output_csv.parent.mkdir(parents=True, exist_ok=True)
     database_available = database is not None and database.is_file() and Path(f"{database}.tbi").is_file()
     if database is not None and database.exists() and not database_available:
-        raise FileNotFoundError(f"GENOS-EVEE database index not found: {database}.tbi")
+        raise FileNotFoundError(f"GENOS-VarRisk database index not found: {database}.tbi")
     if database_available and shutil.which("tabix") is None:
         raise RuntimeError("tabix command not found")
 
@@ -153,9 +153,9 @@ def annotate(input_csv: Path, database: Path | None, output_csv: Path, log_json:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Add GENOS-EVEE p_fusion scores to a V3 wide CSV before sorting.")
+    parser = argparse.ArgumentParser(description="Add GENOS-VarRisk p_fusion scores to a V3 wide CSV before sorting.")
     parser.add_argument("--input-csv", required=True)
-    parser.add_argument("--database", help="Indexed GENOS-EVEE .tsv.gz; missing/empty means fill '-'")
+    parser.add_argument("--database", help="Indexed GENOS-VarRisk .tsv.gz; missing/empty means fill '-'")
     parser.add_argument("--output-csv", required=True)
     parser.add_argument("--log-json")
     args = parser.parse_args()

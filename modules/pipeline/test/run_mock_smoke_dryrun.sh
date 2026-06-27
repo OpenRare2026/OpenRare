@@ -31,7 +31,7 @@ bash "${PIPELINE_ROOT}/scripts/run_full_pipeline.sh" \
   --hla-filter yes \
   --ccre-bed "${MOCK_ROOT}/regulatory/hg38/encode_screen_v4_grch38_ccre.slim.mock.bed.gz" \
   --ncrna-bed "${MOCK_ROOT}/ncrna/hg38/gencode.v49.ncrna_gene.slim.mock.bed.gz" \
-  --genos-evee-db "${MOCK_ROOT}/genos_evee/genos_evee.cpra.mock.tsv.gz" \
+  --GENOS-VarRisk-db "${MOCK_ROOT}/genos_evee/genos_evee.cpra.mock.tsv.gz" \
   --dry-run
 
 log "OK: mock smoke dry-run completed"

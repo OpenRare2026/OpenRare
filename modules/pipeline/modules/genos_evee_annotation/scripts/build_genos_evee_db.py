@@ -165,7 +165,7 @@ def build_database(inputs: list[Path], output: Path, threads: int, log_json: Pat
         )
         unique = 0
         with sorted_path.open("r", encoding="utf-8") as src, merged.open("w", encoding="utf-8") as dst:
-            dst.write("#CHROM\tPOS\tREF\tALT\tGENOS-EVEE\n")
+            dst.write("#CHROM\tPOS\tREF\tALT\tGENOS-VarRisk\n")
             previous: tuple[str, str, str, str] | None = None
             for line in src:
                 parts = line.rstrip("\n").split("\t")
@@ -190,7 +190,7 @@ def build_database(inputs: list[Path], output: Path, threads: int, log_json: Pat
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Build indexed GENOS-EVEE CPRA database from prediction TSV shards.")
+    parser = argparse.ArgumentParser(description="Build indexed GENOS-VarRisk CPRA database from prediction TSV shards.")
     parser.add_argument("--input", action="append", required=True, help="TSV file, directory, or glob; repeatable")
     parser.add_argument("--output", required=True, help="Output .tsv.gz database")
     parser.add_argument("--threads", type=int, default=4)

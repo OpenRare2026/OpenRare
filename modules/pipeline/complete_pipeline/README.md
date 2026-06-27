@@ -3,7 +3,7 @@
 > 完整架构和数据资源下载说明见上一层 `../README.md`。本文件保留主程序/API 的详细调用说明。
 
 
-本目录包含 FastAPI 服务（`full_pipeline_api.py`）与 API 任务目录，负责把 liftover（可选）、phasing、VCF 前处理、假基因注释、VEP runner、VCF INFO 回填、GENOS-EVEE 注释、HLA 过滤串成一个完整流程。
+本目录包含 FastAPI 服务（`full_pipeline_api.py`）与 API 任务目录，负责把 liftover（可选）、phasing、VCF 前处理、假基因注释、VEP runner、VCF INFO 回填、GENOS-VarRisk 注释、HLA 过滤串成一个完整流程。
 
 主程序：
 
@@ -307,7 +307,7 @@ API 的字段和主程序参数一一对应。常规字段和高级覆盖字段�
 | `top_k_transcripts` | `--top-k-transcripts` | 高级覆盖 | 每个 variant-gene 保留的转录本数量。 |
 | `clinical_tissue` | `--clinical-tissue` | 高级覆盖 | 手动传 GTEx tissue。 |
 | `keep_raw_vep` | `--keep-raw-vep` | 高级覆盖 | `true` 对应 `yes`，`false` 对应 `no`。 |
-| `genos_evee_db` | `--genos-evee-db` | 高级覆盖 | GENOS-EVEE CPRA 数据库路径。 |
+| `genos_evee_db` | `--GENOS-VarRisk-db` | 高级覆盖 | GENOS-VarRisk CPRA 数据库路径。 |
 | `dry_run` | `--dry-run` | 调试 | 只打印命令，不实际运行。 |
 
 示例：API 只跑 chr1：

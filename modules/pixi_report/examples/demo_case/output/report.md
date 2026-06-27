@@ -79,11 +79,11 @@ evidence_score: -32
 | 主要关联通路 | - |
 | 致病性排名 | #1 |
 | PPI 得分 | 0.6265 |
-| GENOS-EVEE | - |
+| GENOS-VarRisk | - |
 
 #### 3.1.2 变异列表
 
-| 变异 | 转录本 / 后果 | GENOS-EVEE | 评分 | ClinVar（VAF） |
+| 变异 | 转录本 / 后果 | GENOS-VarRisk | 评分 | ClinVar（VAF） |
 |------|---------------|------------|------|----------------|
 | HLA-DPA1 p.Thr259Pro | ENST00000692443.1 · missense_variant | - | CADD 3.450 | -（VAF 100.0%） |
 
@@ -114,7 +114,7 @@ evidence_score: -32
 |------|------|
 | 转录本 | ENST00000692443.1 |
 | RefSeq | NM_033554.4,NM_001405020.1 |
-| GENOS-EVEE | - |
+| GENOS-VarRisk | - |
 | HGVSc | c.775A>C |
 | HGVSp | p.Thr259Pro |
 | VEP 后果 | missense_variant |
@@ -199,11 +199,11 @@ evidence_score: -32
 | 主要关联通路 | - |
 | 致病性排名 | #2 |
 | PPI 得分 | 0.4378 |
-| GENOS-EVEE | - |
+| GENOS-VarRisk | - |
 
 #### 3.2.2 变异列表
 
-| 变异 | 转录本 / 后果 | GENOS-EVEE | 评分 | ClinVar（VAF） |
+| 变异 | 转录本 / 后果 | GENOS-VarRisk | 评分 | ClinVar（VAF） |
 |------|---------------|------------|------|----------------|
 | CXCL17 p.Glu45Asp | ENST00000601181.6 · missense_variant | - | CADD 13.65 | -（VAF 61.8%） |
 
@@ -237,7 +237,7 @@ evidence_score: -32
 |------|------|
 | 转录本 | ENST00000601181.6 |
 | RefSeq | NM_198477.3 |
-| GENOS-EVEE | - |
+| GENOS-VarRisk | - |
 | HGVSc | c.135A>C |
 | HGVSp | p.Glu45Asp |
 | VEP 后果 | missense_variant |
@@ -324,11 +324,11 @@ evidence_score: +0
 | 主要关联通路 | - |
 | 致病性排名 | #4 |
 | PPI 得分 | 0.4574 |
-| GENOS-EVEE | - |
+| GENOS-VarRisk | - |
 
 #### 3.3.2 变异列表
 
-| 变异 | 转录本 / 后果 | GENOS-EVEE | 评分 | ClinVar（VAF） |
+| 变异 | 转录本 / 后果 | GENOS-VarRisk | 评分 | ClinVar（VAF） |
 |------|---------------|------------|------|----------------|
 | DDI2 chr1:15660052 T>C | ENST00000480945.6 · 3_prime_UTR_variant | - | CADD 16.17 | -（VAF 66.7%） |
 
@@ -362,7 +362,7 @@ evidence_score: +0
 |------|------|
 | 转录本 | ENST00000480945.6 |
 | RefSeq | NM_032341.5 |
-| GENOS-EVEE | - |
+| GENOS-VarRisk | - |
 | HGVSc | c.*262T>C |
 | HGVSp | - |
 | VEP 后果 | 3_prime_UTR_variant |
@@ -447,11 +447,11 @@ evidence_score: -36
 | 主要关联通路 | - |
 | 致病性排名 | #5 |
 | PPI 得分 | 0.5393 |
-| GENOS-EVEE | - |
+| GENOS-VarRisk | - |
 
 #### 3.4.2 变异列表
 
-| 变异 | 转录本 / 后果 | GENOS-EVEE | 评分 | ClinVar（VAF） |
+| 变异 | 转录本 / 后果 | GENOS-VarRisk | 评分 | ClinVar（VAF） |
 |------|---------------|------------|------|----------------|
 | BMP8B chr1:39769817 T>C | ENST00000372827.8 · intron_variant | - | CADD 9.907 | -（VAF 34.5%） |
 
@@ -484,7 +484,7 @@ evidence_score: -36
 |------|------|
 | 转录本 | ENST00000372827.8 |
 | RefSeq | NM_001720.5 |
-| GENOS-EVEE | - |
+| GENOS-VarRisk | - |
 | HGVSc | c.673+4491A>G |
 | HGVSp | - |
 | VEP 后果 | intron_variant |
@@ -568,11 +568,11 @@ evidence_score: -38
 | 主要关联通路 | - |
 | 致病性排名 | #8 |
 | PPI 得分 | 0.5175 |
-| GENOS-EVEE | - |
+| GENOS-VarRisk | - |
 
 #### 3.5.2 变异列表
 
-| 变异 | 转录本 / 后果 | GENOS-EVEE | 评分 | ClinVar（VAF） |
+| 变异 | 转录本 / 后果 | GENOS-VarRisk | 评分 | ClinVar（VAF） |
 |------|---------------|------------|------|----------------|
 | TAS2R19 p.Met297Val | ENST00000390673.2 · missense_variant | - | CADD 0.002 | -（VAF 49.6%） |
 
@@ -598,7 +598,7 @@ evidence_score: -38
 |------|------|
 | 转录本 | ENST00000390673.2 |
 | RefSeq | NM_176888.2 |
-| GENOS-EVEE | - |
+| GENOS-VarRisk | - |
 | HGVSc | c.889A>G |
 | HGVSp | p.Met297Val |
 | VEP 后果 | missense_variant |

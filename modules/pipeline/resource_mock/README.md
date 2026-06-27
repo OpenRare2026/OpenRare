@@ -25,7 +25,7 @@ bash scripts/run_full_pipeline.sh \
   --phasing no \
   --ccre-bed resource_mock/regulatory/hg38/encode_screen_v4_grch38_ccre.slim.mock.bed.gz \
   --ncrna-bed resource_mock/ncrna/hg38/gencode.v49.ncrna_gene.slim.mock.bed.gz \
-  --genos-evee-db resource_mock/genos_evee/genos_evee.cpra.mock.tsv.gz \
+  --GENOS-VarRisk-db resource_mock/genos_evee/genos_evee.cpra.mock.tsv.gz \
   --dry-run
 ```
 
