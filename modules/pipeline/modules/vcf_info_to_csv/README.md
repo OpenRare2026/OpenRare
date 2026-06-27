@@ -2,7 +2,7 @@
 
 功能：读取进入 04 VEP runner 的 VCF，把 VCF 中所有 INFO 字段展开为 `vcf_info_<INFO_ID>` 列，并把样本 FORMAT 展开为 `vcf_format_*` 列，追加到 04 生成的 VEP CSV 中。
 
-主流程中本模块为第 **05** 步；输出 `vep_output.with_info.csv` 进入 **06** GENOS-EVEE 注释，再经 **07** HLA 过滤（默认）得到最终宽表。
+主流程中本模块为第 **05** 步；输出 `vep_output.with_info.csv` 进入 **06** GENOS-VarRisk 注释，再经 **07** HLA 过滤（默认）得到最终宽表。
 
 ## 输入
 

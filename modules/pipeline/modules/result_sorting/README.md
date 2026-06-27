@@ -4,7 +4,7 @@
 
 ## 与主流程的关系
 
-当前 `scripts/run_full_pipeline.sh` **默认不调用**本模块。主流程在 06 GENOS-EVEE 注释之后，由 07 HLA 过滤产出最终宽表：
+当前 `scripts/run_full_pipeline.sh` **默认不调用**本模块。主流程在 06 GENOS-VarRisk 注释之后，由 07 HLA 过滤产出最终宽表：
 
 ```text
 05 vcf_info_to_csv → 06 genos_evee_annotation → 07 hla_filter（默认最终 CSV）
@@ -14,7 +14,7 @@
 
 ## 输入
 
-- `--input-csv`：带 `vcf_info_*`（及可选 `GENOS-EVEE`）列的宽表，通常来自 `05_vcf_info_to_csv/` 或 `06_genos_evee_annotation/`。
+- `--input-csv`：带 `vcf_info_*`（及可选 `GENOS-VarRisk`）列的宽表，通常来自 `05_vcf_info_to_csv/` 或 `06_genos_evee_annotation/`。
 - `--output-csv`：排序后的 CSV。
 
 ## 单独运行示例

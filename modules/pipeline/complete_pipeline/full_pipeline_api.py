@@ -75,7 +75,7 @@ class RunRequest(BaseModel):
     java_bin: Optional[str] = Field(None, description="Advanced override: Java executable for Beagle")
     top_k_transcripts: Optional[int] = Field(None, description="Advanced override: transcript selection count")
     clinical_tissue: str = Field("", description="Advanced override: GTEx tissue name for phenotype-aware transcript expression")
-    genos_evee_db: Optional[str] = Field(None, description="Advanced override: indexed GENOS-EVEE CPRA TSV.GZ")
+    genos_evee_db: Optional[str] = Field(None, description="Advanced override: indexed GENOS-VarRisk CPRA TSV.GZ")
     keep_raw_vep: Optional[bool] = Field(None, description="Advanced override: keep raw VEP TSV")
     dry_run: bool = False
 
@@ -298,7 +298,7 @@ def build_command(req: RunRequest, output_dir: Path) -> list[str]:
     add_option("--java-bin", resolve_path(req.java_bin) if req.java_bin else None)
     add_option("--top-k-transcripts", req.top_k_transcripts)
     add_option("--clinical-tissue", req.clinical_tissue)
-    add_option("--genos-evee-db", resolve_path(req.genos_evee_db) if req.genos_evee_db else None)
+    add_option("--GENOS-VarRisk-db", resolve_path(req.genos_evee_db) if req.genos_evee_db else None)
     if req.keep_raw_vep is not None:
         cmd.extend(["--keep-raw-vep", "yes" if req.keep_raw_vep else "no"])
     if req.dry_run:
