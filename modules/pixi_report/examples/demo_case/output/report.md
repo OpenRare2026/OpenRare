@@ -484,7 +484,7 @@ evidence_score: -36
 |------|------|
 | 转录本 | ENST00000372827.8 |
 | RefSeq | NM_001720.5 |
-| GENOS-VarRisk | - |
+| Genos-Mutation | - |
 | HGVSc | c.673+4491A>G |
 | HGVSp | - |
 | VEP 后果 | intron_variant |
