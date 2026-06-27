@@ -598,7 +598,7 @@ evidence_score: -38
 |------|------|
 | 转录本 | ENST00000390673.2 |
 | RefSeq | NM_176888.2 |
-| GENOS-VarRisk | - |
+| Genos-Mutation | - |
 | HGVSc | c.889A>G |
 | HGVSp | p.Met297Val |
 | VEP 后果 | missense_variant |
