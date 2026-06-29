@@ -23,7 +23,7 @@ BUNDLED_CJK_FONT_URL = (
 CJK_MAIN_FONT = "Noto Sans SC"
 CJK_MONO_FONT = "Noto Sans SC"
 
-_GENOS_MUTATION_LABELS = frozenset({"Genos-Mutation", "GENOS-VarRisk"})
+_GENOS_MUTATION_LABELS = frozenset({"Genos-Mutation", "GENOS-VarRisk", "GENOS-EVEE"})
 
 _VARIANT_LIST_HEADER_COMPACT = (
     "| 变异 | 转录本 / 后果 | Genos-Mutation | 评分 | ClinVar（VAF） |\n"
