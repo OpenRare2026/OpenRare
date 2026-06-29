@@ -362,7 +362,7 @@ evidence_score: +0
 |------|------|
 | 转录本 | ENST00000480945.6 |
 | RefSeq | NM_032341.5 |
-| GENOS-VarRisk | - |
+| Genos-Mutation | - |
 | HGVSc | c.*262T>C |
 | HGVSp | - |
 | VEP 后果 | 3_prime_UTR_variant |
