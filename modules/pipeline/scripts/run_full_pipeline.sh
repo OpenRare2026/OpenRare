@@ -107,7 +107,7 @@ while [[ $# -gt 0 ]]; do
     --pseudogene-annotation) PSEUDOGENE_ANNOTATION="${2:?}"; shift 2 ;;
     --hla-filter) HLA_FILTER="${2:?}"; shift 2 ;;
     --clinical-tissue) CLINICAL_TISSUE="${2:?}"; shift 2 ;;
-    --GENOS-VarRisk-db) GENOS_EVEE_DB="${2:?}"; shift 2 ;;
+    --genos-evee-db|--GENOS-VarRisk-db) GENOS_EVEE_DB="${2:?}"; shift 2 ;;
     --keep-raw-vep) KEEP_RAW_VEP="${2:?}"; shift 2 ;;
     --input-assembly) INPUT_ASSEMBLY="${2:?}"; shift 2 ;;
     --dry-run) DRY_RUN=yes; shift ;;
