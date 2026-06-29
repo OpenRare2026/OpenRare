@@ -805,6 +805,50 @@ def parse_uploaded_variation(value: str) -> dict[str, str]:
     return parsed
 
 
+def unique_ordered(values: list[str]) -> list[str]:
+    seen: set[str] = set()
+    result: list[str] = []
+    for value in values:
+        if not value or value in seen:
+            continue
+        seen.add(value)
+        result.append(value)
+    return result
+
+
+def split_variant_ids(variant_id: str) -> list[str]:
+    variant_id = (variant_id or "").strip()
+    if not variant_id or variant_id in {".", "-"}:
+        return []
+    return unique_ordered([variant_id, *[item.strip() for item in variant_id.split(";")]])
+
+
+def parse_vep_location(location: str) -> tuple[str, str] | None:
+    location = (location or "").strip()
+    if not location or ":" not in location:
+        return None
+    chrom, _, interval = location.partition(":")
+    start = interval.split("-", 1)[0].strip()
+    if not chrom or not start:
+        return None
+    return chrom, start
+
+
+def location_lookup_keys(chrom: str, pos: str, ref: str, alt: str) -> list[str]:
+    keys = [f"loc:{chrom}:{pos}:{alt}"]
+    try:
+        shifted_pos = str(int(pos) + 1)
+    except ValueError:
+        return keys
+
+    keys.append(f"loc:{chrom}:{shifted_pos}:{alt}")
+    if len(ref) < len(alt) and alt.startswith(ref):
+        keys.append(f"loc:{chrom}:{shifted_pos}:{alt[len(ref):] or '-'}")
+    elif len(ref) > len(alt) and ref.startswith(alt):
+        keys.append(f"loc:{chrom}:{shifted_pos}:-")
+    return keys
+
+
 def vep_uploaded_variation_keys(chrom: str, pos: str, ref: str, alt: str) -> list[str]:
     keys = [f"{chrom}_{pos}_{ref}/{alt}"]
     if len(ref) == len(alt):
@@ -838,9 +882,52 @@ def original_variant_lookup_keys(
     back to the original VCF allele.
     """
     keys = vep_uploaded_variation_keys(chrom, pos, ref, alt)
-    if variant_id and variant_id not in {".", "-"}:
-        keys.append(variant_id)
-    return keys
+    keys.extend(location_lookup_keys(chrom, pos, ref, alt))
+    for item in split_variant_ids(variant_id):
+        keys.append(f"id:{item}")
+        keys.append(f"id:{item}|allele:{alt}")
+    return unique_ordered(keys)
+
+
+def vep_row_candidate_keys(row: dict[str, str]) -> list[str]:
+    uploaded = row.get("Uploaded_variation", "")
+    allele = row.get("Allele", "")
+    keys: list[str] = []
+    if uploaded:
+        keys.append(uploaded)
+
+    parsed = parse_uploaded_variation(uploaded)
+    chrom = parsed.get("chrom", "")
+    pos = parsed.get("pos", "")
+    ref = parsed.get("ref", "")
+    alt = parsed.get("alt", "")
+    if chrom and pos and ref and alt:
+        keys.extend(vep_uploaded_variation_keys(chrom, pos, ref, alt))
+        if allele and allele != alt:
+            keys.extend(vep_uploaded_variation_keys(chrom, pos, ref, allele))
+
+    location = parse_vep_location(row.get("Location", ""))
+    if location and allele:
+        loc_chrom, loc_pos = location
+        keys.append(f"loc:{loc_chrom}:{loc_pos}:{allele}")
+
+    for item in split_variant_ids(uploaded):
+        if allele:
+            keys.append(f"id:{item}|allele:{allele}")
+        if alt:
+            keys.append(f"id:{item}|allele:{alt}")
+        keys.append(f"id:{item}")
+        keys.append(item)
+
+    return unique_ordered(keys)
+
+
+def lookup_original_variant(row: dict[str, str], original_variants) -> dict[str, str] | None:
+    for key in vep_row_candidate_keys(row):
+        value = original_variants.get(key)
+        if value is not None:
+            return value
+    return None
 
 
 def vcf_info_column_name(info_id: str) -> str:
@@ -1915,7 +2002,7 @@ def convert_vep_table_to_csv(
             row = dict(zip(header, parts))
             extra = parse_extra(row.pop("Extra", ""))
             row.update(extra)
-            original_variant = original_variants.get(row.get("Uploaded_variation", ""))
+            original_variant = lookup_original_variant(row, original_variants)
             add_requested_columns(row, extra, original_variant)
             extra_keys.update(extra)
             variant_id = row.get("Uploaded_variation", "")
@@ -2026,7 +2113,7 @@ def parse_vep_table_groups(
             extra = parse_extra(row.pop("Extra", ""))
             row.update(extra)
             variant_id = row.get("Uploaded_variation", "")
-            original_variant = original_variants.get(variant_id)
+            original_variant = lookup_original_variant(row, original_variants)
             add_requested_columns(row, extra, original_variant)
             if current_key is not None and variant_id != current_key:
                 yield current_key, current_rows
