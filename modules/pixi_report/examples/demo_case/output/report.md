@@ -362,7 +362,7 @@ evidence_score: +0
 |------|------|
 | 转录本 | ENST00000480945.6 |
 | RefSeq | NM_032341.5 |
-| Genos-Mutation | - |
+| GENOS-VarRisk | - |
 | HGVSc | c.*262T>C |
 | HGVSp | - |
 | VEP 后果 | 3_prime_UTR_variant |
@@ -484,7 +484,7 @@ evidence_score: -36
 |------|------|
 | 转录本 | ENST00000372827.8 |
 | RefSeq | NM_001720.5 |
-| Genos-Mutation | - |
+| GENOS-VarRisk | - |
 | HGVSc | c.673+4491A>G |
 | HGVSp | - |
 | VEP 后果 | intron_variant |
@@ -598,7 +598,7 @@ evidence_score: -38
 |------|------|
 | 转录本 | ENST00000390673.2 |
 | RefSeq | NM_176888.2 |
-| Genos-Mutation | - |
+| GENOS-VarRisk | - |
 | HGVSc | c.889A>G |
 | HGVSp | p.Met297Val |
 | VEP 后果 | missense_variant |
