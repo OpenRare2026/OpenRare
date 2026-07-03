@@ -15,11 +15,11 @@
     },
     "liftover_path": "",
     "vcf_path": "",
-    "wide_table_path": "/mnt/workspace/lixinhang/code/search_agent/modules/pixi_report/examples/demo_case/wide_table.csv",
+    "wide_table_path": "examples/demo_case/wide_table.csv",
     "gene_disease_path": "",
-    "ppi_path": "/mnt/workspace/lixinhang/code/search_agent/modules/pixi_report/examples/demo_case/ppi_score.csv",
+    "ppi_path": "examples/demo_case/ppi_score.csv",
     "report_path": "",
-    "report_date": "2026-06-26"
+    "report_date": "2026-07-03"
   },
   "summary": {
     "top_genes": [
@@ -31,7 +31,7 @@
         "top_clinvar": "",
         "main_consequence": "missense_variant",
         "main_pathway": "-",
-        "main_associated_phenotype": "type 1 diabetes mellitus; neoplasm",
+        "main_associated_phenotype": "-",
         "ppi_score": "0.6265",
         "evidence_summary": "consequence=missense_variant(+15); EAS_AF=6.409020e-01; frequency(-50); domain(+3); total=-32"
       },
@@ -43,7 +43,7 @@
         "top_clinvar": "",
         "main_consequence": "missense_variant",
         "main_pathway": "-",
-        "main_associated_phenotype": "neoplasm; placenta praevia",
+        "main_associated_phenotype": "-",
         "ppi_score": "0.4378",
         "evidence_summary": "consequence=missense_variant(+15); splice_lof=SpliceAI:0.1(+3); CADD=13.65(+2); EAS_AF=1.541550e-02; frequency(-23); domain(+3); total=+0"
       },
@@ -55,7 +55,7 @@
         "top_clinvar": "",
         "main_consequence": "3_prime_UTR_variant",
         "main_pathway": "-",
-        "main_associated_phenotype": "autosomal recessive spondylocostal dysostosis; Miyoshi myopathy",
+        "main_associated_phenotype": "-",
         "ppi_score": "0.4574",
         "evidence_summary": "consequence=3_prime_utr_variant(-3); CADD=16.17(+2); EAS_AF=0.05091; frequency(-35); total=-36"
       },
@@ -67,7 +67,7 @@
         "top_clinvar": "",
         "main_consequence": "intron_variant",
         "main_pathway": "-",
-        "main_associated_phenotype": "diabetes mellitus; Abnormality of the gastrointestinal tract",
+        "main_associated_phenotype": "-",
         "ppi_score": "0.5393",
         "evidence_summary": "consequence=intron_variant(-3); EAS_AF=0.4376; frequency(-35); total=-38"
       },
@@ -79,7 +79,7 @@
         "top_clinvar": "",
         "main_consequence": "missense_variant",
         "main_pathway": "-",
-        "main_associated_phenotype": "sensory perception of bitter taste; sebaceous of Jadassohn nevus",
+        "main_associated_phenotype": "-",
         "ppi_score": "0.5175",
         "evidence_summary": "consequence=missense_variant(+15); EAS_AF=0.4974; frequency(-35); domain(+3); total=-17"
       }
@@ -97,7 +97,7 @@
       "top_clinvar": "",
       "main_consequence": "missense_variant",
       "main_pathway": "-",
-      "main_associated_phenotype": "type 1 diabetes mellitus; neoplasm",
+      "main_associated_phenotype": "-",
       "main_phenotype_hint": "Nerve - Tibial",
       "ncbi_gene_id": "3113",
       "ncbi_gene_name": "major histocompatibility complex, class II, DP alpha 1",
@@ -107,7 +107,7 @@
       "script_gene_function_source": "NCBI Gene (Entrez)",
       "omim_gene_function": "-",
       "omim_inheritance_mode": "-",
-      "genos_evee": "-",
+      "genos_varrisk": "-",
       "ppi_score": "0.6265",
       "evidence_summary": "consequence=missense_variant(+15); EAS_AF=6.409020e-01; frequency(-50); domain(+3); total=-32",
       "variants": [
@@ -164,12 +164,12 @@
           "pathogenic_rank": 1,
           "ppi_final": "0.6264820254272677",
           "evidence_summary": "consequence=missense_variant(+15); EAS_AF=6.409020e-01; frequency(-50); domain(+3); total=-32",
-          "genos_evee": "-"
+          "genos_varrisk": "-"
         }
       ],
       "drug_recommendations": [],
       "trial_teams": [],
-      "drug_recommendation_summary": "当前变异 ClinVar/功能后果未达到 Pathogenic 或高影响 LoF 标准，本报告不提供用药建议。",
+      "drug_recommendation_summary": "药物数据库查询失败，未生成用药建议。",
       "narrative": null
     },
     {
@@ -180,7 +180,7 @@
       "top_clinvar": "",
       "main_consequence": "missense_variant",
       "main_pathway": "-",
-      "main_associated_phenotype": "neoplasm; placenta praevia",
+      "main_associated_phenotype": "-",
       "main_phenotype_hint": "Nerve - Tibial",
       "ncbi_gene_id": "284340",
       "ncbi_gene_name": "C-X-C motif chemokine ligand 17",
@@ -190,7 +190,7 @@
       "script_gene_function_source": "NCBI Gene (Entrez)",
       "omim_gene_function": "-",
       "omim_inheritance_mode": "-",
-      "genos_evee": "-",
+      "genos_varrisk": "-",
       "ppi_score": "0.4378",
       "evidence_summary": "consequence=missense_variant(+15); splice_lof=SpliceAI:0.1(+3); CADD=13.65(+2); EAS_AF=1.541550e-02; frequency(-23); domain(+3); total=+0",
       "variants": [
@@ -247,12 +247,12 @@
           "pathogenic_rank": 2,
           "ppi_final": "0.4377713968528168",
           "evidence_summary": "consequence=missense_variant(+15); splice_lof=SpliceAI:0.1(+3); CADD=13.65(+2); EAS_AF=1.541550e-02; frequency(-23); domain(+3); total=+0",
-          "genos_evee": "-"
+          "genos_varrisk": "-"
         }
       ],
       "drug_recommendations": [],
       "trial_teams": [],
-      "drug_recommendation_summary": "当前变异 ClinVar/功能后果未达到 Pathogenic 或高影响 LoF 标准，本报告不提供用药建议。",
+      "drug_recommendation_summary": "药物数据库查询失败，未生成用药建议。",
       "narrative": null
     },
     {
@@ -263,7 +263,7 @@
       "top_clinvar": "",
       "main_consequence": "3_prime_UTR_variant",
       "main_pathway": "-",
-      "main_associated_phenotype": "autosomal recessive spondylocostal dysostosis; Miyoshi myopathy",
+      "main_associated_phenotype": "-",
       "main_phenotype_hint": "Nerve - Tibial",
       "ncbi_gene_id": "84301",
       "ncbi_gene_name": "DDI proteasomal shuttling factor 2",
@@ -273,7 +273,7 @@
       "script_gene_function_source": "NCBI Gene (Entrez)",
       "omim_gene_function": "-",
       "omim_inheritance_mode": "-",
-      "genos_evee": "-",
+      "genos_varrisk": "-",
       "ppi_score": "0.4574",
       "evidence_summary": "consequence=3_prime_utr_variant(-3); CADD=16.17(+2); EAS_AF=0.05091; frequency(-35); total=-36",
       "variants": [
@@ -330,12 +330,12 @@
           "pathogenic_rank": 4,
           "ppi_final": "0.4574024662213867",
           "evidence_summary": "consequence=3_prime_utr_variant(-3); CADD=16.17(+2); EAS_AF=0.05091; frequency(-35); total=-36",
-          "genos_evee": "-"
+          "genos_varrisk": "-"
         }
       ],
       "drug_recommendations": [],
       "trial_teams": [],
-      "drug_recommendation_summary": "当前变异 ClinVar/功能后果未达到 Pathogenic 或高影响 LoF 标准，本报告不提供用药建议。",
+      "drug_recommendation_summary": "药物数据库查询失败，未生成用药建议。",
       "narrative": null
     },
     {
@@ -346,7 +346,7 @@
       "top_clinvar": "",
       "main_consequence": "intron_variant",
       "main_pathway": "-",
-      "main_associated_phenotype": "diabetes mellitus; Abnormality of the gastrointestinal tract",
+      "main_associated_phenotype": "-",
       "main_phenotype_hint": "Nerve - Tibial",
       "ncbi_gene_id": "656",
       "ncbi_gene_name": "bone morphogenetic protein 8b",
@@ -356,7 +356,7 @@
       "script_gene_function_source": "NCBI Gene (Entrez)",
       "omim_gene_function": "-",
       "omim_inheritance_mode": "-",
-      "genos_evee": "-",
+      "genos_varrisk": "-",
       "ppi_score": "0.5393",
       "evidence_summary": "consequence=intron_variant(-3); EAS_AF=0.4376; frequency(-35); total=-38",
       "variants": [
@@ -413,12 +413,12 @@
           "pathogenic_rank": 5,
           "ppi_final": "0.5393090205323946",
           "evidence_summary": "consequence=intron_variant(-3); EAS_AF=0.4376; frequency(-35); total=-38",
-          "genos_evee": "-"
+          "genos_varrisk": "-"
         }
       ],
       "drug_recommendations": [],
       "trial_teams": [],
-      "drug_recommendation_summary": "当前变异 ClinVar/功能后果未达到 Pathogenic 或高影响 LoF 标准，本报告不提供用药建议。",
+      "drug_recommendation_summary": "药物数据库查询失败，未生成用药建议。",
       "narrative": null
     },
     {
@@ -429,7 +429,7 @@
       "top_clinvar": "",
       "main_consequence": "missense_variant",
       "main_pathway": "-",
-      "main_associated_phenotype": "sensory perception of bitter taste; sebaceous of Jadassohn nevus",
+      "main_associated_phenotype": "-",
       "main_phenotype_hint": "Nerve - Tibial",
       "ncbi_gene_id": "259294",
       "ncbi_gene_name": "taste 2 receptor member 19",
@@ -439,7 +439,7 @@
       "script_gene_function_source": "NCBI Gene (Entrez)",
       "omim_gene_function": "-",
       "omim_inheritance_mode": "-",
-      "genos_evee": "-",
+      "genos_varrisk": "-",
       "ppi_score": "0.5175",
       "evidence_summary": "consequence=missense_variant(+15); EAS_AF=0.4974; frequency(-35); domain(+3); total=-17",
       "variants": [
@@ -496,12 +496,12 @@
           "pathogenic_rank": 8,
           "ppi_final": "0.5174609319753153",
           "evidence_summary": "consequence=missense_variant(+15); EAS_AF=0.4974; frequency(-35); domain(+3); total=-17",
-          "genos_evee": "-"
+          "genos_varrisk": "-"
         }
       ],
       "drug_recommendations": [],
       "trial_teams": [],
-      "drug_recommendation_summary": "当前变异 ClinVar/功能后果未达到 Pathogenic 或高影响 LoF 标准，本报告不提供用药建议。",
+      "drug_recommendation_summary": "药物数据库查询失败，未生成用药建议。",
       "narrative": null
     }
   ],

@@ -11,6 +11,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 TEST2_PATH = PROJECT_ROOT / "test_data/test_case/test2.csv"
 HPO_RE = re.compile(r"HP:\d+")
+TEST_CASE_DIR = "test_data/test_case"
 
 
 def _format_raghpo(results: list[dict], job_id: str = "") -> str:
@@ -110,8 +111,8 @@ def build_rows() -> list[dict[str, str]]:
                 ensure_ascii=False,
             ),
             "37 to 38": "",
-            "gz to vcf": "/mnt/workspace/siwei/vcf_data/26B03420134_aa2bae.vcf",
-            "宽表": str(PROJECT_ROOT / "test_data/test_case/case3_26B03420134_10000.csv"),
+            "gz to vcf": f"{TEST_CASE_DIR}/26B03420134_aa2bae.vcf",
+            "宽表": f"{TEST_CASE_DIR}/case3_26B03420134_10000.csv",
             "基因与疾病": "",
             "ppi": "",
             "报告": "",
@@ -130,12 +131,9 @@ def build_rows() -> list[dict[str, str]]:
                 {"job_id": job1, "status": "completed", "results": results1},
                 ensure_ascii=False,
             ),
-            "37 to 38": (
-                "172.27.206.113/mnt/workspace/changan/grch37_to_grch38_liftover/api_service/"
-                "runs/25B07456346_2b4a35/output/output.grch38.vcf.gz"
-            ),
-            "gz to vcf": "/mnt/workspace/siwei/vcf_data/25B07456346_2b4a35.vcf",
-            "宽表": str(PROJECT_ROOT / "test_data/test_case/case4_25B07456346_10000.csv"),
+            "37 to 38": f"{TEST_CASE_DIR}/25B07456346_liftover/output.grch38.vcf.gz",
+            "gz to vcf": f"{TEST_CASE_DIR}/25B07456346_2b4a35.vcf",
+            "宽表": f"{TEST_CASE_DIR}/case4_25B07456346_10000.csv",
             "基因与疾病": "",
             "ppi": "",
             "报告": "",

@@ -30,7 +30,7 @@ FastAPI（`POST /report/stream`）需要三个输入文件。路径可为绝对�
 
 - 编码：UTF-8（支持 BOM）
 - 格式：首行为表头，每行一条 **基因 × 变异 × 已选转录本** 记录；上游已完成转录本选择，本模块不再按位点去重或二次选转录本
-- 同一变异（`chrom,pos,ref,alt`）可因多基因注释出现多行，Top 基因按各基因的 `pathogenic_rank_1` 最小值升序选取（`top_n` 参数）；若宽表无 `pathogenic_rank_1` 列则回退 `pathogenic_rank`
+- 同一变异（`chrom,pos,ref,alt`）可因多基因注释出现多行，Top 基因按各基因的 `pathogenic_rank` 最小值升序选取（`top_n` 参数）
 
 **必选列**（表头名需一致）：
 
@@ -40,8 +40,7 @@ FastAPI（`POST /report/stream`）需要三个输入文件。路径可为绝对�
 | `pos` | 位置 |
 | `ref` / `alt` | 参考 / 变异等位基因 |
 | `gene_symbol` | 基因符号 |
-| `pathogenic_rank_1` | 致病性排序名次（整数，越小越优先；新宽表主排序字段） |
-| `pathogenic_rank` | 旧版致病性排序（仅当宽表无 `pathogenic_rank_1` 列时使用） |
+| `pathogenic_rank` | 致病性排序名次（整数，越小越优先） |
 
 **报告展示常用列**（缺失时报告中显示为 `-`）：
 

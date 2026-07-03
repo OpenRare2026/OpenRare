@@ -7,6 +7,7 @@ from pathlib import Path
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from report.models import ClinicalAdvice, GeneCard, ReportContext, SampleMeta, VariantRecord, build_genomic_context_items
+from report.paths import format_report_path
 
 TEMPLATE_DIR = Path(__file__).resolve().parent / "templates"
 
@@ -253,6 +254,7 @@ def _create_env() -> Environment:
     env.filters["format_af"] = _format_af
     env.filters["format_vaf"] = _format_vaf
     env.filters["safe_float"] = _safe_float
+    env.filters["report_path"] = format_report_path
     env.globals["genomic_context_items"] = _genomic_context_items
     env.globals["has_genomic_context"] = _has_genomic_context
     env.globals["parse_evidence_tree"] = _parse_evidence_tree
@@ -271,13 +273,14 @@ def render_report(context: ReportContext, output_path: str = "") -> str:
 
 
 def build_report_output_json(context: ReportContext, output_path: str) -> dict:
+    display_output = format_report_path(output_path) or (Path(output_path).name if output_path else "")
     return {
         "report_version": context.report_version,
         "report_title": f"{context.meta.sample_id} 基因组变异分析报告",
         "gene_count": len(context.gene_cards),
         "variant_count": sum(card.variant_count for card in context.gene_cards),
         "top_genes": [card.gene_symbol for card in context.gene_cards],
-        "output_path": output_path,
+        "output_path": display_output,
         "literature_strategy": "precomputed_plus_online_fallback",
         "disclaimer_included": True,
     }

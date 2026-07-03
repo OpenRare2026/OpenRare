@@ -14,9 +14,9 @@
   },
   "liftover_path": "",
   "vcf_path": "",
-  "wide_table_path": "/mnt/workspace/lixinhang/code/search_agent/modules/pixi_report/examples/demo_case/wide_table.csv",
+  "wide_table_path": "examples/demo_case/wide_table.csv",
   "gene_disease_path": "",
-  "ppi_path": "/mnt/workspace/lixinhang/code/search_agent/modules/pixi_report/examples/demo_case/ppi_score.csv",
+  "ppi_path": "examples/demo_case/ppi_score.csv",
   "report_path": "",
-  "report_date": "2026-06-26"
+  "report_date": "2026-07-03"
 }
