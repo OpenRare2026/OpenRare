@@ -13,7 +13,7 @@ gnomAD / ClinVar / GTEx 注释
     ↓
 转录本选择与致病性规则排序
     ↓
-排序宽表输出（{{ ctx.meta.wide_table_path }}）
+排序宽表输出（{{ ctx.meta.wide_table_path | report_path or "宽表 CSV" }}）
     ↓
 本报告渲染（v1.1 结构）
 ```
@@ -23,8 +23,8 @@ gnomAD / ClinVar / GTEx 注释
 | 项目 | 状态 |
 |------|------|
 | 样本编号 | {{ ctx.meta.sample_id }} |
-| VCF 路径 | {{ ctx.meta.vcf_path or "未提供" }} |
-| Liftover 输出 | {{ ctx.meta.liftover_path or "未提供" }} |
+| VCF 路径 | {{ ctx.meta.vcf_path | report_path or "未提供" }} |
+| Liftover 输出 | {{ ctx.meta.liftover_path | report_path or "未提供" }} |
 | 比对参考基因组 | GRCh38 |
 | 宽表总行数 | 注释展开行（含多转录本） |
 | 去重后变异数 | {{ ctx.summary.total_variants }} |
@@ -33,7 +33,7 @@ gnomAD / ClinVar / GTEx 注释
 
 ### 4.3 排序方法说明
 
-本报告基于排序宽表的 `pathogenic_rank_1`（或旧版 `pathogenic_rank`）与 `evidence_summary`，综合考虑：
+本报告基于排序宽表的 `pathogenic_rank` 与 `evidence_summary`，综合考虑：
 
 - 变异本身影响（CADD、SpliceAI、REVEL、VEP 后果）
 - 表型相关组织表达（GTEx / 临床 tissue 白名单）

@@ -90,12 +90,10 @@ async def report_stream(request: ReportStreamRequest) -> EventSourceResponse:
     async def event_generator():
         try:
             async for event in stream_report_events(
-                wide_path=str(_resolve_input_path(request.wide_path)),
-                phenotype_path=str(_resolve_input_path(request.phenotype_path)),
-                hpo_path=str(_resolve_input_path(request.hpo_path)),
-                ppi_path=str(_resolve_input_path(request.ppi_path))
-                if request.ppi_path.strip()
-                else "",
+                wide_path=request.wide_path,
+                phenotype_path=request.phenotype_path,
+                hpo_path=request.hpo_path,
+                ppi_path=request.ppi_path if request.ppi_path.strip() else "",
                 top_n=request.top_n,
             ):
                 yield {"data": json.dumps(event, ensure_ascii=False)}

@@ -1,8 +1,8 @@
-# 基因组变异分析报告
+# OpenRare 基因组变异分析报告
 
 > **报告版本**：v1.1  
-> **生成日期**：2026-06-26  
-> **分析基础**：基于样本 26B03487389 的排序宽表 /mnt/workspace/lixinhang/code/search_agent/modules/pixi_report/examples/demo_case/wide_table.csv
+> **生成日期**：2026-07-03  
+> **分析基础**：基于样本 26B03487389 的排序宽表
 
 ---
 
@@ -17,10 +17,9 @@
 | HPO 表型 | HP:0001249 |
 | 报告受众 | clinician（临床医生） |
 | 分析目的 | 基于全外显子/基因组测序变异注释宽表，识别与临床表型相关的候选致病变异 |
-| 排序宽表来源 | /mnt/workspace/lixinhang/code/search_agent/modules/pixi_report/examples/demo_case/wide_table.csv |
 | VCF 来源 | 未提供 |
 | GRCh38 转换 | 未提供 |
-| 分析日期 | 2026-06-26 |
+| 分析日期 | 2026-07-03 |
 | 报告人 | AI 辅助基因组解读系统（需临床遗传学专家复核） |
 
 **关键提示**：本报告为**辅助决策**性质，所有候选变异需经实验验证（Sanger、功能实验）后方可用于临床决策。
@@ -34,19 +33,19 @@
 
 | 排名 | 基因 | 变异数 | 最高排序名次 | PPI 得分 | ClinVar | 主要关联表型 | 主要关联通路 |
 |------|------|--------|--------------|----------|---------|--------------|--------------|
-| 1 | **HLA-DPA1** | 1 | #1 | 0.6265 | - | type 1 diabetes mellitus; neoplasm | - |
-| 2 | **CXCL17** | 1 | #2 | 0.4378 | - | neoplasm; placenta praevia | - |
-| 3 | **DDI2** | 1 | #4 | 0.4574 | - | autosomal recessive spondylocostal dysostosis; Miyoshi myopathy | - |
-| 4 | **BMP8B** | 1 | #5 | 0.5393 | - | diabetes mellitus; Abnormality of the gastrointestinal tract | - |
-| 5 | **TAS2R19** | 1 | #8 | 0.5175 | - | sensory perception of bitter taste; sebaceous of Jadassohn nevus | - |
+| 1 | **HLA-DPA1** | 1 | #1 | 0.6265 | - | - | - |
+| 2 | **CXCL17** | 1 | #2 | 0.4378 | - | - | - |
+| 3 | **DDI2** | 1 | #4 | 0.4574 | - | - | - |
+| 4 | **BMP8B** | 1 | #5 | 0.5393 | - | - | - |
+| 5 | **TAS2R19** | 1 | #8 | 0.5175 | - | - | - |
 
 ### 2.2 关键发现提示
 
-- **HLA-DPA1**（致病性排名 #1）：主要关联疾病/表型为「type 1 diabetes mellitus; neoplasm」；关键词未直接重叠（疾病名为英文、临床为中文时可能低估匹配度，需结合临床判断）。患者表型：遗传咨询#主诉：咨询1天余，伴随 #现病史：孕15周，自诉孕妇母亲陶彩萍智力异常，智力落后，语言，运动无异常，未做遗传学检查，否认家族史。；HP:0001249。
-- **CXCL17**（致病性排名 #2）：主要关联疾病/表型为「neoplasm; placenta praevia」；关键词未直接重叠（疾病名为英文、临床为中文时可能低估匹配度，需结合临床判断）。患者表型：遗传咨询#主诉：咨询1天余，伴随 #现病史：孕15周，自诉孕妇母亲陶彩萍智力异常，智力落后，语言，运动无异常，未做遗传学检查，否认家族史。；HP:0001249。
-- **DDI2**（致病性排名 #4）：主要关联疾病/表型为「autosomal recessive spondylocostal dysostosis; Miyoshi myopathy」；关键词未直接重叠（疾病名为英文、临床为中文时可能低估匹配度，需结合临床判断）。患者表型：遗传咨询#主诉：咨询1天余，伴随 #现病史：孕15周，自诉孕妇母亲陶彩萍智力异常，智力落后，语言，运动无异常，未做遗传学检查，否认家族史。；HP:0001249。
-- **BMP8B**（致病性排名 #5）：主要关联疾病/表型为「diabetes mellitus; Abnormality of the gastrointestinal tract」；关键词未直接重叠（疾病名为英文、临床为中文时可能低估匹配度，需结合临床判断）。患者表型：遗传咨询#主诉：咨询1天余，伴随 #现病史：孕15周，自诉孕妇母亲陶彩萍智力异常，智力落后，语言，运动无异常，未做遗传学检查，否认家族史。；HP:0001249。
-- **TAS2R19**（致病性排名 #8）：主要关联疾病/表型为「sensory perception of bitter taste; sebaceous of Jadassohn nevus」；关键词未直接重叠（疾病名为英文、临床为中文时可能低估匹配度，需结合临床判断）。患者表型：遗传咨询#主诉：咨询1天余，伴随 #现病史：孕15周，自诉孕妇母亲陶彩萍智力异常，智力落后，语言，运动无异常，未做遗传学检查，否认家族史。；HP:0001249。
+- **HLA-DPA1**（致病性排名 #1）：暂无明确关联表型记录，需结合临床与变异证据评估。
+- **CXCL17**（致病性排名 #2）：暂无明确关联表型记录，需结合临床与变异证据评估。
+- **DDI2**（致病性排名 #4）：暂无明确关联表型记录，需结合临床与变异证据评估。
+- **BMP8B**（致病性排名 #5）：暂无明确关联表型记录，需结合临床与变异证据评估。
+- **TAS2R19**（致病性排名 #8）：暂无明确关联表型记录，需结合临床与变异证据评估。
 
 ### 2.3 排序得分白盒展示（示例）
 
@@ -75,7 +74,7 @@ evidence_score: -32
 | 主要转录本 | NM_033554.4 |
 | 基因功能 | HLA-DPA1 belongs to the HLA class II alpha chain paralogues. This class II molecule is a heterodimer consisting of an alpha (DPA) and a beta (DPB) chain, both anchored in the membrane. It plays a central role in the immune system by presenting peptides derived from extracellular proteins. Class II molecules are expressed in antigen presenting cells (APC: B lymphocytes, dendritic cells, macrophages). The alpha chain is approximately 33-35 kDa and its gene contains 5 exons. Exon one encodes the leader peptide, exons 2 and 3 encode the two extracellular domains, exon 4 encodes the transmembrane domain and the cytoplasmic tail. Within the DP molecule both the alpha chain and the beta chain contain the polymorphisms specifying the peptide binding specificities, resulting in up to 4 different molecules. [provided by RefSeq, Jul 2008] |
 | 遗传模式 | 待结合家系与变异类型进一步判断 |
-| 主要关联表型 | type 1 diabetes mellitus; neoplasm |
+| 主要关联表型 | - |
 | 主要关联通路 | - |
 | 致病性排名 | #1 |
 | PPI 得分 | 0.6265 |
@@ -145,7 +144,7 @@ evidence_score: -32
 | 属性 | 内容 |
 |------|------|
 | 蛋白结构域 | AFDB-ENSP_mappings:AF-P20036-F1,Phobius:CYTOPLASMIC_DOMAIN |
-| 治疗意义 | 当前变异 ClinVar/功能后果未达到 Pathogenic 或高影响 LoF 标准，本报告不提供用药建议。 |
+| 治疗意义 | 药物数据库查询失败，未生成用药建议。 |
 
 **证据摘要**
 
@@ -168,13 +167,13 @@ evidence_score: -32
 
 | 维度 | 内容 |
 |------|------|
-| 关联表型 | type 1 diabetes mellitus; neoplasm |
+| 关联表型 | - |
 | 关联通路 | - |
 | 临床建议 | consequence=missense_variant(+15); EAS_AF=6.409020e-01; frequency(-50); domain(+3); total=-32 |
 
 #### 3.1.5 严格筛选用药建议
 
-当前变异 ClinVar/功能后果未达到 Pathogenic 或高影响 LoF 标准，本报告不提供用药建议。
+药物数据库查询失败，未生成用药建议。
 
 | 药物 | 适应症 | 临床阶段 | 证据等级 | 匹配依据 | 注意事项 |
 |------|--------|----------|----------|----------|----------|
@@ -195,7 +194,7 @@ evidence_score: -32
 | 主要转录本 | NM_198477.3 |
 | 基因功能 | The protein encoded by this gene is a mucosal chemokine that attracts immature dendritic cells and blood monocytes to the lungs. The encoded protein also promotes tumorigenesis through an angiogenic activity. Finally, this protein exhibits strong antimicrobial activity against E. coli, S. aureus, Salmonella, P. aeruginosa, and C. albicans. Two transcript variants, one protein-coding and the other non-protein coding, have been found for this gene. [provided by RefSeq, Dec 2015] |
 | 遗传模式 | 待结合家系与变异类型进一步判断 |
-| 主要关联表型 | neoplasm; placenta praevia |
+| 主要关联表型 | - |
 | 主要关联通路 | - |
 | 致病性排名 | #2 |
 | PPI 得分 | 0.4378 |
@@ -268,7 +267,7 @@ evidence_score: -32
 | 属性 | 内容 |
 |------|------|
 | 蛋白结构域 | Pfam:PF15211,Phobius:NON_CYTOPLASMIC_DOMAIN,PANTHER:PTHR37351,AFDB-ENSP_mappings:AF-Q6UXB2-F1 |
-| 治疗意义 | 当前变异 ClinVar/功能后果未达到 Pathogenic 或高影响 LoF 标准，本报告不提供用药建议。 |
+| 治疗意义 | 药物数据库查询失败，未生成用药建议。 |
 
 **证据摘要**
 
@@ -293,13 +292,13 @@ evidence_score: +0
 
 | 维度 | 内容 |
 |------|------|
-| 关联表型 | neoplasm; placenta praevia |
+| 关联表型 | - |
 | 关联通路 | - |
 | 临床建议 | consequence=missense_variant(+15); splice_lof=SpliceAI:0.1(+3); CADD=13.65(+2); EAS_AF=1.541550e-02; frequency(-23); domain(+3); total=+0 |
 
 #### 3.2.5 严格筛选用药建议
 
-当前变异 ClinVar/功能后果未达到 Pathogenic 或高影响 LoF 标准，本报告不提供用药建议。
+药物数据库查询失败，未生成用药建议。
 
 | 药物 | 适应症 | 临床阶段 | 证据等级 | 匹配依据 | 注意事项 |
 |------|--------|----------|----------|----------|----------|
@@ -320,7 +319,7 @@ evidence_score: +0
 | 主要转录本 | NM_032341.5 |
 | 基因功能 | Enables aspartic-type endopeptidase activity; identical protein binding activity; and ubiquitin binding activity. Involved in several processes, including cellular response to hydroxyurea; proteolysis; and regulation of DNA stability. Located in cytosol and nucleoplasm. [provided by Alliance of Genome Resources, Jul 2025] |
 | 遗传模式 | 待结合家系与变异类型进一步判断 |
-| 主要关联表型 | autosomal recessive spondylocostal dysostosis; Miyoshi myopathy |
+| 主要关联表型 | - |
 | 主要关联通路 | - |
 | 致病性排名 | #4 |
 | PPI 得分 | 0.4574 |
@@ -393,7 +392,7 @@ evidence_score: +0
 | 属性 | 内容 |
 |------|------|
 | 蛋白结构域 | - |
-| 治疗意义 | 当前变异 ClinVar/功能后果未达到 Pathogenic 或高影响 LoF 标准，本报告不提供用药建议。 |
+| 治疗意义 | 药物数据库查询失败，未生成用药建议。 |
 
 **证据摘要**
 
@@ -416,13 +415,13 @@ evidence_score: -36
 
 | 维度 | 内容 |
 |------|------|
-| 关联表型 | autosomal recessive spondylocostal dysostosis; Miyoshi myopathy |
+| 关联表型 | - |
 | 关联通路 | - |
 | 临床建议 | consequence=3_prime_utr_variant(-3); CADD=16.17(+2); EAS_AF=0.05091; frequency(-35); total=-36 |
 
 #### 3.3.5 严格筛选用药建议
 
-当前变异 ClinVar/功能后果未达到 Pathogenic 或高影响 LoF 标准，本报告不提供用药建议。
+药物数据库查询失败，未生成用药建议。
 
 | 药物 | 适应症 | 临床阶段 | 证据等级 | 匹配依据 | 注意事项 |
 |------|--------|----------|----------|----------|----------|
@@ -443,7 +442,7 @@ evidence_score: -36
 | 主要转录本 | NM_001720.5 |
 | 基因功能 | This gene encodes a secreted ligand of the TGF-beta (transforming growth factor-beta) superfamily of proteins. Ligands of this family bind various TGF-beta receptors leading to recruitment and activation of SMAD family transcription factors that regulate gene expression. The encoded preproprotein is proteolytically processed to generate each subunit of the disulfide-linked homodimer. The encoded protein stimulates thermogenesis in brown adipose tissue. Expression of this gene may be downregulated in pancreatic cancer. This gene may have arose from a gene duplication event and its gene duplicate is also present on chromosome 1. [provided by RefSeq, Jul 2016] |
 | 遗传模式 | 待结合家系与变异类型进一步判断 |
-| 主要关联表型 | diabetes mellitus; Abnormality of the gastrointestinal tract |
+| 主要关联表型 | - |
 | 主要关联通路 | - |
 | 致病性排名 | #5 |
 | PPI 得分 | 0.5393 |
@@ -515,7 +514,7 @@ evidence_score: -36
 | 属性 | 内容 |
 |------|------|
 | 蛋白结构域 | - |
-| 治疗意义 | 当前变异 ClinVar/功能后果未达到 Pathogenic 或高影响 LoF 标准，本报告不提供用药建议。 |
+| 治疗意义 | 药物数据库查询失败，未生成用药建议。 |
 
 **证据摘要**
 
@@ -537,13 +536,13 @@ evidence_score: -38
 
 | 维度 | 内容 |
 |------|------|
-| 关联表型 | diabetes mellitus; Abnormality of the gastrointestinal tract |
+| 关联表型 | - |
 | 关联通路 | - |
 | 临床建议 | consequence=intron_variant(-3); EAS_AF=0.4376; frequency(-35); total=-38 |
 
 #### 3.4.5 严格筛选用药建议
 
-当前变异 ClinVar/功能后果未达到 Pathogenic 或高影响 LoF 标准，本报告不提供用药建议。
+药物数据库查询失败，未生成用药建议。
 
 | 药物 | 适应症 | 临床阶段 | 证据等级 | 匹配依据 | 注意事项 |
 |------|--------|----------|----------|----------|----------|
@@ -564,7 +563,7 @@ evidence_score: -38
 | 主要转录本 | NM_176888.2 |
 | 基因功能 | Predicted to enable G protein-coupled receptor activity and bitter taste receptor activity. Predicted to be involved in G protein-coupled receptor signaling pathway and detection of chemical stimulus involved in sensory perception of bitter taste. Located in membrane. [provided by Alliance of Genome Resources, Jul 2025] |
 | 遗传模式 | 待结合家系与变异类型进一步判断 |
-| 主要关联表型 | sensory perception of bitter taste; sebaceous of Jadassohn nevus |
+| 主要关联表型 | - |
 | 主要关联通路 | - |
 | 致病性排名 | #8 |
 | PPI 得分 | 0.5175 |
@@ -629,7 +628,7 @@ evidence_score: -38
 | 属性 | 内容 |
 |------|------|
 | 蛋白结构域 | Gene3D:1.20.1070.10,Pfam:PF05296,PANTHER:PTHR11394,Phobius:CYTOPLASMIC_DOMAIN,AFDB-ENSP_mappings:AF-P59542-F1 |
-| 治疗意义 | 当前变异 ClinVar/功能后果未达到 Pathogenic 或高影响 LoF 标准，本报告不提供用药建议。 |
+| 治疗意义 | 药物数据库查询失败，未生成用药建议。 |
 
 **证据摘要**
 
@@ -652,13 +651,13 @@ evidence_score: -17
 
 | 维度 | 内容 |
 |------|------|
-| 关联表型 | sensory perception of bitter taste; sebaceous of Jadassohn nevus |
+| 关联表型 | - |
 | 关联通路 | - |
 | 临床建议 | consequence=missense_variant(+15); EAS_AF=0.4974; frequency(-35); domain(+3); total=-17 |
 
 #### 3.5.5 严格筛选用药建议
 
-当前变异 ClinVar/功能后果未达到 Pathogenic 或高影响 LoF 标准，本报告不提供用药建议。
+药物数据库查询失败，未生成用药建议。
 
 | 药物 | 适应症 | 临床阶段 | 证据等级 | 匹配依据 | 注意事项 |
 |------|--------|----------|----------|----------|----------|
@@ -682,7 +681,7 @@ gnomAD / ClinVar / GTEx 注释
     ↓
 转录本选择与致病性规则排序
     ↓
-排序宽表输出（/mnt/workspace/lixinhang/code/search_agent/modules/pixi_report/examples/demo_case/wide_table.csv）
+排序宽表输出（examples/demo_case/wide_table.csv）
     ↓
 本报告渲染（v1.1 结构）
 ```
@@ -702,7 +701,7 @@ gnomAD / ClinVar / GTEx 注释
 
 ### 4.3 排序方法说明
 
-本报告基于排序宽表的 `pathogenic_rank_1`（或旧版 `pathogenic_rank`）与 `evidence_summary`，综合考虑：
+本报告基于排序宽表的 `pathogenic_rank` 与 `evidence_summary`，综合考虑：
 
 - 变异本身影响（CADD、SpliceAI、REVEL、VEP 后果）
 - 表型相关组织表达（GTEx / 临床 tissue 白名单）
@@ -772,7 +771,7 @@ gnomAD / ClinVar / GTEx 注释
     "BMP8B",
     "TAS2R19"
   ],
-  "output_path": "/mnt/workspace/lixinhang/code/search_agent/modules/pixi_report/examples/demo_case/output/report.md",
+  "output_path": "report.md",
   "literature_strategy": "precomputed_plus_online_fallback",
   "disclaimer_included": true
 }

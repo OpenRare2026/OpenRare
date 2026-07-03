@@ -9,8 +9,8 @@
 | HPO 表型 | {% if ctx.meta.hpo_terms %}{{ ctx.meta.hpo_terms | join(", ") }}{% else %}{{ ctx.meta.hpo_raw or "未提供" }}{% endif %} |
 | 报告受众 | clinician（临床医生） |
 | 分析目的 | 基于全外显子/基因组测序变异注释宽表，识别与临床表型相关的候选致病变异 |
-| VCF 来源 | {{ ctx.meta.vcf_path or "未提供" }} |
-| GRCh38 转换 | {{ ctx.meta.liftover_path or "未提供" }} |
+| VCF 来源 | {{ ctx.meta.vcf_path | report_path or "未提供" }} |
+| GRCh38 转换 | {{ ctx.meta.liftover_path | report_path or "未提供" }} |
 | 分析日期 | {{ ctx.meta.report_date }} |
 | 报告人 | AI 辅助基因组解读系统（需临床遗传学专家复核） |
 

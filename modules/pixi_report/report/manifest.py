@@ -6,6 +6,7 @@ import re
 from pathlib import Path
 
 from report.models import SampleMeta
+from report.paths import normalize_stored_path
 
 _HPO_PATTERN = re.compile(r"HP:\d+")
 
@@ -103,12 +104,16 @@ def load_manifest(path: str | Path, row_index: int = 0) -> SampleMeta:
     gene_disease_path = _clean_path(row.get("基因与疾病", "") or "")
 
     manifest_dir = manifest_path.parent
-    if wide_table and not Path(wide_table).is_absolute():
-        wide_table = str((manifest_dir / wide_table).resolve())
-    if ppi_path and not Path(ppi_path).is_absolute():
-        ppi_path = str((manifest_dir / ppi_path).resolve())
-    if gene_disease_path and not Path(gene_disease_path).is_absolute():
-        gene_disease_path = str((manifest_dir / gene_disease_path).resolve())
+    if wide_table:
+        wide_table = normalize_stored_path(wide_table, anchor=manifest_dir)
+    if ppi_path:
+        ppi_path = normalize_stored_path(ppi_path, anchor=manifest_dir)
+    if gene_disease_path:
+        gene_disease_path = normalize_stored_path(gene_disease_path, anchor=manifest_dir)
+
+    liftover_path = normalize_stored_path(_clean_path(row.get("37 to 38", "") or ""))
+    vcf_path = normalize_stored_path(_clean_path(row.get("gz to vcf", "") or ""))
+    report_path = normalize_stored_path(_clean_path(row.get("报告", "") or ""))
 
     return SampleMeta(
         family_type=family_type,
@@ -118,10 +123,10 @@ def load_manifest(path: str | Path, row_index: int = 0) -> SampleMeta:
         hpo_raw=hpo_raw.strip(),
         hpo_terms=_resolve_hpo_terms(hpo_raw, raghpo_returns),
         raghpo_returns=raghpo_returns,
-        liftover_path=_clean_path(row.get("37 to 38", "") or ""),
-        vcf_path=_clean_path(row.get("gz to vcf", "") or ""),
+        liftover_path=liftover_path,
+        vcf_path=vcf_path,
         wide_table_path=wide_table,
         gene_disease_path=gene_disease_path,
         ppi_path=ppi_path,
-        report_path=_clean_path(row.get("报告", "") or ""),
+        report_path=report_path,
     )

@@ -18,6 +18,7 @@ from report.omim_enrich import attach_omim_inheritance_info
 from report.output import resolve_output_paths
 from report.pathways import attach_reactome_pathways
 from report.phenotypes import attach_open_targets_phenotypes
+from report.paths import resolve_module_path
 from report.ppi_lookup import load_ppi_lookup
 from report.wide_table import build_gene_cards, select_variants
 
@@ -74,9 +75,16 @@ async def stream_report_events(
         with_agent=True,
     )
 
-    rows = load_wide_table_rows_limited(meta.wide_table_path, max_rows=WIDE_TABLE_MAX_ROWS)
+    rows = load_wide_table_rows_limited(
+        resolve_module_path(meta.wide_table_path),
+        max_rows=WIDE_TABLE_MAX_ROWS,
+    )
     variants = select_variants(rows)
-    ppi_lookup = load_ppi_lookup(meta.ppi_path) if meta.ppi_path.strip() else None
+    ppi_lookup = (
+        load_ppi_lookup(resolve_module_path(meta.ppi_path))
+        if meta.ppi_path.strip()
+        else None
+    )
     gene_cards, summary = build_gene_cards(variants, top_n=top_n, ppi_lookup=ppi_lookup)
     context = ReportContext(
         meta=meta,

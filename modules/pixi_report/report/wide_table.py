@@ -12,7 +12,10 @@ from report.models import (
     TopGeneSummary,
     VariantRecord,
 )
+from report.paths import resolve_module_path
 from report.ppi_lookup import load_ppi_lookup, resolve_gene_ppi_score
+
+GENOS_VARRISK_COLUMN = "GENOS-VarRisk"
 
 
 def _display(value: str | None) -> str:
@@ -30,19 +33,7 @@ def _parse_int(value: str | None) -> int | None:
         return None
 
 
-def _detect_pathogenic_rank_1_column(rows: list[dict[str, str]]) -> bool:
-    if not rows:
-        return False
-    return "pathogenic_rank_1" in rows[0]
-
-
-def _resolve_pathogenic_rank(row: dict[str, str], *, use_rank_1: bool) -> int | None:
-    if use_rank_1:
-        return _parse_int(row.get("pathogenic_rank_1"))
-    return _parse_int(row.get("pathogenic_rank"))
-
-
-def _row_to_variant(row: dict[str, str], *, use_rank_1: bool) -> VariantRecord:
+def _row_to_variant(row: dict[str, str]) -> VariantRecord:
     return VariantRecord(
         chrom=_display(row.get("chrom")),
         pos=_display(row.get("pos")),
@@ -93,10 +84,10 @@ def _row_to_variant(row: dict[str, str], *, use_rank_1: bool) -> VariantRecord:
         clinical_best_tissue=_display(row.get("clinical_best_tissue")),
         clinical_transcript_tpm=_display(row.get("clinical_transcript_tpm")),
         gtex_transcript_top5_tissues=_display(row.get("gtex_transcript_top5_tissues")),
-        pathogenic_rank=_resolve_pathogenic_rank(row, use_rank_1=use_rank_1),
+        pathogenic_rank=_parse_int(row.get("pathogenic_rank")),
         ppi_final=_display(row.get("ppi_final")),
         evidence_summary=_display(row.get("evidence_summary")),
-        genos_evee=_display(row.get("GENOS-VarRisk")),
+        genos_varrisk=_display(row.get(GENOS_VARRISK_COLUMN)),
     )
 
 
@@ -112,8 +103,7 @@ def select_variants(rows: list[dict[str, str]]) -> list[VariantRecord]:
     New-format wide tables already contain one selected transcript per
     gene × variant row; no per-locus transcript deduplication is applied.
     """
-    use_rank_1 = _detect_pathogenic_rank_1_column(rows)
-    variants = [_row_to_variant(row, use_rank_1=use_rank_1) for row in rows]
+    variants = [_row_to_variant(row) for row in rows]
     variants.sort(
         key=lambda item: (
             item.pathogenic_rank if item.pathogenic_rank is not None else 999999,
@@ -167,7 +157,7 @@ def build_gene_cards(
             main_phenotype_hint=primary.clinical_best_tissue
             if primary.clinical_best_tissue != "-"
             else "",
-            genos_evee=primary.genos_evee,
+            genos_varrisk=primary.genos_varrisk,
             ppi_score=ppi_score,
             evidence_summary=primary.evidence_summary,
             variants=gene_variants,
@@ -201,9 +191,13 @@ def build_report_context(meta: SampleMeta, top_n: int = 5) -> ReportContext:
     if not meta.wide_table_path:
         raise ValueError("Sample manifest is missing wide table path (宽表)")
 
-    rows = load_wide_table_rows(meta.wide_table_path)
+    rows = load_wide_table_rows(resolve_module_path(meta.wide_table_path))
     variants = select_variants(rows)
-    ppi_lookup = load_ppi_lookup(meta.ppi_path) if meta.ppi_path.strip() else None
+    ppi_lookup = (
+        load_ppi_lookup(resolve_module_path(meta.ppi_path))
+        if meta.ppi_path.strip()
+        else None
+    )
     gene_cards, summary = build_gene_cards(variants, top_n=top_n, ppi_lookup=ppi_lookup)
 
     return ReportContext(

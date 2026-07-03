@@ -5,12 +5,12 @@
 | 文件 | 说明 |
 |------|------|
 | `manifest.csv` | 一行样本：临床信息 + HPO + 宽表 / PPI 相对路径 |
-| `wide_table.csv` | 新格式排序宽表（含 `pathogenic_rank_1`、`ppi_final`、`evolve_score` 等 120 列）；本例为 Top 5 基因各 1 行 |
+| `wide_table.csv` | 排序宽表（含 `pathogenic_rank`、`ppi_final`、`evolve_score` 等 119 列）；本例为 Top 5 基因各 1 行 |
 | `ppi_score.csv` | 基因级 PPI 得分（`gene` + `ppi_final`），对应宽表中的 5 个基因 |
 | `gene_phenotype_score.csv` | 基因-表型匹配得分（参考数据，报告流水线暂不读取） |
 | `hpo_terms.txt` | HPO 术语列表 |
 
-**示例 Top 5 基因**（按 `pathogenic_rank_1`）：HLA-DPA1、CXCL17、PCDHGC4、DDI2、BMP8B
+**示例 Top 5 基因**（按 `pathogenic_rank`）：HLA-DPA1、CXCL17、PCDHGC4、DDI2、BMP8B
 
 ## 预生成报告（可直接查看）
 

@@ -5,6 +5,7 @@ import re
 from pathlib import Path
 
 from report.models import SampleMeta
+from report.paths import normalize_stored_path, resolve_module_path
 
 _HPO_PATTERN = re.compile(r"HP:\d+")
 
@@ -75,10 +76,10 @@ def build_sample_meta(
     hpo_path: str | Path,
     ppi_path: str | Path = "",
 ) -> SampleMeta:
-    wide_table = str(Path(wide_path).resolve())
-    sample_id, clinical_info = load_phenotype_csv(phenotype_path)
-    hpo_raw, hpo_terms = _parse_hpo_file(Path(hpo_path))
-    ppi = str(Path(ppi_path).resolve()) if str(ppi_path).strip() else ""
+    wide_table = normalize_stored_path(str(wide_path))
+    sample_id, clinical_info = load_phenotype_csv(resolve_module_path(str(phenotype_path)))
+    hpo_raw, hpo_terms = _parse_hpo_file(resolve_module_path(str(hpo_path)))
+    ppi = normalize_stored_path(str(ppi_path)) if str(ppi_path).strip() else ""
 
     return SampleMeta(
         sample_id=sample_id,

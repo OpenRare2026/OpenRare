@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from datetime import date
-from typing import Any
+from typing import Any, Self
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
+
+from report.paths import META_PATH_FIELDS, normalize_stored_path
 
 
 def _optional_int(value: str) -> int | None:
@@ -185,6 +187,18 @@ class SampleMeta(BaseModel):
     report_path: str = ""
     report_date: str = Field(default_factory=lambda: date.today().isoformat())
 
+    @model_validator(mode="after")
+    def _normalize_path_fields(self) -> Self:
+        updates = {
+            name: normalize_stored_path(getattr(self, name))
+            for name in META_PATH_FIELDS
+            if getattr(self, name)
+        }
+        changed = {key: value for key, value in updates.items() if value != getattr(self, key)}
+        if changed:
+            return self.model_copy(update=changed)
+        return self
+
 
 class VariantRecord(BaseModel):
     chrom: str
@@ -239,7 +253,7 @@ class VariantRecord(BaseModel):
     pathogenic_rank: int | None = None
     ppi_final: str = "-"
     evidence_summary: str = ""
-    genos_evee: str = ""
+    genos_varrisk: str = ""
 
     @property
     def coordinate(self) -> str:
@@ -377,7 +391,7 @@ class GeneCard(BaseModel):
     script_gene_function_source: str = "-"
     omim_gene_function: str = "-"
     omim_inheritance_mode: str = "-"
-    genos_evee: str = "-"
+    genos_varrisk: str = "-"
     ppi_score: str = "-"
     evidence_summary: str = ""
     variants: list[VariantRecord] = Field(default_factory=list)
