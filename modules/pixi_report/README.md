@@ -58,7 +58,7 @@ FastAPI（`POST /report/stream`）需要三个输入文件。路径可为绝对�
 | `clinical_best_tissue` / `gtex_transcript_top5_tissues` | 表达组织 |
 | `evidence_summary` | 证据摘要 |
 | `ppi_final` | 变异级 PPI 得分（Gene Card 展示回退来源） |
-| `GENOS-EVEE` | Genos-Mutation 评分（可选；宽表列名仍为 `GENOS-EVEE`，报告中展示为 Genos-Mutation） |
+| `GENOS-VarRisk` | GENOS-VarRisk 评分（可选；宽表列名和报告展示均为 `GENOS-VarRisk`） |
 
 完整列表示例见 `examples/demo_case/wide_table.csv` 或 `fixtures/wide_table.csv`。
 

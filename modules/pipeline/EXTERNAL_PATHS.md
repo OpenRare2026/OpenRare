@@ -75,7 +75,7 @@ cp .env.example .env
 | 04 | `04_vep/raw_vep.tsv` | 原始 VEP TSV |
 | 04 | `04_vep/vep.log` | VEP 日志 |
 | 05 | `05_vcf_info_to_csv/vep_output.with_info.csv` | 合并 VCF INFO/FORMAT |
-| 06 | `06_genos_evee_annotation/vep_output.with_genos_evee.csv` | GENOS-EVEE 宽表 |
+| 06 | `06_genos_evee_annotation/vep_output.with_genos_evee.csv` | GENOS-VarRisk 宽表 |
 | 07 | `07_hla_filter/vep_output.no_hla.csv` | **最终输出**（默认 `hla_filter=yes`） |
 | 汇总 | `full_pipeline.outputs.tsv` | 各步路径索引 |
 | 日志 | `logs/full_pipeline.log` | 全流程日志 |

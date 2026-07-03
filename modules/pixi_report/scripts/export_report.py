@@ -23,10 +23,10 @@ BUNDLED_CJK_FONT_URL = (
 CJK_MAIN_FONT = "Noto Sans SC"
 CJK_MONO_FONT = "Noto Sans SC"
 
-_GENOS_MUTATION_LABELS = frozenset({"Genos-Mutation", "GENOS-EVEE"})
+_GENOS_VARRISK_LABELS = frozenset({"GENOS-VarRisk"})
 
 _VARIANT_LIST_HEADER_COMPACT = (
-    "| 变异 | 转录本 / 后果 | Genos-Mutation | 评分 | ClinVar（VAF） |\n"
+    "| 变异 | 转录本 / 后果 | GENOS-VarRisk | 评分 | ClinVar（VAF） |\n"
     "|------|---------------|----------------|------|----------------|"
 )
 
@@ -41,7 +41,7 @@ def _is_variant_list_header(cells: list[str]) -> bool:
     return cells[1] in ("转录本", "转录本 / 后果") and cells[2] in (
         "后果",
         "评分",
-        *_GENOS_MUTATION_LABELS,
+        *_GENOS_VARRISK_LABELS,
     )
 
 
@@ -64,7 +64,7 @@ def _compact_variant_row(cells: list[str]) -> list[str] | None:
     elif len(cells) == 6:
         label, transcript, consequence, cadd, clinvar, vaf = cells[:6]
         genos = "-"
-    elif len(cells) == 5 and cells[2] not in _GENOS_MUTATION_LABELS:
+    elif len(cells) == 5 and cells[2] not in _GENOS_VARRISK_LABELS:
         label, transcript, consequence, cadd, clinvar, vaf = (
             cells[0],
             cells[1],
@@ -74,7 +74,7 @@ def _compact_variant_row(cells: list[str]) -> list[str] | None:
             "",
         )
         genos = "-"
-    elif len(cells) == 5 and cells[2] in _GENOS_MUTATION_LABELS:
+    elif len(cells) == 5 and cells[2] in _GENOS_VARRISK_LABELS:
         return None
     elif len(cells) == 4 and (" · " in cells[1] or "<br>" in cells[1]):
         return None

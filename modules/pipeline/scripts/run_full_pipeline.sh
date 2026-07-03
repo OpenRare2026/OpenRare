@@ -49,7 +49,7 @@ Advanced optional overrides, usually not needed:
   --java-bin PATH           Java executable for Beagle
   --top-k-transcripts N     VEP transcript selection count, default: 5
   --clinical-tissue NAME    Optional clinical tissue for VEP runner
-  --genos-evee-db FILE      Indexed GENOS-EVEE CPRA TSV.GZ; default: resource/genos_evee/genos_evee.cpra.tsv.gz
+  --GENOS-VarRisk-db FILE      Indexed GENOS-VarRisk CPRA TSV.GZ; default: resource/genos_evee/genos_evee.cpra.tsv.gz
   --keep-raw-vep yes|no     Keep raw VEP TSV, default: yes
   --input-assembly SPEC     Input assembly: auto, GRCh37, or GRCh38 (default: auto)
   --dry-run                 Print commands only
@@ -107,7 +107,7 @@ while [[ $# -gt 0 ]]; do
     --pseudogene-annotation) PSEUDOGENE_ANNOTATION="${2:?}"; shift 2 ;;
     --hla-filter) HLA_FILTER="${2:?}"; shift 2 ;;
     --clinical-tissue) CLINICAL_TISSUE="${2:?}"; shift 2 ;;
-    --genos-evee-db) GENOS_EVEE_DB="${2:?}"; shift 2 ;;
+    --GENOS-VarRisk-db) GENOS_EVEE_DB="${2:?}"; shift 2 ;;
     --keep-raw-vep) KEEP_RAW_VEP="${2:?}"; shift 2 ;;
     --input-assembly) INPUT_ASSEMBLY="${2:?}"; shift 2 ;;
     --dry-run) DRY_RUN=yes; shift ;;
@@ -152,7 +152,7 @@ fi
 [[ -s "$PSEUDOGENE_PY" ]] || { echo "ERROR: pseudogene script not found: $PSEUDOGENE_PY" >&2; exit 1; }
 [[ -s "$INFO_TO_CSV_SCRIPT" ]] || { echo "ERROR: INFO-to-CSV script not found: $INFO_TO_CSV_SCRIPT" >&2; exit 1; }
 [[ -s "$ENSURE_HEADERS_SCRIPT" ]] || { echo "ERROR: ensure-header script not found: $ENSURE_HEADERS_SCRIPT" >&2; exit 1; }
-[[ -s "$GENOS_EVEE_SCRIPT" ]] || { echo "ERROR: GENOS-EVEE annotation script not found: $GENOS_EVEE_SCRIPT" >&2; exit 1; }
+[[ -s "$GENOS_EVEE_SCRIPT" ]] || { echo "ERROR: GENOS-VarRisk annotation script not found: $GENOS_EVEE_SCRIPT" >&2; exit 1; }
 [[ -s "$HLA_FILTER_SCRIPT" ]] || { echo "ERROR: HLA filter script not found: $HLA_FILTER_SCRIPT" >&2; exit 1; }
 case "$INPUT_ASSEMBLY" in
   auto|GRCh37|GRCh38) ;;
@@ -350,7 +350,7 @@ vep_evee_csv="${OUT_DIR}/06_genos_evee_annotation/vep_output.with_genos_evee.csv
 vep_evee_log="${OUT_DIR}/06_genos_evee_annotation/genos_evee_annotation.log.json"
 hla_filtered_csv="${OUT_DIR}/07_hla_filter/vep_output.no_hla.csv"
 hla_filter_log="${OUT_DIR}/07_hla_filter/hla_filter.log.json"
-# Final sorting is intentionally disabled. The HLA-filtered GENOS-EVEE wide table is the final CSV when HLA_FILTER=yes.
+# Final sorting is intentionally disabled. The HLA-filtered GENOS-VarRisk wide table is the final CSV when HLA_FILTER=yes.
 vep_csv="$vep_evee_csv"
 vep_cmd=(python3 "$VEP_SCRIPT" -i "$pseudo_vcf" -o "$vep_base_csv" --config "$VEP_CONFIG" --format vcf --hgvs --fork "$FORK" --top-k-transcripts "$TOP_K_TRANSCRIPTS" --no-pseudogene-annotation --no-regulatory-annotation --no-vcf-info-to-csv --no-pathogenic-ranking --log "$vep_log")
 if [[ "$KEEP_RAW_VEP" == yes ]]; then
@@ -379,10 +379,10 @@ genos_evee_cmd=(python3 "$GENOS_EVEE_SCRIPT" \
   --output-csv "$vep_evee_csv" \
   --log-json "$vep_evee_log")
 if [[ -s "$GENOS_EVEE_DB" ]]; then
-  [[ -s "${GENOS_EVEE_DB}.tbi" ]] || { echo "ERROR: GENOS-EVEE database index not found: ${GENOS_EVEE_DB}.tbi" >&2; exit 1; }
+  [[ -s "${GENOS_EVEE_DB}.tbi" ]] || { echo "ERROR: GENOS-VarRisk database index not found: ${GENOS_EVEE_DB}.tbi" >&2; exit 1; }
   genos_evee_cmd+=(--database "$GENOS_EVEE_DB")
 else
-  echo "WARNING: GENOS-EVEE database not found; GENOS-EVEE column will be filled with '-': $GENOS_EVEE_DB"
+  echo "WARNING: GENOS-VarRisk database not found; GENOS-VarRisk column will be filled with '-': $GENOS_EVEE_DB"
 fi
 run_cmd "${genos_evee_cmd[@]}"
 
@@ -390,7 +390,7 @@ if [[ "$HLA_FILTER" == yes ]]; then
   run_cmd python3 "$HLA_FILTER_SCRIPT" --input-csv "$vep_evee_csv" --output-csv "$hla_filtered_csv" --log-json "$hla_filter_log"
   vep_csv="$hla_filtered_csv"
 else
-  printf '[%s] SKIP HLA filter: keeping GENOS-EVEE wide CSV: %s\n' "$(date '+%F %T')" "$vep_csv"
+  printf '[%s] SKIP HLA filter: keeping GENOS-VarRisk wide CSV: %s\n' "$(date '+%F %T')" "$vep_csv"
 fi
 
 {

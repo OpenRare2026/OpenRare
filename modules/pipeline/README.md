@@ -1,6 +1,6 @@
 # OpenRare Pipeline — 罕见病变异注释与宽表输出全流程
 
-从患者 VCF 出发，串联 Beagle phasing、VCF 前置处理、假基因注释、VEP 多插件注释、INFO 回填、GENOS-EVEE 注释与 HLA 过滤，一键产出可解读的宽表 CSV；支持命令行与 FastAPI 两种调用方式。
+从患者 VCF 出发，串联 Beagle phasing、VCF 前置处理、假基因注释、VEP 多插件注释、INFO 回填、GENOS-VarRisk 注释与 HLA 过滤，一键产出可解读的宽表 CSV；支持命令行与 FastAPI 两种调用方式。
 
 ## 目录
 
@@ -123,7 +123,7 @@ full_log                      /path/to/output/logs/full_pipeline.log
 最终 CSV 表头示例（列较多，此处仅示意）：
 
 ```text
-#CHROM,POS,REF,ALT,...,Gene,Consequence,CLIN_SIG,...,GENOS-EVEE,...
+#CHROM,POS,REF,ALT,...,Gene,Consequence,CLIN_SIG,...,GENOS-VarRisk,...
 chr1,1197557,G,A,...,TTLL10,missense_variant,...,0.42,...
 ```
 
@@ -315,7 +315,7 @@ pixi run bash scripts/run_full_pipeline.sh --help
 | 03 | `03_pseudogene_annotation/` | 假基因 INFO 注释（可跳过） | `preprocessed.pseudogene_annotated.vcf.gz` |
 | 04 | `04_vep/` | VEP + CADD/SpliceAI/dbNSFP/LoFTEE/ClinVar 等 | `vep_output.base.csv` |
 | 05 | `05_vcf_info_to_csv/` | VCF INFO/FORMAT 回填到 CSV | `vep_output.with_info.csv` |
-| 06 | `06_genos_evee_annotation/` | GENOS-EVEE 疾病预测分数 | `vep_output.with_genos_evee.csv` |
+| 06 | `06_genos_evee_annotation/` | GENOS-VarRisk 疾病预测分数 | `vep_output.with_genos_evee.csv` |
 | 07 | `07_hla_filter/` | 删除 GRCh38 HLA/MHC 区行（可 `--hla-filter no` 跳过） | **`vep_output.no_hla.csv`** |
 
 ---
@@ -338,7 +338,7 @@ pixi run bash scripts/run_full_pipeline.sh --help
 |------|------|
 | `<out-dir>/04_vep/vep_output.base.csv` | VEP 基础 CSV |
 | `<out-dir>/04_vep/raw_vep.tsv` | VEP 原始 TSV（默认保留） |
-| `<out-dir>/06_genos_evee_annotation/vep_output.with_genos_evee.csv` | GENOS-EVEE 宽表（HLA 过滤前） |
+| `<out-dir>/06_genos_evee_annotation/vep_output.with_genos_evee.csv` | GENOS-VarRisk 宽表（HLA 过滤前） |
 | `<out-dir>/07_hla_filter/vep_output.no_hla.csv` | **最终宽表**（默认） |
 | `<out-dir>/full_pipeline.outputs.tsv` | 各步产物路径索引 |
 | `<out-dir>/logs/full_pipeline.log` | 全流程日志 |
@@ -407,7 +407,7 @@ VEP 配置 [`modules/vep_runner/config/vep_runner_config.json`](modules/vep_runn
 |------|------|
 | [complete_pipeline/README.md](complete_pipeline/README.md) | API 与 CLI 详细参数 |
 | [modules/vep_runner/README.md](modules/vep_runner/README.md) | VEP 插件与注释库安装 |
-| [modules/genos_evee_annotation/README.md](modules/genos_evee_annotation/README.md) | GENOS-EVEE 注释与数据库构建 |
+| [modules/genos_evee_annotation/README.md](modules/genos_evee_annotation/README.md) | GENOS-VarRisk 注释与数据库构建 |
 | [modules/hla_filter/README.md](modules/hla_filter/README.md) | HLA/MHC 区行过滤 |
 | [modules/result_sorting/README.md](modules/result_sorting/README.md) | 可选致病性排序（主流程默认不启用） |
 | [resource_mock/README.md](resource_mock/README.md) | 联调用迷你 mock 库 |

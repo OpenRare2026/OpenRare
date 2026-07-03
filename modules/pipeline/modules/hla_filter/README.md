@@ -1,6 +1,6 @@
 # HLA/MHC 区域行过滤模块
 
-从 GENOS-EVEE 宽表中删除 GRCh38 HLA/MHC 区域的变异行。对应主流程第 **07** 步（默认开启）。
+从 GENOS-VarRisk 宽表中删除 GRCh38 HLA/MHC 区域的变异行。对应主流程第 **07** 步（默认开启）。
 
 ## 过滤区间
 
