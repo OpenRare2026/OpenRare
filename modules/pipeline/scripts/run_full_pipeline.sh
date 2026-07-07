@@ -6,6 +6,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "${ROOT}/config/paths.sh"
 
 PHASING_SCRIPT="${ROOT}/modules/phasing_beagle_refsupport/scripts/run_beagle_refsupport_pipeline.sh"
+RESTORE_UNPHASED_SCRIPT="${ROOT}/modules/phasing_beagle_refsupport/scripts/restore_unphased_variants.sh"
 PREPROCESS_SCRIPT="${ROOT}/modules/vcf_preprocessing/run_vcf_preprocessing.sh"
 LIFTOVER_PY="${OPENRARE_LIFTOVER_SCRIPT}"
 PSEUDOGENE_PY="${ROOT}/modules/pseudogene_annotation/scripts/annotate_pseudogene.py"
@@ -38,7 +39,7 @@ Common optional:
 
 Advanced optional overrides, usually not needed:
   --sample-id ID            Sample ID used for output prefixes; default: auto
-  --chromosomes SPEC        Default: 1-22. Example: 22, 1-22, or 1,3,5
+  --chromosomes SPEC        Beagle target chromosomes, default: auto (all patient contigs with a reference panel). Other contigs (X/Y/MT included) are preserved unchanged
   --ref-dir DIR             CHN reference panel directory for Beagle phasing
   --beagle-jar FILE         Beagle jar path
   --ccre-bed FILE           cCRE slim BED.GZ
@@ -61,7 +62,7 @@ OUT_DIR=""
 SAMPLE_ID="auto"
 REF_DIR="${FULL_PIPELINE_REF_DIR}"
 BEAGLE_JAR="${FULL_PIPELINE_BEAGLE_JAR}"
-CHROMOSOMES="1-22"
+CHROMOSOMES="auto"
 JAVA_BIN="${JAVA_BIN:-java}"
 CCRE_BED="${ROOT}/modules/vcf_preprocessing/resources/regulatory/hg38/encode_screen_v4_grch38_ccre.slim.bed.gz"
 NCRNA_BED="${ROOT}/modules/vcf_preprocessing/resources/ncrna/hg38/gencode.v49.ncrna_gene.slim.bed.gz"
@@ -152,6 +153,7 @@ fi
 [[ -s "$PSEUDOGENE_PY" ]] || { echo "ERROR: pseudogene script not found: $PSEUDOGENE_PY" >&2; exit 1; }
 [[ -s "$INFO_TO_CSV_SCRIPT" ]] || { echo "ERROR: INFO-to-CSV script not found: $INFO_TO_CSV_SCRIPT" >&2; exit 1; }
 [[ -s "$ENSURE_HEADERS_SCRIPT" ]] || { echo "ERROR: ensure-header script not found: $ENSURE_HEADERS_SCRIPT" >&2; exit 1; }
+[[ -x "$RESTORE_UNPHASED_SCRIPT" ]] || { echo "ERROR: unphased-variant restore script not found or not executable: $RESTORE_UNPHASED_SCRIPT" >&2; exit 1; }
 [[ -s "$GENOS_EVEE_SCRIPT" ]] || { echo "ERROR: GENOS-VarRisk annotation script not found: $GENOS_EVEE_SCRIPT" >&2; exit 1; }
 [[ -s "$HLA_FILTER_SCRIPT" ]] || { echo "ERROR: HLA filter script not found: $HLA_FILTER_SCRIPT" >&2; exit 1; }
 case "$INPUT_ASSEMBLY" in
@@ -271,6 +273,8 @@ if [[ "$SAMPLE_ID" != auto ]]; then
 fi
 
 phased_vcf=""
+phased_selected_vcf=""
+phasing_preservation_stats="${OUT_DIR}/01_phasing/all_contigs.preservation.tsv"
 if [[ "$PHASING" == yes ]]; then
   run_cmd bash "$PHASING_SCRIPT" \
     --patient-vcf "$PIPELINE_INPUT_VCF" \
@@ -286,12 +290,19 @@ if [[ "$PHASING" == yes ]]; then
     --resume yes
 
   if [[ "$DRY_RUN" == yes ]]; then
-    phased_vcf="${OUT_DIR}/01_phasing/<sample>.chr<chromosomes>.original_sites.beagle_phase_merged.refsupport.vcf.gz"
+    phased_selected_vcf="${OUT_DIR}/01_phasing/<sample>.chr<chromosomes>.original_sites.beagle_phase_merged.refsupport.vcf.gz"
   else
     mapfile -t phased_candidates < <(find "${OUT_DIR}/01_phasing" -maxdepth 1 -type f -name '*.original_sites.beagle_phase_merged.refsupport.vcf.gz' | sort)
     [[ "${#phased_candidates[@]}" -eq 1 ]] || { echo "ERROR: expected one phased VCF, found ${#phased_candidates[@]}" >&2; exit 1; }
-    phased_vcf="${phased_candidates[0]}"
+    phased_selected_vcf="${phased_candidates[0]}"
   fi
+  phased_vcf="${OUT_DIR}/01_phasing/input.all_contigs.phased_and_passthrough.vcf.gz"
+  run_cmd bash "$RESTORE_UNPHASED_SCRIPT" \
+    --original-vcf "$PIPELINE_INPUT_VCF" \
+    --phased-vcf "$phased_selected_vcf" \
+    --output-vcf "$phased_vcf" \
+    --ensure-headers-script "$ENSURE_HEADERS_SCRIPT" \
+    --stats "$phasing_preservation_stats"
 else
   phased_vcf="${OUT_DIR}/01_phasing/input.with_phasing_headers.vcf.gz"
   printf '[%s] SKIP phasing: adding expected phasing INFO headers only: %s\n' "$(date '+%F %T')" "$phased_vcf"
@@ -409,6 +420,9 @@ fi
   printf 'pseudogene_annotation\t%s\n' "$PSEUDOGENE_ANNOTATION"
   printf 'hla_filter\t%s\n' "$HLA_FILTER"
   printf 'phased_vcf\t%s\n' "$phased_vcf"
+  printf 'phased_selected_vcf\t%s\n' "$phased_selected_vcf"
+  printf 'phasing_chromosomes\t%s\n' "$CHROMOSOMES"
+  printf 'phasing_preservation_stats\t%s\n' "$phasing_preservation_stats"
   printf 'preprocessed_vcf\t%s\n' "$preprocessed_vcf"
   printf 'pseudogene_annotated_vcf\t%s\n' "$pseudo_vcf"
   printf 'vep_base_csv\t%s\n' "$vep_base_csv"

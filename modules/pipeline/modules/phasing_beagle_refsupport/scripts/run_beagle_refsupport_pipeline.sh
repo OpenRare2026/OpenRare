@@ -16,7 +16,7 @@ Required:
   --ref-dir DIR            Reference VCF directory
   --out-dir DIR            Pipeline output directory
   --beagle-jar FILE        Beagle 5.x jar
-  --chromosomes SPEC       Example: 1-22 or 1,3,5,22
+  --chromosomes SPEC       auto, all, 1-22, or 1,3,5,22 (auto = every patient contig with a reference panel)
 
 Optional:
   --sample-id ID           Default: automatically detect the single VCF sample
@@ -149,13 +149,52 @@ expand_chromosomes() {
         tr ',' '\n' <<<"$1"
     fi
 }
-mapfile -t chroms < <(expand_chromosomes "${CHROMOSOMES}")
-[[ "${#chroms[@]}" -gt 0 ]] || { echo "ERROR: empty chromosome list" >&2; exit 1; }
+
+contig_to_beagle_chr() {
+    local contig="$1"
+    contig="${contig#chr}"
+    contig="${contig#CHR}"
+    if [[ "${contig}" =~ ^[1-9][0-9]*$ ]]; then
+        echo "${contig}"
+        return 0
+    fi
+    return 1
+}
+
+resolve_chromosome_list() {
+    local spec="$1"
+    if [[ "${spec}" == auto || "${spec}" == all ]]; then
+        declare -A seen=()
+        local contig chr ref
+        while IFS= read -r contig; do
+            [[ -n "${contig}" ]] || continue
+            chr=$(contig_to_beagle_chr "${contig}") || continue
+            ref="${REF_DIR}/${REF_PREFIX}.chr${chr}.${REF_SUFFIX}"
+            [[ -s "${ref}" ]] || continue
+            [[ -n "${seen[$chr]:-}" ]] && continue
+            seen["${chr}"]=1
+            printf '%s\n' "${chr}"
+        done < <("${BCFTOOLS_BIN}" query -f '%CHROM\n' "${PATIENT_VCF}" | sort -u) | sort -n
+        return 0
+    fi
+    expand_chromosomes "${spec}"
+}
+
+CHROMOSOMES_SPEC="${CHROMOSOMES}"
+mapfile -t chroms < <(resolve_chromosome_list "${CHROMOSOMES}")
+[[ "${#chroms[@]}" -gt 0 ]] || {
+    echo "ERROR: empty chromosome list (spec=${CHROMOSOMES}; no patient contig matched an available reference panel)" >&2
+    exit 1
+}
+if [[ "${CHROMOSOMES_SPEC}" == auto || "${CHROMOSOMES_SPEC}" == all ]]; then
+    CHROMOSOMES="$(IFS=,; echo "${chroms[*]}")"
+    echo "AUTO_CHROMOSOMES resolved=${CHROMOSOMES}"
+fi
 for chr in "${chroms[@]}"; do
     [[ "${chr}" =~ ^[1-9][0-9]*$ ]] || { echo "ERROR: invalid chromosome: ${chr}" >&2; exit 2; }
 done
 
-echo "CONFIG sample=${SAMPLE_ID} chromosomes=${CHROMOSOMES} chr_jobs=${CHR_JOBS} beagle_threads=${BEAGLE_THREADS} heap_gb=${JAVA_HEAP_GB} seed_base=${SEED_BASE}"
+echo "CONFIG sample=${SAMPLE_ID} chromosomes_spec=${CHROMOSOMES_SPEC} chromosomes=${CHROMOSOMES} chr_jobs=${CHR_JOBS} beagle_threads=${BEAGLE_THREADS} heap_gb=${JAVA_HEAP_GB} seed_base=${SEED_BASE}"
 for chr in "${chroms[@]}"; do
     ref="${REF_DIR}/${REF_PREFIX}.chr${chr}.${REF_SUFFIX}"
     [[ -s "${ref}" ]] || { echo "ERROR: missing reference: ${ref}" >&2; exit 1; }
@@ -228,7 +267,9 @@ SUMMARY="${OUT_DIR}/logs/allchr_refsupport_summary.tsv"
     done
 } >"${SUMMARY}"
 
-if [[ "${CHROMOSOMES}" =~ ^([0-9]+)-([0-9]+)$ ]]; then
+if [[ "${CHROMOSOMES_SPEC}" == auto || "${CHROMOSOMES_SPEC}" == all ]]; then
+    merged_label="auto"
+elif [[ "${CHROMOSOMES}" =~ ^([0-9]+)-([0-9]+)$ ]]; then
     merged_label="${BASH_REMATCH[1]}_${BASH_REMATCH[2]}"
 else
     merged_label=$(tr ',' '_' <<<"${CHROMOSOMES}")
