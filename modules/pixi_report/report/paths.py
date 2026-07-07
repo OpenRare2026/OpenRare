@@ -49,8 +49,12 @@ def normalize_stored_path(
 
         return _normalize_slashes(str(resolved.relative_to(base)))
     except ValueError:
-        return path.name or text
+        if path.is_absolute():
+            return _normalize_slashes(str(resolved))
+        return _normalize_slashes(text)
     except OSError:
+        if path.is_absolute():
+            return _normalize_slashes(str(path))
         return path.name or text
 
 
@@ -74,8 +78,12 @@ def format_report_path(value: str, *, root: Path | None = None) -> str:
         return ""
 
     path = Path(text)
+    base = (root or PROJECT_ROOT).resolve()
     if path.is_absolute():
-        return normalize_stored_path(text, root=root)
+        try:
+            return _normalize_slashes(str(path.resolve().relative_to(base)))
+        except ValueError:
+            return path.name
     return _normalize_slashes(text)
 
 
