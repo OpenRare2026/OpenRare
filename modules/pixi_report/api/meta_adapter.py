@@ -16,6 +16,39 @@ def _parse_hpo_file(path: Path) -> tuple[str, list[str]]:
     return "\n".join(raw_lines), terms
 
 
+_ID_HEADERS = {"id", "样本id", "样本编号", "sample_id"}
+_PHENOTYPE_HEADERS = {"phenotype", "clinical_info", "临床信息"}
+
+
+def _is_header_row(cells: list[str]) -> bool:
+    for cell in cells:
+        token = cell.strip()
+        if not token:
+            continue
+        lowered = token.lower()
+        if lowered in _ID_HEADERS or lowered in _PHENOTYPE_HEADERS:
+            return True
+        if token in _PHENOTYPE_HEADERS:
+            return True
+    return False
+
+
+def _find_id_index(headers: list[str]) -> int | None:
+    for index, header in enumerate(headers):
+        token = header.strip()
+        if token.upper() == "ID" or token.lower() in _ID_HEADERS:
+            return index
+    return None
+
+
+def _find_phenotype_index(headers: list[str]) -> int | None:
+    for index, header in enumerate(headers):
+        token = header.strip()
+        if token.lower() in _PHENOTYPE_HEADERS or token in _PHENOTYPE_HEADERS:
+            return index
+    return None
+
+
 def _split_phenotype_line(line: str) -> tuple[str, str] | None:
     text = line.strip()
     if not text:
@@ -40,26 +73,46 @@ def load_phenotype_csv(path: str | Path) -> tuple[str, str]:
     if not rows:
         raise ValueError(f"No rows found in phenotype file: {phenotype_path}")
 
-    for raw in rows[1:]:
+    has_header = _is_header_row(rows[0])
+    headers = [header.strip() for header in rows[0]] if has_header else []
+    id_idx = _find_id_index(headers) if has_header else None
+    phenotype_idx = _find_phenotype_index(headers) if has_header else None
+    data_rows = rows[1:] if has_header else rows
+
+    for raw in data_rows:
         if not raw or not any(cell.strip() for cell in raw):
             continue
 
-        if len(raw) == 1:
-            parsed = _split_phenotype_line(raw[0])
-            if parsed:
-                return parsed
+        if has_header:
+            sample_id = (
+                raw[id_idx].strip()
+                if id_idx is not None and id_idx < len(raw)
+                else ""
+            )
+            if phenotype_idx is not None and phenotype_idx < len(raw):
+                clinical_info = raw[phenotype_idx].strip()
+            elif len(raw) == 1:
+                clinical_info = raw[0].strip()
+            else:
+                clinical_info = ""
+                for index, cell in enumerate(raw):
+                    if index == id_idx:
+                        continue
+                    if cell.strip():
+                        clinical_info = cell.strip()
+                        break
+            if clinical_info:
+                return sample_id, clinical_info
             continue
 
-        headers = [header.strip() for header in rows[0]]
-        id_idx = next((i for i, h in enumerate(headers) if h.upper() == "ID"), 0)
-        phenotype_idx = next(
-            (i for i, h in enumerate(headers) if h.lower() == "phenotype"),
-            1 if len(headers) > 1 else 0,
-        )
-        sample_id = raw[id_idx].strip()
-        clinical_info = raw[phenotype_idx].strip()
-        if sample_id and clinical_info and sample_id != clinical_info:
-            return sample_id, clinical_info
+        if len(raw) == 1:
+            text = raw[0].strip()
+            parsed = _split_phenotype_line(text)
+            if parsed:
+                return parsed
+            if text:
+                return "", text
+            continue
 
         joined = "\t".join(raw).strip()
         parsed = _split_phenotype_line(joined)
