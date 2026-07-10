@@ -31,16 +31,16 @@ pixi run check-paths
 
 ## 数据清单
 
-| 数据源 | 当前版本 | 当前大小 | 必需 | 目标路径 | 官方来源 |
+| 数据源 | 当前版本 | 当前大小 | 必需 | 数据链接 | 官方来源 |
 |---|---:|---:|---|---|---|
-| HPO ontology | 2026-02-16 | 10.2 MB | 是 | `external_data/hpo/hp.obo` | [HPO official releases](https://github.com/obophenotype/human-phenotype-ontology/releases) |
-| HPO disease annotations | 2026-02-16 | 33.6 MB | 是 | `external_data/hpo/phenotype.hpoa` | [HPO official releases](https://github.com/obophenotype/human-phenotype-ontology/releases) |
-| HPO gene-disease associations | 2026-02-16 数据批次 | 1.4 MB | 是 | `external_data/hpo/genes_to_disease.txt` | [HPO GitHub releases](https://github.com/obophenotype/human-phenotype-ontology/releases) |
-| HGNC complete set | 当前部署文件 | 16.0 MB | 是 | `external_data/hgnc/hgnc_complete_set.txt` | [HGNC downloads](https://www.genenames.org/download/custom/) |
-| MONDO rare subset | 2026-05-05 | 31.8 MB | 是 | `external_data/mondo/mondo-rare.obo` | [MONDO downloads](https://mondo.monarchinitiative.org/pages/download/) |
-| OMIM SQLite | 2025-04-11 | 311.6 MB | 是 | `external_data/omim/omim_20250411.sqlite3` | [OMIM downloads](https://www.omim.org/downloads/) |
-| Orphapackets | 当前部署批次 | 60 MB | 索引缺失时需要 | `external_data/orphanet/Orphapackets/` | [Orphadata](https://www.orphadata.com/) |
-| Orphanet gene profile index | 由 Orphapackets 派生 | 9.0 MB | 推荐 | `external_data/indexes/orpha_gene_profiles.pkl` | 本项目生成 |
+| HPO ontology | 2026-02-16 | 10.2 MB | 是 | `https://purl.obolibrary.org/obo/hp.obo` | [HPO official releases](https://github.com/obophenotype/human-phenotype-ontology/releases) |
+| HPO disease annotations | 2026-02-16 | 33.6 MB | 是 | `http://purl.obolibrary.org/obo/hp/hpoa/phenotype.hpoa` | [HPO official releases](https://github.com/obophenotype/human-phenotype-ontology/releases) |
+| HPO gene-disease associations | 2026-02-16 | 1.4 MB | 是 | `http://purl.obolibrary.org/obo/hp/hpoa/genes_to_disease.txt` | [HPO GitHub releases](https://github.com/obophenotype/human-phenotype-ontology/releases) |
+| HGNC complete set | 2026-05-27 | 16.0 MB | 是 | `https://storage.googleapis.com/public-download-files/hgnc/tsv/tsv/hgnc_complete_set.txt` | [HGNC downloads](https://www.genenames.org/download/custom/) |
+| MONDO rare subset | 2026-05-05 | 31.8 MB | 是 | `http://purl.obolibrary.org/obo/mondo/subsets/mondo-rare.obo` | [MONDO downloads](https://mondo.monarchinitiative.org/pages/download/) |
+| OMIM SQLite | 2025-04-11 | 311.6 MB | 是 | `需OMIM注册获取` | [OMIM downloads](https://www.omim.org/downloads/) |
+| Orphapackets | 2026-05-29 | 60 MB | 是 | `https://github.com/Orphanet/orphapacket/tree/master/yaml` | [Orphadata](https://www.orphadata.com/) |
+| Orphanet gene profile index | 由 Orphapackets 派生 | 9.0 MB | 推荐 | `首次运行模块脚本时自动生成` | 本项目生成 |
 
 OMIM 数据受许可条款约束，必须由有权限的用户从官方渠道获取，不能随 GitHub 仓库分发。
 
