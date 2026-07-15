@@ -64,7 +64,10 @@ class RunRequest(BaseModel):
     )
 
     sample_id: Optional[str] = Field(None, description="Advanced override: Sample ID, or auto")
-    chromosomes: Optional[str] = Field(None, description="Advanced override: Chromosome spec, e.g. 22, 1-22, 1,3,5")
+    chromosomes: Optional[str] = Field(
+        None,
+        description="Advanced override: chromosomes processed by Beagle. Default auto phases every patient contig with a reference panel; X/Y/MT and other unsupported contigs are preserved for VEP",
+    )
     ref_dir: Optional[str] = Field(None, description="Advanced override: CHN reference panel directory")
     beagle_jar: Optional[str] = Field(None, description="Advanced override: Beagle jar path")
     ccre_bed: Optional[str] = Field(None, description="Advanced override: cCRE BED.GZ")
@@ -221,7 +224,7 @@ async def lifespan(_app: FastAPI):
 
 app = FastAPI(
     title="OpenRare V3 Queued Pipeline API",
-    version="0.4.0",
+    version="0.4.1",
     lifespan=lifespan,
 )
 
@@ -379,7 +382,8 @@ def health() -> dict:
         },
         "script_defaults": {
             "sample_id": "auto",
-            "chromosomes": "1-22",
+            "chromosomes": "auto",
+            "chromosomes_scope": "Default auto: Beagle runs on every patient contig with a reference panel; X/Y/MT and other unsupported contigs are preserved unchanged for VEP",
             "ref_dir": str(DEFAULT_REF_DIR),
             "beagle_jar": str(DEFAULT_BEAGLE_JAR),
             "java_bin": DEFAULT_JAVA_BIN,

@@ -11,7 +11,7 @@ from pathlib import Path
 HEADERS: dict[str, list[str]] = {
     "phasing": [
         '##INFO=<ID=BEAGLE_PHASED,Number=1,Type=Integer,Description="1 if GT was replaced by Beagle noimpute phased GT; 0 if original GT was retained">',
-        '##INFO=<ID=CHN_REF_SUPPORT,Number=1,Type=String,Description="Support category in the supplied reference panel: POLYMORPHIC, MONOMORPHIC_REF, ALLELE_MISMATCH, NOT_IN_REF">',
+        '##INFO=<ID=CHN_REF_SUPPORT,Number=1,Type=String,Description="Support category in the supplied reference panel: POLYMORPHIC, MONOMORPHIC_REF, ALLELE_MISMATCH, NOT_IN_REF, NOT_EVALUATED">',
         '##INFO=<ID=CHN_ALT_CARRIER_COUNT,Number=1,Type=Integer,Description="Number of reference samples carrying allele 1 at an exactly matched CHROM/POS/REF/ALT marker">',
         '##INFO=<ID=CHN_ALT_AC,Number=1,Type=Integer,Description="Allele 1 count in reference samples at an exactly matched CHROM/POS/REF/ALT marker">',
         '##INFO=<ID=PHASING_CONFIDENCE,Number=1,Type=String,Description="Confidence label based on Beagle output and reference ALT support: HIGH, LOW, UNPHASED">',
@@ -73,9 +73,16 @@ def main() -> None:
     ap.add_argument("--input-vcf", required=True)
     ap.add_argument("--output-vcf", required=True)
     ap.add_argument("--groups", required=True, help="Comma-separated groups: phasing,vaf,regulatory,ncrna,pseudogene")
+    ap.add_argument(
+        "--phasing-passthrough",
+        action="store_true",
+        help="Mark every record as retained without phasing/ref-panel evaluation",
+    )
     ap.add_argument("--index", action="store_true", help="Create tabix index for .gz output")
     args = ap.parse_args()
     groups = [x.strip() for x in args.groups.split(",") if x.strip()]
+    if args.phasing_passthrough and "phasing" not in groups:
+        raise SystemExit("--phasing-passthrough requires the phasing header group")
     wanted: list[str] = []
     for group in groups:
         if group not in HEADERS:
@@ -99,6 +106,23 @@ def main() -> None:
                         if info_id not in existing:
                             writer.write(header + "\n")
                     inserted = True
+                if args.phasing_passthrough and not line.startswith("#"):
+                    fields = line.rstrip("\n").split("\t")
+                    if len(fields) < 8:
+                        raise SystemExit(f"invalid VCF record with {len(fields)} columns: {line[:120]!r}")
+                    info_items = [] if fields[7] in {"", "."} else fields[7].split(";")
+                    info_by_id = {item.split("=", 1)[0]: item for item in info_items}
+                    passthrough_values = {
+                        "BEAGLE_PHASED": "0",
+                        "CHN_REF_SUPPORT": "NOT_EVALUATED",
+                        "CHN_ALT_CARRIER_COUNT": ".",
+                        "CHN_ALT_AC": ".",
+                        "PHASING_CONFIDENCE": "UNPHASED",
+                    }
+                    for info_id, value in passthrough_values.items():
+                        info_by_id[info_id] = f"{info_id}={value}"
+                    fields[7] = ";".join(info_by_id.values()) or "."
+                    line = "\t".join(fields) + "\n"
                 writer.write(line)
     finally:
         close_writer(writer, proc, raw)

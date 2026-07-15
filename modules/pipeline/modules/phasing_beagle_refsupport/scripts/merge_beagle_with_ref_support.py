@@ -8,7 +8,7 @@ from collections import Counter
 
 INFO_HEADERS = (
     '##INFO=<ID=BEAGLE_PHASED,Number=1,Type=Integer,Description="1 if GT was replaced by Beagle noimpute phased GT; 0 if original GT was retained">\n',
-    '##INFO=<ID=CHN_REF_SUPPORT,Number=1,Type=String,Description="Support category in the supplied reference panel: POLYMORPHIC, MONOMORPHIC_REF, ALLELE_MISMATCH, NOT_IN_REF">\n',
+    '##INFO=<ID=CHN_REF_SUPPORT,Number=1,Type=String,Description="Support category in the supplied reference panel: POLYMORPHIC, MONOMORPHIC_REF, ALLELE_MISMATCH, NOT_IN_REF, NOT_EVALUATED">\n',
     '##INFO=<ID=CHN_ALT_CARRIER_COUNT,Number=1,Type=Integer,Description="Number of reference samples carrying allele 1 at an exactly matched CHROM/POS/REF/ALT marker">\n',
     '##INFO=<ID=CHN_ALT_AC,Number=1,Type=Integer,Description="Allele 1 count in reference samples at an exactly matched CHROM/POS/REF/ALT marker">\n',
     '##INFO=<ID=PHASING_CONFIDENCE,Number=1,Type=String,Description="Confidence label based on Beagle output and reference ALT support: HIGH, LOW, UNPHASED">\n',
