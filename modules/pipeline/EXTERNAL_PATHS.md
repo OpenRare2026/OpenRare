@@ -108,7 +108,7 @@ ${OPENRARE_DATA_ROOT}/
 │   ├── AlphaMissense/
 │   ├── dbNSFP/
 │   ├── ClinVar/
-│   ├── GTEx/v11/expression/gtex_v11_transcript_tpm.parquet
+│   ├── GTEx/v11/expression/gtex_v11_transcript_tpm.parquet   # 见 resource_mock/gtex_preprocess/README.md
 │   └── hpo_tpm/
 └── tmp/
 ```

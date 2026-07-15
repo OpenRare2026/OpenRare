@@ -167,7 +167,7 @@ pixi run tabix -p vcf clinvar_20260523.vcf.gz
 
 | 资源 | 路径 |
 |------|------|
-| GTEx v11 transcript TPM parquet | `vep_data/GTEx/v11/expression/gtex_v11_transcript_tpm.parquet` |
+| GTEx v11 transcript TPM parquet | `vep_data/GTEx/v11/expression/gtex_v11_transcript_tpm.parquet`（由 [`gtex_preprocess`](../../resource_mock/gtex_preprocess/README.md) 从官网数据预计算） |
 | HPO→tissue 映射 | `vep_data/hpo_tpm/` |
 
 ## 5. 校验安装
