@@ -52,6 +52,7 @@ cp .env.example .env
 | `scripts/run_full_pipeline.sh` | 全流程 CLI 入口 |
 | `scripts/start_full_pipeline_api.sh` | API 启动脚本 |
 | `modules/vcf_preprocessing/liftover_grch37/scripts/run_liftover_vcf.py` | GRCh37→GRCh38 liftover |
+| `modules/liftover/scripts/filter_standard_chromosomes_vcf.py` | 标准染色体过滤 |
 | `complete_pipeline/full_pipeline_api.py` | FastAPI 服务 |
 | `modules/vep_runner/config/vep_runner_config.json` | VEP 配置（`${OPENRARE_DATA_ROOT}` 占位符） |
 | `modules/vcf_preprocessing/resources/regulatory/hg38/encode_screen_v4_grch38_ccre.slim.bed.gz` | cCRE BED |
@@ -67,6 +68,8 @@ cp .env.example .env
 |------|----------|------|
 | 输入 | `00_input/<basename>.vcf.gz` | 规范化后的输入 |
 | 00b | `00_liftover/output/output.grch38.norm.vcf.gz` | GRCh37 输入经 liftover 后的 GRCh38 VCF（可选） |
+| 00c | `00_liftover_filter/input.standard_chromosomes.vcf.gz` | 标准染色体过滤后的 VCF（默认开启） |
+| 00c | `00_liftover_filter/input.ignored_nonstandard_chromosomes.tsv` | 被过滤的非标准 contig 变异 |
 | 01 | `01_phasing/*.original_sites.beagle_phase_merged.refsupport.vcf.gz` | Phasing 结果 |
 | 02 | `02_vcf_preprocessing/preprocessed.regulatory.vcf.gz` | VAF + cCRE + ncRNA |
 | 03 | `03_pseudogene_annotation/preprocessed.pseudogene_annotated.vcf.gz` | 假基因注释（进 VEP） |
