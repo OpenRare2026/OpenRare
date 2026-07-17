@@ -195,6 +195,16 @@ $OPENRARE_PUBLIC_DATA_ROOT/
     └── Pseudogene.org/Human90/Human90.txt
 ```
 
+04 步使用的 HPO→tissue 资源作为 release 附件提供：
+
+```bash
+mkdir -p "${OPENRARE_DATA_ROOT}/vep_data"
+curl -L -o /tmp/hpo_tpm.zip \
+  https://github.com/OpenRare2026/OpenRare/releases/download/data-hpo-tpm-v1/hpo_tpm.zip
+unzip -q /tmp/hpo_tpm.zip -d "${OPENRARE_DATA_ROOT}/vep_data"
+test -f "${OPENRARE_DATA_ROOT}/vep_data/hpo_tpm/phenotype_to_anatomy.txt"
+```
+
 **ppi_score** — HGNC、HPO 本体、OMIM、StringDB（~5 GB）：
 
 ```bash
@@ -250,6 +260,7 @@ pkill -f "gateway.main"
 | CADD | <https://cadd.gs.washington.edu/download> |
 | SpliceAI | <https://github.com/Illumina/SpliceAI> |
 | GTEx | <https://gtexportal.org/home/datasets> |
+| HPO→tissue TPM 数据包 | <https://github.com/OpenRare2026/OpenRare/releases/download/data-hpo-tpm-v1/hpo_tpm.zip> |
 | SapBERT 模型 | <https://huggingface.co/pritamdeka/SapBERT-mnli-snli-scinli-scitail-mednli-stsb> |
 
 ---

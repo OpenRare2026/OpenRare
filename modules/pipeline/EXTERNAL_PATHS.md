@@ -28,6 +28,16 @@
 | `LIFTOVER_CONFIG` | 见 `.env.example` | liftover TOML（chain、GRCh38 参考、picard 路径） |
 | `OPENRARE_API_TEST_VCF` | 无 | API 集成测试输入 VCF（可选） |
 
+04 步需要的 HPO→tissue TPM 数据包可从 GitHub Release 下载，并解压到默认位置：
+
+```bash
+mkdir -p "${OPENRARE_DATA_ROOT}/vep_data"
+curl -L -o /tmp/hpo_tpm.zip \
+  https://github.com/OpenRare2026/OpenRare/releases/download/data-hpo-tpm-v1/hpo_tpm.zip
+unzip -q /tmp/hpo_tpm.zip -d "${OPENRARE_DATA_ROOT}/vep_data"
+test -f "${OPENRARE_DATA_ROOT}/vep_data/hpo_tpm/phenotype_to_anatomy.txt"
+```
+
 解析逻辑：
 
 - Shell：[`config/paths.sh`](config/paths.sh)（绝对路径原样使用；相对路径相对 `modules/pipeline` 展开）

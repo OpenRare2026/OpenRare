@@ -170,6 +170,16 @@ pixi run tabix -p vcf clinvar_20260523.vcf.gz
 | GTEx v11 transcript TPM parquet | `vep_data/GTEx/v11/expression/gtex_v11_transcript_tpm.parquet`（由 [`gtex_preprocess`](../../resource_mock/gtex_preprocess/README.md) 从官网数据预计算） |
 | HPO→tissue 映射 | `vep_data/hpo_tpm/` |
 
+HPO→tissue 映射数据包下载方式：
+
+```bash
+mkdir -p "${OPENRARE_DATA_ROOT}/vep_data"
+curl -L -o /tmp/hpo_tpm.zip \
+  https://github.com/OpenRare2026/OpenRare/releases/download/data-hpo-tpm-v1/hpo_tpm.zip
+unzip -q /tmp/hpo_tpm.zip -d "${OPENRARE_DATA_ROOT}/vep_data"
+test -f "${OPENRARE_DATA_ROOT}/vep_data/hpo_tpm/phenotype_to_anatomy.txt"
+```
+
 ## 5. 校验安装
 
 ```bash
