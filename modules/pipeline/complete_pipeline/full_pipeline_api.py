@@ -58,6 +58,10 @@ class RunRequest(BaseModel):
     ncrna_annotation: str = Field("yes", description="Run GENCODE ncRNA annotation before VEP: yes or no")
     pseudogene_annotation: str = Field("yes", description="Run pseudogene annotation before VEP: yes or no")
     hla_filter: str = Field("yes", description="Remove GRCh38 HLA/MHC region rows from final wide CSV: yes or no")
+    liftover_filter_standard_chroms: str = Field(
+        "yes",
+        description="Before downstream/Liftover-sensitive steps, keep only standard chromosomes and log ignored nonstandard contigs: yes or no",
+    )
     input_assembly: Optional[str] = Field(
         None,
         description="Input VCF assembly: auto, GRCh37, or GRCh38; GRCh37 triggers liftover before phasing",
@@ -288,6 +292,7 @@ def build_command(req: RunRequest, output_dir: Path) -> list[str]:
     add_option("--ncrna-annotation", req.ncrna_annotation)
     add_option("--pseudogene-annotation", req.pseudogene_annotation)
     add_option("--hla-filter", req.hla_filter)
+    add_option("--liftover-filter-standard-chroms", req.liftover_filter_standard_chroms)
     add_option("--input-assembly", req.input_assembly)
     add_option("--sample-id", req.sample_id)
     add_option("--chromosomes", req.chromosomes)
@@ -366,6 +371,7 @@ def health() -> dict:
             "ncrna_annotation",
             "pseudogene_annotation",
             "hla_filter",
+            "liftover_filter_standard_chroms",
             "input_assembly",
         ],
         "execution": {
@@ -384,6 +390,8 @@ def health() -> dict:
             "sample_id": "auto",
             "chromosomes": "auto",
             "chromosomes_scope": "Default auto: Beagle runs on every patient contig with a reference panel; X/Y/MT and other unsupported contigs are preserved unchanged for VEP",
+            "liftover_filter_standard_chroms": "yes",
+            "liftover_standard_chromosomes": "1-22,X,Y,MT plus chr-prefixed equivalents; nonstandard contigs are written to 00_liftover_filter/input.ignored_nonstandard_chromosomes.tsv",
             "ref_dir": str(DEFAULT_REF_DIR),
             "beagle_jar": str(DEFAULT_BEAGLE_JAR),
             "java_bin": DEFAULT_JAVA_BIN,
@@ -457,6 +465,7 @@ def submit_upload(
     ncrna_annotation: str = Form("yes"),
     pseudogene_annotation: str = Form("yes"),
     hla_filter: str = Form("yes"),
+    liftover_filter_standard_chroms: str = Form("yes"),
     input_assembly: Optional[str] = Form(None),
     hpo_file: UploadFile | None = File(None, description="Optional TXT file containing HPO IDs; one per line or separated by comma/space/semicolon"),
     sample_id: Optional[str] = Form(None),
@@ -492,6 +501,7 @@ def submit_upload(
         ncrna_annotation=ncrna_annotation,
         pseudogene_annotation=pseudogene_annotation,
         hla_filter=hla_filter,
+        liftover_filter_standard_chroms=liftover_filter_standard_chroms,
         input_assembly=input_assembly,
         sample_id=sample_id,
         chromosomes=chromosomes,

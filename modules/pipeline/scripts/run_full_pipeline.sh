@@ -9,6 +9,7 @@ PHASING_SCRIPT="${ROOT}/modules/phasing_beagle_refsupport/scripts/run_beagle_ref
 RESTORE_UNPHASED_SCRIPT="${ROOT}/modules/phasing_beagle_refsupport/scripts/restore_unphased_variants.sh"
 PREPROCESS_SCRIPT="${ROOT}/modules/vcf_preprocessing/run_vcf_preprocessing.sh"
 LIFTOVER_PY="${OPENRARE_LIFTOVER_SCRIPT}"
+LIFTOVER_FILTER_SCRIPT="${ROOT}/modules/liftover/scripts/filter_standard_chromosomes_vcf.py"
 PSEUDOGENE_PY="${ROOT}/modules/pseudogene_annotation/scripts/annotate_pseudogene.py"
 VEP_SCRIPT="${ROOT}/modules/vep_runner/scripts/run_vep_to_csv.py"
 INFO_TO_CSV_SCRIPT="${ROOT}/modules/vcf_info_to_csv/scripts/add_vcf_info_to_vep_csv.py"
@@ -36,6 +37,9 @@ Common optional:
   --ncrna-annotation yes|no       Whether to add GENCODE ncRNA INFO fields before VEP; default: yes
   --pseudogene-annotation yes|no  Whether to run pseudogene annotation before VEP; default: yes
   --hla-filter yes|no       Whether to remove GRCh38 HLA/MHC rows from final wide CSV; default: yes
+  --liftover-filter-standard-chroms yes|no
+                            Keep only standard chromosomes before downstream processing; default: yes.
+                            Nonstandard contigs are ignored and written to 00_liftover_filter/*.ignored_nonstandard.tsv
 
 Advanced optional overrides, usually not needed:
   --sample-id ID            Sample ID used for output prefixes; default: auto
@@ -82,6 +86,7 @@ REGULATORY_ANNOTATION=yes
 NCRNA_ANNOTATION=yes
 PSEUDOGENE_ANNOTATION=yes
 HLA_FILTER=yes
+LIFTOVER_FILTER_STANDARD_CHROMS=yes
 DRY_RUN=no
 
 while [[ $# -gt 0 ]]; do
@@ -107,6 +112,7 @@ while [[ $# -gt 0 ]]; do
     --ncrna-annotation) NCRNA_ANNOTATION="${2:?}"; shift 2 ;;
     --pseudogene-annotation) PSEUDOGENE_ANNOTATION="${2:?}"; shift 2 ;;
     --hla-filter) HLA_FILTER="${2:?}"; shift 2 ;;
+    --liftover-filter-standard-chroms) LIFTOVER_FILTER_STANDARD_CHROMS="${2:?}"; shift 2 ;;
     --clinical-tissue) CLINICAL_TISSUE="${2:?}"; shift 2 ;;
     --GENOS-VarRisk-db) GENOS_EVEE_DB="${2:?}"; shift 2 ;;
     --keep-raw-vep) KEEP_RAW_VEP="${2:?}"; shift 2 ;;
@@ -135,6 +141,7 @@ REGULATORY_ANNOTATION="$(norm_bool "$REGULATORY_ANNOTATION" --regulatory-annotat
 NCRNA_ANNOTATION="$(norm_bool "$NCRNA_ANNOTATION" --ncrna-annotation)"
 PSEUDOGENE_ANNOTATION="$(norm_bool "$PSEUDOGENE_ANNOTATION" --pseudogene-annotation)"
 HLA_FILTER="$(norm_bool "$HLA_FILTER" --hla-filter)"
+LIFTOVER_FILTER_STANDARD_CHROMS="$(norm_bool "$LIFTOVER_FILTER_STANDARD_CHROMS" --liftover-filter-standard-chroms)"
 
 if [[ "$PHASING" == yes ]]; then
   [[ -d "$REF_DIR" ]] || { echo "ERROR: ref dir not found: $REF_DIR" >&2; exit 1; }
@@ -154,6 +161,7 @@ fi
 [[ -s "$INFO_TO_CSV_SCRIPT" ]] || { echo "ERROR: INFO-to-CSV script not found: $INFO_TO_CSV_SCRIPT" >&2; exit 1; }
 [[ -s "$ENSURE_HEADERS_SCRIPT" ]] || { echo "ERROR: ensure-header script not found: $ENSURE_HEADERS_SCRIPT" >&2; exit 1; }
 [[ -x "$RESTORE_UNPHASED_SCRIPT" ]] || { echo "ERROR: unphased-variant restore script not found or not executable: $RESTORE_UNPHASED_SCRIPT" >&2; exit 1; }
+[[ -s "$LIFTOVER_FILTER_SCRIPT" ]] || { echo "ERROR: liftover standard-chromosome filter script not found: $LIFTOVER_FILTER_SCRIPT" >&2; exit 1; }
 [[ -s "$GENOS_EVEE_SCRIPT" ]] || { echo "ERROR: GENOS-VarRisk annotation script not found: $GENOS_EVEE_SCRIPT" >&2; exit 1; }
 [[ -s "$HLA_FILTER_SCRIPT" ]] || { echo "ERROR: HLA filter script not found: $HLA_FILTER_SCRIPT" >&2; exit 1; }
 case "$INPUT_ASSEMBLY" in
@@ -164,7 +172,7 @@ case "$INPUT_ASSEMBLY" in
     ;;
 esac
 
-mkdir -p "$OUT_DIR"/{00_input,00_liftover,01_phasing,02_vcf_preprocessing,03_pseudogene_annotation,04_vep,05_vcf_info_to_csv,06_genos_evee_annotation,07_hla_filter,logs}
+mkdir -p "$OUT_DIR"/{00_input,00_liftover,00_liftover_filter,01_phasing,02_vcf_preprocessing,03_pseudogene_annotation,04_vep,05_vcf_info_to_csv,06_genos_evee_annotation,07_hla_filter,logs}
 LOG="${OUT_DIR}/logs/full_pipeline.log"
 SUMMARY="${OUT_DIR}/full_pipeline.outputs.tsv"
 exec > >(tee -a "$LOG") 2>&1
@@ -265,6 +273,29 @@ elif [[ "$resolved_assembly" == GRCh38 ]]; then
   echo "[liftover] skipped (input assembly GRCh38)"
 else
   echo "[liftover] skipped (assembly=${resolved_assembly}; expected GRCh37 to liftover)"
+fi
+
+liftover_input_vcf="$PIPELINE_INPUT_VCF"
+liftover_standard_vcf="$PIPELINE_INPUT_VCF"
+liftover_ignored_tsv="${OUT_DIR}/00_liftover_filter/input.ignored_nonstandard_chromosomes.tsv"
+liftover_stats_tsv="${OUT_DIR}/00_liftover_filter/input.standard_chromosome_filter.stats.tsv"
+if [[ "$LIFTOVER_FILTER_STANDARD_CHROMS" == yes ]]; then
+  liftover_standard_plain="${OUT_DIR}/00_liftover_filter/input.standard_chromosomes.vcf"
+  liftover_standard_vcf="${liftover_standard_plain}.gz"
+  run_cmd python3 "$LIFTOVER_FILTER_SCRIPT" \
+    --input-vcf "$PIPELINE_INPUT_VCF" \
+    --output-vcf "$liftover_standard_plain" \
+    --ignored-tsv "$liftover_ignored_tsv" \
+    --stats-tsv "$liftover_stats_tsv"
+  run_cmd bgzip -f "$liftover_standard_plain"
+  if command -v bcftools >/dev/null 2>&1; then
+    run_cmd bcftools index -f -t "$liftover_standard_vcf"
+  else
+    run_cmd tabix -f -p vcf "$liftover_standard_vcf"
+  fi
+  PIPELINE_INPUT_VCF="$liftover_standard_vcf"
+else
+  printf '[%s] SKIP liftover standard-chromosome filter: using normalized input VCF directly: %s\n' "$(date '+%F %T')" "$PIPELINE_INPUT_VCF"
 fi
 
 sample_arg=()
@@ -413,6 +444,11 @@ fi
     printf 'liftover_manifest\t%s\n' "$liftover_manifest"
   fi
   printf 'input_assembly\t%s\n' "$resolved_assembly"
+  printf 'liftover_filter_standard_chroms\t%s\n' "$LIFTOVER_FILTER_STANDARD_CHROMS"
+  printf 'liftover_input_vcf\t%s\n' "$liftover_input_vcf"
+  printf 'liftover_standard_vcf\t%s\n' "$liftover_standard_vcf"
+  printf 'liftover_ignored_nonstandard_tsv\t%s\n' "$liftover_ignored_tsv"
+  printf 'liftover_filter_stats\t%s\n' "$liftover_stats_tsv"
   printf 'phasing\t%s\n' "$PHASING"
   printf 'vaf\t%s\n' "$VAF"
   printf 'regulatory_annotation\t%s\n' "$REGULATORY_ANNOTATION"

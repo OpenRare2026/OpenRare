@@ -289,8 +289,9 @@ pixi run mock-smoke-test
 | `--ncrna-annotation yes\|no` | 否 | `yes` | 是否运行 ncRNA 注释 |
 | `--pseudogene-annotation yes\|no` | 否 | `yes` | 是否运行假基因注释 |
 | `--hla-filter yes\|no` | 否 | `yes` | 是否删除 HLA/MHC 区行 |
+| `--liftover-filter-standard-chroms yes\|no` | 否 | `yes` | 是否仅保留标准染色体（1-22,X,Y,MT）；非标准 contig 写入 `00_liftover_filter/` |
 | `--sample-id ID` | 否 | `auto` | 样本名 |
-| `--chromosomes SPEC` | 否 | `1-22` | 如 `1`、`1,3,5` |
+| `--chromosomes SPEC` | 否 | `auto` | Beagle 目标染色体；有参考 panel 的 contig 自动 phase |
 | `--ref-dir DIR` | 否 | `$FULL_PIPELINE_REF_DIR` | Beagle 参考 panel |
 | `--beagle-jar FILE` | 否 | `$FULL_PIPELINE_BEAGLE_JAR` | Beagle JAR |
 | `--java-bin PATH` | 否 | `$JAVA_BIN` | Java 可执行文件 |
@@ -310,6 +311,7 @@ pixi run bash scripts/run_full_pipeline.sh --help
 |------|------|------|--------|
 | 00 | `00_input/` | 输入 VCF 规范化（bgzip + 索引） | `*.vcf.gz` |
 | 00b | `00_liftover/` | GRCh37→GRCh38 liftover（`--input-assembly` 触发） | `output.grch38.norm.vcf.gz` |
+| 00c | `00_liftover_filter/` | 标准染色体过滤（`--liftover-filter-standard-chroms`，默认开启） | `input.standard_chromosomes.vcf.gz` |
 | 01 | `01_phasing/` | Beagle + CHN 参考 phasing/ref-support（可 `--phasing no` 跳过） | `*.refsupport.vcf.gz` |
 | 02 | `02_vcf_preprocessing/` | VAF、cCRE、ncRNA 注释（各步可 `no` 跳过） | `preprocessed.regulatory.vcf.gz` |
 | 03 | `03_pseudogene_annotation/` | 假基因 INFO 注释（可跳过） | `preprocessed.pseudogene_annotated.vcf.gz` |
@@ -338,6 +340,8 @@ pixi run bash scripts/run_full_pipeline.sh --help
 |------|------|
 | `<out-dir>/04_vep/vep_output.base.csv` | VEP 基础 CSV |
 | `<out-dir>/04_vep/raw_vep.tsv` | VEP 原始 TSV（默认保留） |
+| `<out-dir>/00_liftover_filter/input.standard_chromosomes.vcf.gz` | 标准染色体过滤后的 VCF |
+| `<out-dir>/00_liftover_filter/input.ignored_nonstandard_chromosomes.tsv` | 被过滤的非标准 contig 变异 |
 | `<out-dir>/06_genos_evee_annotation/vep_output.with_genos_evee.csv` | GENOS-VarRisk 宽表（HLA 过滤前） |
 | `<out-dir>/07_hla_filter/vep_output.no_hla.csv` | **最终宽表**（默认） |
 | `<out-dir>/full_pipeline.outputs.tsv` | 各步产物路径索引 |
@@ -368,6 +372,7 @@ modules/pipeline/                    # 本模块（pixi 项目根）
 │   └── api_jobs/                    # API 任务目录（gitignore）
 ├── modules/                         # 各步骤实现
 │   ├── phasing_beagle_refsupport/
+│   ├── liftover/                    # 标准染色体过滤（00_liftover_filter）
 │   ├── vcf_preprocessing/
 │   ├── pseudogene_annotation/
 │   ├── vep_runner/
@@ -406,6 +411,7 @@ VEP 配置 [`modules/vep_runner/config/vep_runner_config.json`](modules/vep_runn
 | 文档 | 内容 |
 |------|------|
 | [complete_pipeline/README.md](complete_pipeline/README.md) | API 与 CLI 详细参数 |
+| [modules/liftover/README.md](modules/liftover/README.md) | 标准染色体过滤（`00_liftover_filter`） |
 | [modules/vep_runner/README.md](modules/vep_runner/README.md) | VEP 插件与注释库安装 |
 | [modules/genos_evee_annotation/README.md](modules/genos_evee_annotation/README.md) | GENOS-VarRisk 注释与数据库构建 |
 | [modules/hla_filter/README.md](modules/hla_filter/README.md) | HLA/MHC 区行过滤 |

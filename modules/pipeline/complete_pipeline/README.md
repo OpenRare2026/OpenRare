@@ -3,7 +3,7 @@
 > 完整架构和数据资源下载说明见上一层 `../README.md`。本文件保留主程序/API 的详细调用说明。
 
 
-本目录包含 FastAPI 服务（`full_pipeline_api.py`）与 API 任务目录，负责把 liftover（可选）、phasing、VCF 前处理、假基因注释、VEP runner、VCF INFO 回填、GENOS-VarRisk 注释、HLA 过滤串成一个完整流程。
+本目录包含 FastAPI 服务（`full_pipeline_api.py`）与 API 任务目录，负责把 liftover（可选）、标准染色体过滤、phasing、VCF 前处理、假基因注释、VEP runner、VCF INFO 回填、GENOS-VarRisk 注释、HLA 过滤串成一个完整流程。
 
 主程序：
 
@@ -33,37 +33,42 @@ pixi run bash scripts/run_full_pipeline.sh \
 ## 流程顺序
 
 1. `00_liftover`（可选）
-   - 脚本：`modules/vcf_preprocessing/liftover_grch37/scripts/liftover_vcf.py`
+   - 脚本：`modules/vcf_preprocessing/liftover_grch37/scripts/run_liftover_vcf.py`
    - 触发：`--input-assembly GRCh37` 或 `auto` 检测到 GRCh37
    - 输出：`00_liftover/output/output.grch38.norm.vcf.gz`
 
-2. `01_phasing`（可 `--phasing no` 跳过）
+2. `00_liftover_filter`（可 `--liftover-filter-standard-chroms no` 跳过，默认开启）
+   - 脚本：`modules/liftover/scripts/filter_standard_chromosomes_vcf.py`
+   - 功能：仅保留标准染色体（1-22, X, Y, M/MT），非标准 contig 写入 ignored TSV
+   - 输出：`00_liftover_filter/input.standard_chromosomes.vcf.gz`
+
+3. `01_phasing`（可 `--phasing no` 跳过）
    - 脚本：`modules/phasing_beagle_refsupport/scripts/run_beagle_refsupport_pipeline.sh`
    - 功能：Beagle + CHN reference panel phasing/ref-support。
    - 输出：`*.original_sites.beagle_phase_merged.refsupport.vcf.gz`
 
-3. `02_vcf_preprocessing`（`--vaf` / `--regulatory-annotation` / `--ncrna-annotation` 可单独 `no`）
+4. `02_vcf_preprocessing`（`--vaf` / `--regulatory-annotation` / `--ncrna-annotation` 可单独 `no`）
    - 脚本：`modules/vcf_preprocessing/run_vcf_preprocessing.sh`
    - 功能：VAF 写入 INFO、ENCODE SCREEN cCRE 注释、GENCODE ncRNA 注释。
    - 输出：`preprocessed.regulatory.vcf.gz`
 
-4. `03_pseudogene_annotation`（可 `--pseudogene-annotation no` 跳过）
+5. `03_pseudogene_annotation`（可 `--pseudogene-annotation no` 跳过）
    - 脚本：`modules/pseudogene_annotation/scripts/annotate_pseudogene.py`
    - 功能：假基因注释，增加 `is_pseudogene`、`pseudogene_name`、`pseudogene_source` INFO 字段。
 
-5. `04_vep`
+6. `04_vep`
    - 脚本：`modules/vep_runner/scripts/run_vep_to_csv.py`
    - 输出：`04_vep/vep_output.base.csv`
 
-6. `05_vcf_info_to_csv`
+7. `05_vcf_info_to_csv`
    - 脚本：`modules/vcf_info_to_csv/scripts/add_vcf_info_to_vep_csv.py`
    - 输出：`05_vcf_info_to_csv/vep_output.with_info.csv`
 
-7. `06_genos_evee_annotation`
+8. `06_genos_evee_annotation`
    - 脚本：`modules/genos_evee_annotation/scripts/add_genos_evee_to_csv.py`
    - 输出：`06_genos_evee_annotation/vep_output.with_genos_evee.csv`
 
-8. `07_hla_filter`（可 `--hla-filter no` 跳过）
+9. `07_hla_filter`（可 `--hla-filter no` 跳过）
    - 脚本：`modules/hla_filter/scripts/filter_hla_region_csv.py`
    - 功能：删除 GRCh38 HLA/MHC 区（`chr6:28477797-33448354`）行
    - 输出：`07_hla_filter/vep_output.no_hla.csv`（**默认最终 CSV**）
@@ -105,9 +110,10 @@ bash scripts/run_full_pipeline.sh \
 | `--ncrna-annotation yes\|no` | 是，可选 | `yes` | 是否运行 ncRNA 注释。 |
 | `--pseudogene-annotation yes\|no` | 是，可选 | `yes` | 是否运行假基因注释。 |
 | `--hla-filter yes\|no` | 是，可选 | `yes` | 是否从最终宽表删除 HLA/MHC 区行。 |
+| `--liftover-filter-standard-chroms yes\|no` | 是，可选 | `yes` | 是否仅保留标准染色体；非标准 contig 写入 `00_liftover_filter/`。 |
 | `--input-assembly SPEC` | 高级覆盖 | `auto` | `auto` / `GRCh37` / `GRCh38`；GRCh37 时在 phasing 前 liftover。 |
 | `--sample-id ID` | 高级覆盖 | `auto` | 样本名。默认由 phasing 模块自动识别；特殊情况下可手动指定。 |
-| `--chromosomes SPEC` | 高级覆盖 | `1-22` | 要运行的染色体。示例：`22`、`1`、`1-22`、`1,3,5`。测试小 VCF 时常用 `1` 或 `22`。 |
+| `--chromosomes SPEC` | 高级覆盖 | `auto` | Beagle 目标染色体。示例：`22`、`1`、`1-22`、`1,3,5`。 |
 | `--ref-dir DIR` | 高级覆盖 | `$FULL_PIPELINE_REF_DIR`（默认见主 README） | Beagle CHN reference panel 目录。 |
 | `--beagle-jar FILE` | 高级覆盖 | `$FULL_PIPELINE_BEAGLE_JAR`（默认见主 README） | Beagle jar 路径。 |
 | `--ccre-bed FILE` | 高级覆盖 | V3 内置 cCRE BED | ENCODE SCREEN cCRE slim BED.GZ。 |
@@ -292,10 +298,11 @@ API 的字段和主程序参数一一对应。常规字段和高级覆盖字段�
 | `ncrna_annotation` | `--ncrna-annotation` | 是，可选 | 是否运行 ncRNA 注释，默认 `yes`。 |
 | `pseudogene_annotation` | `--pseudogene-annotation` | 是，可选 | 是否运行假基因注释，默认 `yes`。 |
 | `hla_filter` | `--hla-filter` | 是，可选 | 是否删除 HLA/MHC 区行，默认 `yes`。 |
+| `liftover_filter_standard_chroms` | `--liftover-filter-standard-chroms` | 是，可选 | 是否仅保留标准染色体，默认 `yes`。 |
 | `input_assembly` | `--input-assembly` | 高级覆盖 | `auto` / `GRCh37` / `GRCh38`。 |
 | `hpo_file` | `--hpo-id` | 是，可选 | 仅 `/run-upload` 支持，上传 TXT 后自动解析并合并到 `hpo_id`。 |
 | `sample_id` | `--sample-id` | 高级覆盖 | 样本名，默认 `auto`。 |
-| `chromosomes` | `--chromosomes` | 高级覆盖 | 覆盖默认 `1-22`。例如测试 VCF 只有 chr1 时传 `"1"`。 |
+| `chromosomes` | `--chromosomes` | 高级覆盖 | 覆盖默认 `auto`。例如测试 VCF 只有 chr1 时传 `"1"`。 |
 | `ref_dir` | `--ref-dir` | 高级覆盖 | CHN reference panel 目录。 |
 | `beagle_jar` | `--beagle-jar` | 高级覆盖 | Beagle jar 路径。 |
 | `ccre_bed` | `--ccre-bed` | 高级覆盖 | cCRE BED.GZ。 |
@@ -350,6 +357,8 @@ curl -X POST http://127.0.0.1:18081/run \
 | 路径 | 说明 |
 |---|---|
 | `<out-dir>/00_input/*.vcf.gz` | 如果输入是未压缩 `.vcf`，这里保存自动压缩后的 VCF。 |
+| `<out-dir>/00_liftover_filter/input.standard_chromosomes.vcf.gz` | 标准染色体过滤后的 VCF。 |
+| `<out-dir>/00_liftover_filter/input.ignored_nonstandard_chromosomes.tsv` | 被过滤的非标准 contig 变异。 |
 | `<out-dir>/01_phasing/*.vcf.gz` | phasing/ref-support 后的 VCF。 |
 | `<out-dir>/02_vcf_preprocessing/preprocessed.regulatory.vcf.gz` | VAF + CRE/cCRE + ncRNA 注释后的 VCF。 |
 | `<out-dir>/03_pseudogene_annotation/preprocessed.pseudogene_annotated.vcf.gz` | 假基因注释后的 VCF。 |
