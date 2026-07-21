@@ -46,7 +46,7 @@ def main() -> None:
         uvicorn.run(
             "phenotype_hpo_score_api:app",
             app_dir=str(SRC_DIR),
-            host="0.0.0.0",
+            host=os.getenv("OPENRARE_HOST", "127.0.0.1"),
             port=7773,
             log_config=log_config,
         )

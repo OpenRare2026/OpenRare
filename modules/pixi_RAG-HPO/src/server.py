@@ -2,7 +2,7 @@
 """FastAPI server for RAG-HPO pipeline.
 
 Start with:
-    uvicorn dev.server:app --host 0.0.0.0 --port 8000
+    uvicorn dev.server:app --host 127.0.0.1 --port 8000
 """
 
 from __future__ import annotations

@@ -31,6 +31,11 @@ if env_path.exists():
     from dotenv import load_dotenv
     load_dotenv(env_path)
 
+# Loopback by default: this API serves patient genomic data and has no
+# authentication layer yet, so it must not listen on every interface unless
+# the operator opts in. Containers set API_HOST=0.0.0.0 explicitly — the
+# container boundary is what limits exposure there.
+API_HOST = os.getenv("API_HOST", "127.0.0.1")
 API_PORT = int(os.getenv("API_PORT", "8000"))
 CORS_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:8888,http://127.0.0.1:8888,http://localhost:8181,http://127.0.0.1:8181").split(",")
 
@@ -155,4 +160,4 @@ app.include_router(report_router, prefix="/api", tags=["report"])
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=API_PORT)
+    uvicorn.run(app, host=API_HOST, port=API_PORT)

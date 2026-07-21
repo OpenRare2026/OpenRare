@@ -11,6 +11,10 @@ mkdir -p /app/data /app/logs /var/log/supervisor /var/log/nginx
 # Set default environment variables
 export DATABASE_URL="${DATABASE_URL:-sqlite:////app/data/rare_disease_diagnosis.db}"
 export LOG_LEVEL="${LOG_LEVEL:-INFO}"
+# Inside the container 0.0.0.0 is correct and required: the container
+# boundary is what limits exposure, and `docker run -p` cannot reach a
+# process bound to the container's loopback. Host-level defaults are
+# loopback instead — see modules/RareSystem/backend/main.py.
 export API_HOST="${API_HOST:-0.0.0.0}"
 export API_PORT="${API_PORT:-8000}"
 
