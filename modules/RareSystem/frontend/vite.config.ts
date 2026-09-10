@@ -11,7 +11,10 @@ export default defineConfig({
     },
   },
   server: {
-    host: '0.0.0.0',
+    // Loopback by default — the dev server proxies /api to the backend,
+    // so exposing it on the LAN exposes patient data with it. Override with
+    // `vite --host 0.0.0.0` when you deliberately need remote access.
+    host: '127.0.0.1',
     port: 8888,
     proxy: {
       '/api': {

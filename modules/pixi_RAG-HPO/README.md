@@ -55,7 +55,7 @@ cp .env.example .env
 
 ```bash
 pixi run serve
-# → Uvicorn running on http://0.0.0.0:8000
+# → Uvicorn running on http://127.0.0.1:8000
 ```
 
 ### 验证

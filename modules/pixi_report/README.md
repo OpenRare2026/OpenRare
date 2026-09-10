@@ -122,7 +122,7 @@ cd modules/pixi_report
 pixi install
 cp .env.example .env    # 配置 LLM、MCP 等（见下文「数据部署」）
 
-pixi run api            # http://0.0.0.0:8800
+pixi run api            # http://127.0.0.1:8800
 pixi run health
 pixi run test-api       # curl 全流程测试
 ```

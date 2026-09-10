@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
@@ -128,7 +129,7 @@ async def download_report_md(run_id: str) -> FileResponse:
 def main() -> None:
     import uvicorn
 
-    uvicorn.run("api.main:app", host="0.0.0.0", port=8800, reload=False)
+    uvicorn.run("api.main:app", host=os.getenv("OPENRARE_HOST", "127.0.0.1"), port=8800, reload=False)
 
 
 if __name__ == "__main__":

@@ -28,6 +28,6 @@ pypandoc-binary = ">=1.17"
 httpx = ">=0.27"
 
 [tasks]
-api = "uvicorn api.main:app --host 0.0.0.0 --port 8800"
+api = "uvicorn api.main:app --host 127.0.0.1 --port 8800"
 health = "python -c \"import httpx; r=httpx.get('http://127.0.0.1:8800/health', timeout=5); print(r.status_code, r.text)\""
 test-api = "bash scripts/test_api.sh"

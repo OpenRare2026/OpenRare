@@ -14,5 +14,5 @@ export RARE_PPI_RESPONSE_PATH_BASE="${RARE_PPI_RESPONSE_PATH_BASE:-$PROJECT_DIR}
 mkdir -p "$RARE_PPI_OUTPUT_DIR" "$RARE_PPI_UPLOAD_DIR"
 
 exec python -m uvicorn app.api:app \
-  --host "${RARE_PPI_HOST:-0.0.0.0}" \
+  --host "${RARE_PPI_HOST:-${OPENRARE_HOST:-127.0.0.1}}" \
   --port "${RARE_PPI_PORT:-9000}"

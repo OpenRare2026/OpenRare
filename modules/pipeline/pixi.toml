@@ -39,7 +39,7 @@ pipeline-test = { cmd = [
 ]}
 api = { cmd = [
   "bash", "-c",
-  "FULL_PIPELINE_API_HOST=${FULL_PIPELINE_API_HOST:-0.0.0.0} FULL_PIPELINE_API_PORT=${FULL_PIPELINE_API_PORT:-18901} exec bash scripts/start_full_pipeline_api.sh",
+  "FULL_PIPELINE_API_HOST=${FULL_PIPELINE_API_HOST:-${OPENRARE_HOST:-127.0.0.1}} FULL_PIPELINE_API_PORT=${FULL_PIPELINE_API_PORT:-18901} exec bash scripts/start_full_pipeline_api.sh",
 ]}
 api-test = { cmd = ["bash", "test/run_api_integration_test.sh"] }
 mock-smoke-test = { cmd = ["bash", "test/run_mock_smoke_dryrun.sh"] }

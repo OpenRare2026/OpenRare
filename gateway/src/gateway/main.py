@@ -16,6 +16,7 @@ from __future__ import annotations
 import asyncio
 import atexit
 import contextlib
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -37,6 +38,15 @@ def find_root(start: Path) -> Path:
 
 
 REPO_ROOT = find_root(Path(__file__).resolve())
+
+# ── Bind address ──────────────────────────────────────────────────────
+# Default to loopback: the gateway fronts modules that hold patient
+# genomic data and currently carry no authentication layer, so it must
+# not be reachable from the LAN unless the operator opts in explicitly.
+# Set OPENRARE_HOST=0.0.0.0 only behind an authenticating reverse proxy
+# (containers publish ports themselves and need no change here).
+HOST = os.getenv("OPENRARE_HOST", "127.0.0.1")
+PORT = int(os.getenv("OPENRARE_PORT", "8000"))
 
 # ── Module registry ───────────────────────────────────────────────────
 # Each module defines how it's launched inside its own pixi environment.
@@ -192,7 +202,7 @@ async def lifespan(app: FastAPI):
     ready = await wait_healthy()
     app.state.ready_modules = ready
     app.state.client = httpx.AsyncClient(timeout=120.0)
-    print(f"[gateway] ready on http://0.0.0.0:8000 — {len(ready)}/{len(MODULES)} modules up", flush=True)
+    print(f"[gateway] ready on http://{HOST}:{PORT} — {len(ready)}/{len(MODULES)} modules up", flush=True)
     yield
     await app.state.client.aclose()
     stop_modules()
@@ -266,7 +276,7 @@ async def pipeline_status():
 
 
 def main() -> None:
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host=HOST, port=PORT)
 
 
 if __name__ == "__main__":
