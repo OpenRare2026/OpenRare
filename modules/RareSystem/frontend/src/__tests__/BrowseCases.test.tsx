@@ -17,6 +17,23 @@ vi.mock('../services/api', () => ({
 
 import api from '../services/api'
 
+// vi.mock is hoisted above every other statement in this file, so anything it
+// references must be hoisted too -- a plain `const` declared next to the mock
+// (or worse, inside a test body) is still in the temporal dead zone when the
+// factory runs, and the whole module fails to load.
+const { mockMessageError } = vi.hoisted(() => ({ mockMessageError: vi.fn() }))
+
+vi.mock('antd', async () => {
+  const actual = await vi.importActual<typeof import('antd')>('antd')
+  return {
+    ...actual,
+    message: {
+      ...actual.message,
+      error: mockMessageError,
+    },
+  }
+})
+
 const mockNavigate = vi.fn()
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom')
@@ -326,19 +343,6 @@ describe('BrowseCases Delete Functionality', () => {
       ;(api.deleteCase as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
         new Error('Failed to delete case')
       )
-
-      // Mock message.error
-      const mockMessageError = vi.fn()
-      vi.mock('antd', async () => {
-        const actual = await vi.importActual('antd')
-        return {
-          ...actual,
-          message: {
-            ...actual.message,
-            error: mockMessageError,
-          },
-        }
-      })
 
       renderWithRouter(
         <BrowseCases 

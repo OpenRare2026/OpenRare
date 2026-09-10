@@ -1,0 +1,100 @@
+name: CI
+
+# Merge gates for OpenRare (issue #19).
+#
+# Scope note: the analysis modules need external reference data measured in
+# hundreds of GB (VEP caches, GTEx, reference panels), so the real pipeline
+# cannot run here. These jobs deliberately cover only what is checkable
+# without that data and what is green on `dev` today, so a red check always
+# means "this PR broke something" rather than "CI is broken again".
+#
+# Checks that are NOT gates yet, and why, are tracked in issue #19.
+
+on:
+  pull_request:
+  push:
+    branches: [dev, main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  hygiene:
+    name: Repo hygiene (TOML / shell / Python syntax)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Every TOML parses
+        # A malformed pixi.toml breaks `pixi install` for the whole module,
+        # and it is easy to land because nothing here imports it.
+        run: |
+          python - <<'PY'
+          import sys, tomllib
+          from pathlib import Path
+          bad = []
+          files = [p for p in Path('.').rglob('*.toml')
+                   if not any(part in ('.git', '.pixi', 'node_modules') for part in p.parts)]
+          for p in files:
+              try:
+                  tomllib.loads(p.read_text(encoding='utf-8'))
+              except Exception as exc:
+                  bad.append(f'{p}: {exc}')
+          print(f'checked {len(files)} TOML files')
+          if bad:
+              print('\n'.join(bad), file=sys.stderr)
+              sys.exit(1)
+          PY
+
+      - name: Every shell script parses
+        # Module entrypoints are shell scripts; a syntax error only shows up
+        # when someone tries to start that service.
+        run: |
+          set -euo pipefail
+          fail=0
+          count=0
+          while IFS= read -r -d '' f; do
+            count=$((count + 1))
+            bash -n "$f" || { echo "::error file=$f::bash syntax error"; fail=1; }
+          done < <(find . -name '*.sh' -not -path './.git/*' -not -path '*/node_modules/*' -print0)
+          echo "checked $count shell scripts"
+          exit $fail
+
+      - name: Python sources compile
+        # Syntax-only. Catches a broken merge or a stray conflict marker in
+        # any module, without needing that module's dependencies installed.
+        run: |
+          python -m compileall -q \
+            -x '(\.pixi|node_modules|\.git|__pycache__)' \
+            .
+
+  frontend:
+    name: RareSystem frontend (typecheck)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: modules/RareSystem/frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: modules/RareSystem/frontend/package-lock.json
+
+      - run: npm ci
+
+      - name: Typecheck
+        # `tsc -b` is green on dev, so it can gate. `npm run lint` and
+        # `npx vitest run` are NOT wired up yet -- both are currently red on
+        # dev; see issue #19 for the breakdown.
+        run: npx tsc -b

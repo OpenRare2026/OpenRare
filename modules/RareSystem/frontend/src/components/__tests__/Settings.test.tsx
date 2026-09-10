@@ -23,7 +23,9 @@ describe('Settings Component', () => {
     render(<Settings />)
     
     await waitFor(() => {
-      expect(screen.getByText('LLM Settings')).toBeInTheDocument()
+      // "LLM Settings" appears twice: as the tab label and as the card
+      // heading. Query the heading so the assertion stays unambiguous.
+      expect(screen.getByRole('heading', { name: 'LLM Settings' })).toBeInTheDocument()
     })
   })
 
