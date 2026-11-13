@@ -1,5 +1,5 @@
 # OpenRare
-![last commit](https://img.shields.io/badge/last_commit-2026.06.26-blue)
+![last commit](https://img.shields.io/badge/last_commit-2026.11.13-blue)
 ![License: MIT](https://img.shields.io/badge/License-MIT-red.svg)
 ![Badge](https://hitscounter.dev/api/hit?url=https%3A%2F%2Fgithub.com%2FOpenRare2026%2FOpenRare&label=Visitors&icon=github&color=%23198754&message=&style=flat&tz=UTC)
 
