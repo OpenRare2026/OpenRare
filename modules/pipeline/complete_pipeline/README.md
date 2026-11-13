@@ -304,18 +304,28 @@ API 的字段和主程序参数一一对应。常规字段和高级覆盖字段�
 | `sample_id` | `--sample-id` | 高级覆盖 | 样本名，默认 `auto`。 |
 | `chromosomes` | `--chromosomes` | 高级覆盖 | 覆盖默认 `auto`。例如测试 VCF 只有 chr1 时传 `"1"`。 |
 | `ref_dir` | `--ref-dir` | 高级覆盖 | CHN reference panel 目录。 |
-| `beagle_jar` | `--beagle-jar` | 高级覆盖 | Beagle jar 路径。 |
 | `ccre_bed` | `--ccre-bed` | 高级覆盖 | cCRE BED.GZ。 |
 | `ncrna_bed` | `--ncrna-bed` | 高级覆盖 | ncRNA BED.GZ。 |
 | `chr_jobs` | `--chr-jobs` | 高级覆盖 | phasing 染色体并发数。 |
 | `beagle_threads` | `--beagle-threads` | 高级覆盖 | 每个 Beagle 进程线程数。 |
 | `java_heap_gb` | `--java-heap-gb` | 高级覆盖 | Beagle Java heap，单位 GB。 |
-| `java_bin` | `--java-bin` | 高级覆盖 | Java 可执行文件。 |
 | `top_k_transcripts` | `--top-k-transcripts` | 高级覆盖 | 每个 variant-gene 保留的转录本数量。 |
 | `clinical_tissue` | `--clinical-tissue` | 高级覆盖 | 手动传 GTEx tissue。 |
 | `keep_raw_vep` | `--keep-raw-vep` | 高级覆盖 | `true` 对应 `yes`，`false` 对应 `no`。 |
 | `genos_evee_db` | `--GENOS-VarRisk-db` | 高级覆盖 | GENOS-VarRisk CPRA 数据库路径。 |
 | `dry_run` | `--dry-run` | 调试 | 只打印命令，不实际运行。 |
+
+### 路径沙箱与服务端配置
+
+API 会校验请求里的所有路径字段，越界时返回 `400`：
+
+- `input_vcf`、`ref_dir`、`ccre_bed`、`ncrna_bed`、`genos_evee_db` 必须位于允许读取的目录内。默认允许仓库根目录、API job 目录和各默认资源所在目录；`OPENRARE_DATA_ROOT`、`OPENRARE_PUBLIC_DATA_ROOT` 已设置时也会加入。其他目录用 `FULL_PIPELINE_API_ALLOWED_ROOTS` 追加，多个目录用逗号分隔。
+- `output_dir` 必须位于 `FULL_PIPELINE_API_OUTPUT_ROOT` 内，默认就是 API job 目录（`FULL_PIPELINE_API_JOBS_DIR`）。上文示例里的 `/path/to/output_dir` 需要换成这个目录下的路径，或者不传，使用 job 默认输出目录。
+- Beagle jar 和 Java 可执行文件只能在服务端配置：启动服务前设置 `FULL_PIPELINE_BEAGLE_JAR` 和 `JAVA_BIN`。`beagle_jar`、`java_bin` 已不再是 API 字段；旧调用方如果仍在 JSON 或表单里传这两个字段，请求不会报错，但字段会被忽略，不会生效。
+
+```bash
+FULL_PIPELINE_BEAGLE_JAR=/path/to/beagle.jar \nJAVA_BIN=/path/to/java \nFULL_PIPELINE_API_ALLOWED_ROOTS=/data/vcf,/data/panels \nFULL_PIPELINE_API_PORT=18081 \n  pixi run api
+```
 
 示例：API 只跑 chr1：
 

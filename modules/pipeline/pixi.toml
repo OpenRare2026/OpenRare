@@ -44,6 +44,7 @@ api = { cmd = [
 api-test = { cmd = ["bash", "test/run_api_integration_test.sh"] }
 mock-smoke-test = { cmd = ["bash", "test/run_mock_smoke_dryrun.sh"] }
 hla-filter-test = { cmd = ["bash", "test/run_hla_filter_unit.sh"] }
+path-sandbox-test = { cmd = ["python", "test/test_path_sandbox.py"] }
 xy-mt-preservation-test = { cmd = ["bash", "test/run_xy_mt_preservation_test.sh"] }
 vep-setup-plugins = { cmd = ["bash", "modules/vep_runner/scripts/install_vep_plugins.sh"] }
 vep-verify-plugins = { cmd = ["bash", "modules/vep_runner/scripts/verify_vep_plugins.sh"] }

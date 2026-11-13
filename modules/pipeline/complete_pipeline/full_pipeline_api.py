@@ -40,6 +40,92 @@ DEFAULT_PSEUDOGENE_SCRIPT = ROOT / "modules" / "pseudogene_annotation" / "script
 DEFAULT_JAVA_BIN = os.getenv("JAVA_BIN", "java")
 
 JOBS_DIR.mkdir(parents=True, exist_ok=True)
+
+# ── Path sandbox ──────────────────────────────────────────────────────
+# Request bodies used to carry raw filesystem paths straight into the
+# pipeline command, which meant any caller could read files outside the
+# data directories, write outputs anywhere the service user can write,
+# and (via output_dir + the job-file download routes) turn this API into
+# an arbitrary file reader. Paths from a request are now confined to an
+# explicit set of roots.
+#
+# Read roots default to the directories the deployment already points at
+# through path_utils, so a correctly configured install keeps working.
+# Extra roots can be added with FULL_PIPELINE_API_ALLOWED_ROOTS
+# (comma-separated). Outputs are confined to FULL_PIPELINE_API_OUTPUT_ROOT
+# (default: the jobs directory).
+
+
+def resolve_path(value: str | Path) -> Path:
+    path = Path(value).expanduser()
+    if not path.is_absolute():
+        path = Path.cwd() / path
+    # resolve() also collapses '..' and follows symlinks, so a link
+    # planted inside an allowed root cannot point back out of it.
+    return path.resolve()
+
+
+# Normalise the jobs directory once: FULL_PIPELINE_API_JOBS_DIR may be
+# relative or contain symlinks, and every containment check below compares
+# against resolved paths.
+JOBS_DIR = resolve_path(JOBS_DIR)
+
+
+def _split_env_paths(raw: str) -> list[Path]:
+    return [resolve_path(part) for part in raw.split(",") if part.strip()]
+
+
+def _default_read_roots() -> list[Path]:
+    roots = [
+        ROOT,
+        JOBS_DIR,
+        DEFAULT_REF_DIR,
+        DEFAULT_BEAGLE_JAR.parent,
+        DEFAULT_GENOS_EVEE_DB.parent,
+        DEFAULT_CCRE_BED.parent,
+        DEFAULT_NCRNA_BED.parent,
+    ]
+    for var in ("OPENRARE_DATA_ROOT", "OPENRARE_PUBLIC_DATA_ROOT"):
+        configured = os.getenv(var)
+        if configured:
+            roots.append(resolve_path(configured))
+    return roots
+
+
+ALLOWED_READ_ROOTS = _default_read_roots() + _split_env_paths(
+    os.getenv("FULL_PIPELINE_API_ALLOWED_ROOTS", "")
+)
+OUTPUT_ROOT = resolve_path(os.getenv("FULL_PIPELINE_API_OUTPUT_ROOT", str(JOBS_DIR)))
+
+# job_id is always uuid4().hex; validating it keeps a crafted id from
+# walking out of JOBS_DIR via the /jobs/{job_id} routes.
+_JOB_ID_RE = re.compile(r"\A[0-9a-f]{32}\Z")
+
+
+def _is_within(candidate: Path, root: Path) -> bool:
+    try:
+        candidate.relative_to(root)
+    except ValueError:
+        return False
+    return True
+
+
+def sandboxed_path(value: str | Path, field: str, roots: list[Path]) -> Path:
+    path = resolve_path(value)
+    if not any(_is_within(path, root) for root in roots):
+        raise HTTPException(
+            status_code=400,
+            detail=f"{field}: path is outside the allowed data roots",
+        )
+    return path
+
+
+def validate_job_id(job_id: str) -> str:
+    if not _JOB_ID_RE.match(job_id):
+        raise HTTPException(status_code=404, detail="job_id not found")
+    return job_id
+
+
 _LOCK = threading.Lock()
 _QUEUE_CONDITION = threading.Condition()
 _PENDING_JOBS: deque[dict] = deque()
@@ -72,14 +158,12 @@ class RunRequest(BaseModel):
         None,
         description="Advanced override: chromosomes processed by Beagle. Default auto phases every patient contig with a reference panel; X/Y/MT and other unsupported contigs are preserved for VEP",
     )
-    ref_dir: Optional[str] = Field(None, description="Advanced override: CHN reference panel directory")
-    beagle_jar: Optional[str] = Field(None, description="Advanced override: Beagle jar path")
+    ref_dir: Optional[str] = Field(None, description="Advanced override: CHN reference panel directory (must be inside an allowed data root)")
     ccre_bed: Optional[str] = Field(None, description="Advanced override: cCRE BED.GZ")
     ncrna_bed: Optional[str] = Field(None, description="Advanced override: ncRNA BED.GZ")
     chr_jobs: Optional[int] = Field(None, description="Advanced override: concurrent chromosomes for phasing")
     beagle_threads: Optional[int] = Field(None, description="Advanced override: threads per Beagle process")
     java_heap_gb: Optional[int] = Field(None, description="Advanced override: Java heap per Beagle process")
-    java_bin: Optional[str] = Field(None, description="Advanced override: Java executable for Beagle")
     top_k_transcripts: Optional[int] = Field(None, description="Advanced override: transcript selection count")
     clinical_tissue: str = Field("", description="Advanced override: GTEx tissue name for phenotype-aware transcript expression")
     genos_evee_db: Optional[str] = Field(None, description="Advanced override: indexed GENOS-VarRisk CPRA TSV.GZ")
@@ -100,15 +184,8 @@ def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def resolve_path(value: str | Path) -> Path:
-    path = Path(value).expanduser()
-    if not path.is_absolute():
-        path = Path.cwd() / path
-    return path.resolve()
-
-
 def status_path(job_id: str) -> Path:
-    return JOBS_DIR / job_id / "status.json"
+    return JOBS_DIR / validate_job_id(job_id) / "status.json"
 
 
 def read_status(job_id: str) -> dict:
@@ -268,7 +345,7 @@ def save_upload(upload: UploadFile, upload_dir: Path) -> Path:
 
 
 def build_command(req: RunRequest, output_dir: Path) -> list[str]:
-    input_vcf = resolve_path(req.input_vcf)
+    input_vcf = sandboxed_path(req.input_vcf, "input_vcf", ALLOWED_READ_ROOTS)
     cmd = [
         "bash",
         str(RUN_SCRIPT),
@@ -296,17 +373,23 @@ def build_command(req: RunRequest, output_dir: Path) -> list[str]:
     add_option("--input-assembly", req.input_assembly)
     add_option("--sample-id", req.sample_id)
     add_option("--chromosomes", req.chromosomes)
-    add_option("--ref-dir", resolve_path(req.ref_dir) if req.ref_dir else None)
-    add_option("--beagle-jar", resolve_path(req.beagle_jar) if req.beagle_jar else None)
-    add_option("--ccre-bed", resolve_path(req.ccre_bed) if req.ccre_bed else None)
-    add_option("--ncrna-bed", resolve_path(req.ncrna_bed) if req.ncrna_bed else None)
+    def add_path_option(name: str, field: str, value: Optional[str]) -> None:
+        if not value:
+            return
+        add_option(name, sandboxed_path(value, field, ALLOWED_READ_ROOTS))
+
+    add_path_option("--ref-dir", "ref_dir", req.ref_dir)
+    add_path_option("--ccre-bed", "ccre_bed", req.ccre_bed)
+    add_path_option("--ncrna-bed", "ncrna_bed", req.ncrna_bed)
     add_option("--chr-jobs", req.chr_jobs)
     add_option("--beagle-threads", req.beagle_threads)
     add_option("--java-heap-gb", req.java_heap_gb)
-    add_option("--java-bin", resolve_path(req.java_bin) if req.java_bin else None)
+    # --java-bin and --beagle-jar are deliberately not settable per request:
+    # both name an executable the pipeline then runs. They stay server-side
+    # configuration (JAVA_BIN / FULL_PIPELINE_BEAGLE_JAR).
     add_option("--top-k-transcripts", req.top_k_transcripts)
     add_option("--clinical-tissue", req.clinical_tissue)
-    add_option("--GENOS-VarRisk-db", resolve_path(req.genos_evee_db) if req.genos_evee_db else None)
+    add_path_option("--GENOS-VarRisk-db", "genos_evee_db", req.genos_evee_db)
     if req.keep_raw_vep is not None:
         cmd.extend(["--keep-raw-vep", "yes" if req.keep_raw_vep else "no"])
     if req.dry_run:
@@ -423,7 +506,11 @@ def enqueue_run(
         raise HTTPException(status_code=500, detail=f"run script not found: {RUN_SCRIPT}")
     job_id = job_id or uuid.uuid4().hex
     job_dir = JOBS_DIR / job_id
-    output_dir = resolve_path(req.output_dir) if req.output_dir else job_dir / "output"
+    output_dir = (
+        sandboxed_path(req.output_dir, "output_dir", [OUTPUT_ROOT])
+        if req.output_dir
+        else job_dir / "output"
+    )
     job_dir.mkdir(parents=True, exist_ok=True)
     output_dir.mkdir(parents=True, exist_ok=True)
     cmd = build_command(req, output_dir)
@@ -471,13 +558,11 @@ def submit_upload(
     sample_id: Optional[str] = Form(None),
     chromosomes: Optional[str] = Form(None),
     ref_dir: Optional[str] = Form(None),
-    beagle_jar: Optional[str] = Form(None),
     ccre_bed: Optional[str] = Form(None),
     ncrna_bed: Optional[str] = Form(None),
     chr_jobs: Optional[int] = Form(None),
     beagle_threads: Optional[int] = Form(None),
     java_heap_gb: Optional[int] = Form(None),
-    java_bin: Optional[str] = Form(None),
     top_k_transcripts: Optional[int] = Form(None),
     clinical_tissue: str = Form(""),
     genos_evee_db: Optional[str] = Form(None),
@@ -506,13 +591,11 @@ def submit_upload(
         sample_id=sample_id,
         chromosomes=chromosomes,
         ref_dir=ref_dir,
-        beagle_jar=beagle_jar,
         ccre_bed=ccre_bed,
         ncrna_bed=ncrna_bed,
         chr_jobs=chr_jobs,
         beagle_threads=beagle_threads,
         java_heap_gb=java_heap_gb,
-        java_bin=java_bin,
         top_k_transcripts=top_k_transcripts,
         clinical_tissue=clinical_tissue,
         genos_evee_db=genos_evee_db,
@@ -552,6 +635,11 @@ def output_root_for_job(job_id: str) -> Path:
     if not output_dir:
         raise HTTPException(status_code=404, detail="job output directory is not available")
     root = Path(output_dir).expanduser().resolve()
+    # Defence in depth: status.json is written by this service, but if an
+    # older job (recorded before output_dir was sandboxed) names a path
+    # outside the output root, do not serve files from it.
+    if not _is_within(root, OUTPUT_ROOT):
+        raise HTTPException(status_code=403, detail="job output directory is outside the output root")
     if not root.is_dir():
         raise HTTPException(status_code=404, detail="job output directory does not exist yet")
     return root
@@ -634,7 +722,9 @@ def download_job_file(job_id: str, file_path: str) -> FileResponse:
 @app.get("/jobs/{job_id}/log")
 def get_job_log(job_id: str) -> str:
     status = read_status(job_id)
-    log_path = Path(status.get("log", JOBS_DIR / job_id / "api_run.log"))
+    log_path = Path(status.get("log", JOBS_DIR / job_id / "api_run.log")).expanduser().resolve()
+    if not _is_within(log_path, JOBS_DIR):
+        raise HTTPException(status_code=403, detail="log path is outside the jobs directory")
     if not log_path.is_file():
         raise HTTPException(status_code=404, detail="log not found")
     return log_path.read_text(encoding="utf-8", errors="replace")
@@ -643,7 +733,9 @@ def get_job_log(job_id: str) -> str:
 @app.get("/jobs/{job_id}/api-log/download", name="download_api_log")
 def download_api_log(job_id: str) -> FileResponse:
     status = read_status(job_id)
-    log_path = Path(status.get("log", JOBS_DIR / job_id / "api_run.log"))
+    log_path = Path(status.get("log", JOBS_DIR / job_id / "api_run.log")).expanduser().resolve()
+    if not _is_within(log_path, JOBS_DIR):
+        raise HTTPException(status_code=403, detail="log path is outside the jobs directory")
     if not log_path.is_file():
         raise HTTPException(status_code=404, detail="log not found")
     return FileResponse(log_path, filename=f"{job_id}.api_run.log")
