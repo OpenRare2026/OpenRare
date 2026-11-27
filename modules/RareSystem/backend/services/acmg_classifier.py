@@ -340,17 +340,25 @@ class ACMGClassifier:
         bs_met = sum(1 for c in met_benign if c.criterion_code.startswith("BS"))
         bp_met = sum(1 for c in met_benign if c.criterion_code.startswith("BP"))
         
-        if ba1_met or bs_met >= 2:
-            return ClassificationCategory.BENIGN
-        
-        if b_score <= self.thresholds.benign_threshold:
-            return ClassificationCategory.BENIGN
-        
-        if b_score <= self.thresholds.likely_benign_threshold:
-            return ClassificationCategory.LIKELY_BENIGN
 
-        # Richards et al. 2015 Table 5 — Likely Benign combining rules
-        if pvs1_met == 0 and ps_met == 0 and pm_met == 0 and pp_met == 0:
+        # BA1 standalone：遇 PS/PVS1 强冲突时退出到 VUS
+        # 依据：Richards 2015 冲突处理条款
+        if ba1_met and not pvs1_met and ps_met == 0:
+            return ClassificationCategory.BENIGN
+        
+        # BA1 + PS/PVS1 强冲突 → VUS，需人工复核
+        if ba1_met and (pvs1_met or ps_met >= 1):
+            return ClassificationCategory.UNCERTAIN_SIGNIFICANCE
+        
+        # 其余良性规则只在无任何致病证据时生效（冲突 → VUS）
+        if not met_pathogenic:
+            if bs_met >= 2:
+                return ClassificationCategory.BENIGN
+            if b_score <= self.thresholds.benign_threshold:
+                return ClassificationCategory.BENIGN
+            if b_score <= self.thresholds.likely_benign_threshold:
+                return ClassificationCategory.LIKELY_BENIGN
+            # Richards et al. 2015 Table 5 — 补充 Likely Benign 组合规则
             if bs_met >= 1 and bp_met >= 1:
                 return ClassificationCategory.LIKELY_BENIGN
             if bp_met >= 2:
