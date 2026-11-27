@@ -331,8 +331,14 @@ class ACMGClassifier:
         met_pathogenic = [c for c in pathogenic if c.is_met]
         met_benign = [c for c in benign if c.is_met]
         
-        # Count each criterion at the strength it was applied (e.g. PVS1_Moderate counts as moderate).
-        pvs1_met = any(c.evidence_strength == EvidenceStrength.PATHOGENIC_VERY_STRONG for c in met_pathogenic)
+        # pvs1_present: a met PVS1 at any applied strength (criterion identity).
+        # The combining rules count each criterion at its applied strength
+        # (e.g. PVS1_Moderate counts as moderate), so they use pvs1_very_strong.
+        pvs1_present = any(c.criterion_code == "PVS1" for c in met_pathogenic)
+        pvs1_very_strong = pvs1_present and any(
+            c.criterion_code == "PVS1" and c.evidence_strength == EvidenceStrength.PATHOGENIC_VERY_STRONG
+            for c in met_pathogenic
+        )
         ps_met = sum(1 for c in met_pathogenic if c.evidence_strength == EvidenceStrength.PATHOGENIC_STRONG)
         pm_met = sum(1 for c in met_pathogenic if c.evidence_strength == EvidenceStrength.PATHOGENIC_MODERATE)
         pp_met = sum(1 for c in met_pathogenic if c.evidence_strength == EvidenceStrength.PATHOGENIC_SUPPORTING)
@@ -350,7 +356,7 @@ class ACMGClassifier:
         if b_score <= self.thresholds.likely_benign_threshold:
             return ClassificationCategory.LIKELY_BENIGN
         
-        if pvs1_met and (ps_met >= 1 or pm_met >= 2 or (pm_met >= 1 and pp_met >= 1) or pp_met >= 2):
+        if pvs1_very_strong and (ps_met >= 1 or pm_met >= 2 or (pm_met >= 1 and pp_met >= 1) or pp_met >= 2):
             return ClassificationCategory.PATHOGENIC
         
         if ps_met >= 2:

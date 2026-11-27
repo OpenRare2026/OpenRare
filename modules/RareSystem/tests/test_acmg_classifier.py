@@ -64,11 +64,12 @@ NMD_RESCUE = {"gene_info": {"other_transcripts": [{"escapes_nmd": True}]}}
 @pytest.mark.parametrize(
     "extra, expected",
     [
+        ({}, ClassificationCategory.PATHOGENIC),  # PVS1 + PM2 + PP4
         (LAST_EXON, ClassificationCategory.LIKELY_PATHOGENIC),  # PVS1_Strong + PM2 + PP4
         ({**LAST_EXON, **NMD_RESCUE}, ClassificationCategory.UNCERTAIN_SIGNIFICANCE),  # PVS1_Moderate + PM2 + PP4
     ],
 )
-def test_downgraded_pvs1_counts_at_its_applied_strength(extra, expected):
+def test_pvs1_counts_at_its_applied_strength(extra, expected):
     classifier = ACMGClassifier(config={"enabled_criteria": ["PVS1", "PM2", "PP4"]})
     variant = {"gene": "GENE1", "consequence": "stop_gained", "gnomad_af": 0.0, **extra}
     context = {
