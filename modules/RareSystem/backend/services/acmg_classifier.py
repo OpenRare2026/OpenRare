@@ -348,6 +348,12 @@ class ACMGClassifier:
         
         if b_score <= self.thresholds.likely_benign_threshold:
             return ClassificationCategory.LIKELY_BENIGN
+
+        # Richards et al. 2015 Table 5 — Likely Benign combining rules
+        if bs_met >= 1 and bp_met >= 1:
+            return ClassificationCategory.LIKELY_BENIGN
+        if bp_met >= 2:
+            return ClassificationCategory.LIKELY_BENIGN
         
         if pvs1_met and (ps_met >= 1 or pm_met >= 2 or (pm_met >= 1 and pp_met >= 1) or pp_met >= 2):
             return ClassificationCategory.PATHOGENIC
