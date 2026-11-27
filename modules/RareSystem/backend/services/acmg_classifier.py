@@ -331,10 +331,11 @@ class ACMGClassifier:
         met_pathogenic = [c for c in pathogenic if c.is_met]
         met_benign = [c for c in benign if c.is_met]
         
-        pvs1_met = any(c.criterion_code == "PVS1" for c in met_pathogenic)
-        ps_met = sum(1 for c in met_pathogenic if c.criterion_code.startswith("PS"))
-        pm_met = sum(1 for c in met_pathogenic if c.criterion_code.startswith("PM"))
-        pp_met = sum(1 for c in met_pathogenic if c.criterion_code.startswith("PP"))
+        # Count each criterion at the strength it was applied (e.g. PVS1_Moderate counts as moderate).
+        pvs1_met = any(c.evidence_strength == EvidenceStrength.PATHOGENIC_VERY_STRONG for c in met_pathogenic)
+        ps_met = sum(1 for c in met_pathogenic if c.evidence_strength == EvidenceStrength.PATHOGENIC_STRONG)
+        pm_met = sum(1 for c in met_pathogenic if c.evidence_strength == EvidenceStrength.PATHOGENIC_MODERATE)
+        pp_met = sum(1 for c in met_pathogenic if c.evidence_strength == EvidenceStrength.PATHOGENIC_SUPPORTING)
         
         ba1_met = any(c.criterion_code == "BA1" for c in met_benign)
         bs_met = sum(1 for c in met_benign if c.criterion_code.startswith("BS"))
