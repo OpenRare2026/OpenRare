@@ -55,3 +55,25 @@ def test_one_strong_with_one_moderate_or_two_supporting_is_likely_pathogenic(cod
 
 def test_two_strong_benign_is_benign():
     assert classify("BS1", "BS2") == ClassificationCategory.BENIGN
+
+
+LAST_EXON = {"exon_info": {"is_last_exon": True}}
+NMD_RESCUE = {"gene_info": {"other_transcripts": [{"escapes_nmd": True}]}}
+
+
+@pytest.mark.parametrize(
+    "extra, expected",
+    [
+        ({}, ClassificationCategory.PATHOGENIC),  # PVS1 + PM2 + PP4
+        (LAST_EXON, ClassificationCategory.LIKELY_PATHOGENIC),  # PVS1_Strong + PM2 + PP4
+        ({**LAST_EXON, **NMD_RESCUE}, ClassificationCategory.UNCERTAIN_SIGNIFICANCE),  # PVS1_Moderate + PM2 + PP4
+    ],
+)
+def test_pvs1_counts_at_its_applied_strength(extra, expected):
+    classifier = ACMGClassifier(config={"enabled_criteria": ["PVS1", "PM2", "PP4"]})
+    variant = {"gene": "GENE1", "consequence": "stop_gained", "gnomad_af": 0.0, **extra}
+    context = {
+        "lof_disease_genes": ["GENE1"],
+        "phenotype_match": {"specificity_score": 0.9, "gene_match_score": 0.9, "single_gene_match": True},
+    }
+    assert classifier.classify(variant, context).classification == expected
