@@ -340,16 +340,13 @@ class ACMGClassifier:
         bs_met = sum(1 for c in met_benign if c.criterion_code.startswith("BS"))
         bp_met = sum(1 for c in met_benign if c.criterion_code.startswith("BP"))
         
-        if ba1_met:
+        if ba1_met or bs_met >= 2:
             return ClassificationCategory.BENIGN
         
         if b_score <= self.thresholds.benign_threshold:
             return ClassificationCategory.BENIGN
         
         if b_score <= self.thresholds.likely_benign_threshold:
-            return ClassificationCategory.LIKELY_BENIGN
-        
-        if ba1_met or bs_met >= 2:
             return ClassificationCategory.LIKELY_BENIGN
         
         if pvs1_met and (ps_met >= 1 or pm_met >= 2 or (pm_met >= 1 and pp_met >= 1) or pp_met >= 2):
@@ -367,7 +364,7 @@ class ACMGClassifier:
         if p_score >= self.thresholds.likely_pathogenic_threshold:
             return ClassificationCategory.LIKELY_PATHOGENIC
         
-        if ps_met >= 1 or pm_met >= 3 or (pm_met >= 2 and pp_met >= 2) or (pm_met >= 1 and pp_met >= 4):
+        if (ps_met >= 1 and (pm_met >= 1 or pp_met >= 2)) or pm_met >= 3 or (pm_met >= 2 and pp_met >= 2) or (pm_met >= 1 and pp_met >= 4):
             return ClassificationCategory.LIKELY_PATHOGENIC
         
         return ClassificationCategory.UNCERTAIN_SIGNIFICANCE
